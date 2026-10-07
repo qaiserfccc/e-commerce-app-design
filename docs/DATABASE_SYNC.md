@@ -1,182 +1,58 @@
-# Database Sync Architecture
+# Database-backed storefront and admin
 
-## Overview
+The storefront and admin use the same Neon Postgres database through Drizzle. Client screens load route-handler data with SWR; writes use server actions that validate inputs, verify admin authorization where required, and create audit events in the same transaction as the database change.
 
-This e-commerce platform implements a **database-driven, real-time sync architecture** that keeps the storefront and admin workspace synchronized across all data operations.
+## Storefront
 
-## Architecture Layers
+- `GET /api/products` returns active products and associated public image metadata. It supports `category` and `q` filters and is refreshed by `useProducts`.
+- `GET /api/products/[slug]` returns one active product with its images.
+- Search, category selection, price, availability, and product imagery reflect the database catalog.
+- The bag is in-page state only. It does not write customer or order records. Checkout is intentionally unavailable until an approved payment provider and order-submission flow are configured.
+- Public server actions only expose catalog reads. Customer and order reads/writes are not callable from the public storefront.
 
-### 1. Data Access Layer (`app/actions/`)
+## Admin authorization
 
-- **`storefront.ts`** - Public read-only operations for the storefront
-  - Get active products
-  - Search products by name or category
-  - Fetch customer orders
-  - Create customers and orders
-  - No authentication required
+- Admin sign-in is configured using `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `ADMIN_SESSION_SECRET`.
+- Sign-in issues an eight-hour, HTTP-only, same-site signed cookie. Admin API routes, upload routes, and every admin server action verify it on the server.
+- Configure all three variables in each deployment environment before enabling admin access. Use a password of at least 16 characters and a cryptographically random session secret of at least 32 characters. The application fails closed if the configuration is absent or incomplete.
+- The sign-in route also limits failed attempts per process. This is not a distributed limiter; production deployments should apply edge-level rate limiting. This implementation supports one configured admin identity, not multi-user roles or identity-provider SSO.
+- Session status and admin responses are never cached. The public product API is the only endpoint with CDN caching.
 
-- **`admin.ts`** - Protected read/write operations for the admin workspace
-  - Create, update, delete products
-  - Manage product assets and inventory
-  - Update order statuses
-  - Manage customers
-  - View analytics and activity logs
-  - All mutations logged in `store_activity_events` table
+## Admin routes and mutations
 
-### 2. API Routes (`app/api/`)
+- `GET /api/admin/metrics` returns order counts, pending orders, counts by status, and recognized order value grouped by currency. Revenue includes paid, processing, shipped, and delivered orders; it excludes pending, cancelled, and refunded orders.
+- `GET /api/admin/products`, `/orders`, `/customers`, and `/activity` require an admin session.
+- Product create/edit/archive, stock updates, order status changes, and customer marketing-preference updates are authenticated server actions. Invalid values and invalid order-status transitions are rejected.
+- Mutations create `store_activity_events` entries transactionally. Activity payloads do not contain customer names, addresses, email addresses, or other personal fields.
+- Order and customer endpoints return 50 records per page with database counts and server-side customer search. The admin screens paginate through all matching records and expose empty/loading/error states.
+- Admin writes refresh the relevant SWR keys immediately. Storefront catalog reads revalidate periodically and after product changes.
 
-- **`/api/products`** - GET endpoint for public product listing
-  - Supports category filtering
-  - Includes product assets
-  - Cache: 60s stale-while-revalidate 300s
-  
-- **`/api/admin/metrics`** - GET endpoint for dashboard metrics (TODO: add auth)
-  - Total revenue, orders, customers
-  - No caching (must-revalidate)
-  - 30s refresh rate
+## Product image storage
 
-### 3. Real-Time Sync with SWR
+- Admin uploads accept JPEG, PNG, WebP, or AVIF images up to 4 MB through `POST /api/admin/products/[productId]/assets`.
+- Uploads go to Vercel Blob. The database stores only the Blob URL, pathname, alt text, and product relation in `store_product_assets`.
+- `DELETE /api/admin/assets/[assetId]` removes the Blob and its metadata. Blob and database writes cannot share a transaction; the API reports cleanup failures rather than claiming success.
+- `BLOB_READ_WRITE_TOKEN` must be configured for uploads and deletions.
 
-#### Storefront Hooks (`lib/hooks/use-storefront-data.ts`)
+## Data flow
 
-```typescript
-// Auto-revalidates products every 60 seconds
-const { products, isLoading, mutate } = useProducts(category)
-
-// Single product detailed view
-const { product, isLoading, mutate } = useProduct(slug)
+```text
+Storefront SWR ──> /api/products ──> public catalog reads ──> Neon
+Admin SWR ───────> /api/admin/* ──> session-checked reads ──> Neon
+Admin forms ─────> server actions ─> session + validation ──> Neon transaction + audit event
+Image upload ────> authenticated route ──> Vercel Blob + asset metadata in Neon
 ```
 
-#### Admin Hooks (`lib/hooks/use-admin-data.ts`)
+Polling/revalidation is used; the application does not use database WebSockets. Do not describe these updates as instantaneous realtime subscriptions.
 
-```typescript
-// Dashboard metrics with 30s refresh
-const { metrics, isLoading, mutate } = useAdminMetrics()
+## Validation
 
-// Manual refresh after mutations
-const { refresh } = useAdminRefresh()
+From the repository root:
+
+```bash
+pnpm exec tsc --noEmit
+node scripts/validate-build.mjs
+pnpm build
 ```
 
-## Data Flow
-
-### Storefront Reading
-
-```
-User Browses Store
-    ↓
-useProducts() / useProduct() (SWR)
-    ↓
-/api/products endpoint
-    ↓
-Storefront server actions (getActiveProducts, getProductBySlug)
-    ↓
-Neon Postgres Database
-    ↓
-Response with assets (returned to browser)
-```
-
-### Admin Writing
-
-```
-Admin Creates/Updates Product
-    ↓
-Admin server action (createProduct, updateProduct)
-    ↓
-Neon Postgres Database
-    ↓
-Activity logged in store_activity_events table
-    ↓
-Admin calls mutate() to refresh local SWR cache
-    ↓
-useAdminMetrics() auto-revalidates (30s)
-    ↓
-Storefront useProducts() auto-revalidates (60s)
-    ↓
-Customers see changes in ~60s without page refresh
-```
-
-### Order Processing
-
-```
-Customer Completes Checkout
-    ↓
-createOrder() server action (storefront)
-    ↓
-Creates order + items in Postgres
-    ↓
-Admin sees order in dashboard (30s refresh)
-    ↓
-Admin updates order status via updateOrderStatus()
-    ↓
-Activity logged, customer can view order history
-```
-
-## Database Schema
-
-All tables include automatic `updated_at` timestamps via PostgreSQL trigger:
-
-- `store_products` - Product catalog with inventory
-- `store_customers` - Customer records (unique by email)
-- `store_orders` - Order headers
-- `store_order_items` - Order line items
-- `store_product_assets` - Product images/media via Blob storage
-- `store_activity_events` - Immutable audit log of all mutations
-
-## Consistency Guarantees
-
-1. **Strong Read Consistency** - All reads go directly to Postgres
-2. **Write Isolation** - Server actions enforce ACID transactions
-3. **Activity Audit Trail** - Every write creates an entry in `store_activity_events`
-4. **Eventual UI Consistency** - SWR revalidation intervals ensure UI catches up:
-   - Admin: 30s
-   - Storefront: 60s
-5. **Manual Refresh** - Call `mutate()` hook immediately after mutations for instant UI update
-
-## Performance Considerations
-
-### Caching Strategy
-
-- **Products API**: 60s max-age + 300s stale-while-revalidate
-  - Serves stale data while revalidating in background
-  - Reduces database load without stale data reaching users (after 5 min)
-  
-- **Metrics API**: no-cache, must-revalidate
-  - Always fresh for admin dashboard
-  - 30s refresh rate via SWR
-
-### Optimization Tips
-
-1. **Manual Mutate** - After admin creates/updates, call `mutate()` to see changes instantly
-2. **Category Filtering** - Use `/api/products?category=X` to reduce payload
-3. **Batch Operations** - Group multiple DB writes in a single server action
-4. **Asset CDN** - Product images served via Vercel Blob with edge caching
-
-## Future Enhancements
-
-1. **Realtime Subscriptions** - Replace SWR intervals with WebSocket for instant updates
-2. **Optimistic Updates** - Update UI before server confirms, rollback on error
-3. **Infinite Scroll** - Paginate product lists with cursor-based queries
-4. **Full-Text Search** - Add Postgres FTS or external search service
-5. **Rate Limiting** - Throttle storefront API by IP/session
-6. **Admin Auth** - Lock down admin endpoints with session validation
-
-## Troubleshooting
-
-### Changes not appearing after admin update?
-
-- Check network tab: Admin metrics endpoint called?
-- Wait 30s: SWR revalidation should pick up changes
-- Manual refresh: Call `mutate()` from admin hooks
-
-### Slow product loading?
-
-- Check `/api/products` response time
-- Verify Postgres connection: `echo $DATABASE_URL`
-- Review indexes on `store_products` table
-- Consider pagination if catalog grows beyond 1000 items
-
-### Stale data on storefront?
-
-- Storefront revalidates every 60s automatically
-- Manual refresh: Ctrl+Shift+R or call `mutate()` hook
-- Check: Is admin mutation actually hitting database? (check activity log)
+`node scripts/validate-schema.mjs` requires `DATABASE_URL` and access to the configured Neon database. Never print environment variable values when diagnosing a connection issue.

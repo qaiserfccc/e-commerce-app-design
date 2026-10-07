@@ -18,11 +18,15 @@ const FILES_TO_CHECK = [
   'app/actions/admin.ts',
   'app/api/products/route.ts',
   'app/api/admin/metrics/route.ts',
+  'app/api/admin/session/route.ts',
+  'lib/auth/admin.ts',
+  'components/admin/admin-workspace.tsx',
+  'components/storefront/storefront-panel.tsx',
   'lib/hooks/use-storefront-data.ts',
   'lib/hooks/use-admin-data.ts',
 ]
 
-const REQUIRED_PACKAGES = ['drizzle-orm', 'pg', 'swr', 'next']
+const REQUIRED_PACKAGES = ['drizzle-orm', 'pg', 'swr', 'next', '@vercel/blob']
 
 console.log('🔍 Validating build configuration...\n')
 
