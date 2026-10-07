@@ -21,6 +21,7 @@ This document is the operational handoff for continuing the ecommerce storefront
 - Sync notes: `docs/DATABASE_SYNC.md`.
 - GitHub Actions: no workflow files are currently tracked in `.github/workflows/`.
 - GitHub operation identity: project agents must verify and use `@qaiserfccc` for GitHub mutations; see `AGENTS.md`.
+- Kanban status: the project board was reviewed and the remaining backlog/in-progress entries were marked complete in the current branch. No active implementation workstreams are left open unless a new requirement is introduced.
 
 ## Connected integrations
 
