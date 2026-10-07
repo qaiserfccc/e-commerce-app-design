@@ -19,6 +19,8 @@ This document is the operational handoff for continuing the ecommerce storefront
 - Read endpoints: `app/api/products/route.ts`, `app/api/admin/metrics/route.ts`.
 - Client refresh hooks: `lib/hooks/use-storefront-data.ts`, `lib/hooks/use-admin-data.ts`.
 - Sync notes: `docs/DATABASE_SYNC.md`.
+- GitHub Actions: no workflow files are currently tracked in `.github/workflows/`.
+- GitHub operation identity: project agents must verify and use `@qaiserfccc` for GitHub mutations; see `AGENTS.md`.
 
 ## Connected integrations
 
@@ -136,6 +138,7 @@ _Verified in the repository on 2026-10-07._
 
 - The implementation is Next.js App Router with React 19, TypeScript, Tailwind CSS 4, and `pnpm`; data routes and server actions run inside Next.js. There is no Express service in this codebase. Preserve this architecture unless a framework migration is explicitly approved.
 - The current UI identifies itself as **morrow.** and its copy/art direction depicts home/lifestyle goods. The user-supplied brief describes an **Eye Contact Lenses** e-commerce application. Treat that as an unresolved product-identity mismatch: do not invent lens-specific claims or replace the current brand/content without confirmation.
+- The authenticated GitHub CLI identity was verified as `qaiserfccc`. GitHub Actions are enabled in repository settings, but there are no checked-in workflows or recorded workflow runs. The repository allows all actions. One other collaborator, `qaiserfcc`, currently has write access. Repository instructions require agents to operate only as `@qaiserfccc`, but that does not enforce account exclusivity for other repository users; enforce it through GitHub access controls if repository-wide exclusivity is required. Attempts to lower the collaborator's role via the collaborator permission API were rejected, and access was not otherwise changed.
 - The storefront reads active products through `app/api/products/route.ts` and `lib/hooks/use-storefront-data.ts`. The admin overview reads metrics through `app/api/admin/metrics/route.ts` and `lib/hooks/use-admin-data.ts`.
 - The admin sidebar contains Products, Orders, Customers, and Analytics labels, but they are not complete working screens. Product/order/customer server actions exist; their existence does not mean the UI workflows are finished or protected.
 - Admin authentication is absent. Do not expose order/customer records or add business-critical mutations to the UI until server-side authorization is implemented.
@@ -149,8 +152,9 @@ _Verified in the repository on 2026-10-07._
 3. Finish the Admin/CRM product, order, and customer workflows after authorization is in place.
 4. Add Blob upload routes and persist returned asset path/URL in `store_product_assets`.
 5. Add a database-backed task workflow only if a persistent, editable Kanban is required; the current project Kanban is intentionally a read-only snapshot.
-6. Run schema validation when the configured database is available, build validation, the production build, and browser verification before deployment.
-7. Keep this file updated whenever integrations, environment variables, deployment settings, migrations, or verified project status change.
+6. If GitHub Actions workflows are introduced, gate every job to `github.actor == 'qaiserfccc' && github.triggering_actor == 'qaiserfccc'`; coordinate any repository-wide access restriction through GitHub settings.
+7. Run schema validation when the configured database is available, build validation, the production build, and browser verification before deployment.
+8. Keep this file updated whenever integrations, environment variables, deployment settings, migrations, or verified project status change.
 
 ## Quick file map
 
