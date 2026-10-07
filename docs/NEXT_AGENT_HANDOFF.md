@@ -130,14 +130,27 @@ Also inspect:
 - Keep SQL in `db/migrations/` and application queries in Drizzle modules.
 - If a required integration variable appears missing, refresh the integration inventory once before concluding it is unavailable.
 
+## Repository snapshot and agent memory
+
+_Verified in the repository on 2026-10-07._
+
+- The implementation is Next.js App Router with React 19, TypeScript, Tailwind CSS 4, and `pnpm`; data routes and server actions run inside Next.js. There is no Express service in this codebase. Preserve this architecture unless a framework migration is explicitly approved.
+- The current UI identifies itself as **morrow.** and its copy/art direction depicts home/lifestyle goods. The user-supplied brief describes an **Eye Contact Lenses** e-commerce application. Treat that as an unresolved product-identity mismatch: do not invent lens-specific claims or replace the current brand/content without confirmation.
+- The storefront reads active products through `app/api/products/route.ts` and `lib/hooks/use-storefront-data.ts`. The admin overview reads metrics through `app/api/admin/metrics/route.ts` and `lib/hooks/use-admin-data.ts`.
+- The admin sidebar contains Products, Orders, Customers, and Analytics labels, but they are not complete working screens. Product/order/customer server actions exist; their existence does not mean the UI workflows are finished or protected.
+- Admin authentication is absent. Do not expose order/customer records or add business-critical mutations to the UI until server-side authorization is implemented.
+- The database schema includes `store_product_assets` fields for Blob metadata. A complete upload flow is not present in the repository; do not claim Blob uploads are implemented merely because the integration or schema exists.
+- `components/admin/project-kanban.tsx` is a read-only snapshot of requirements versus repository status. Its task definitions are code-level project context, not order/customer records or persistent task data. It deliberately does not mutate business data.
+
 ## Next recommended work
 
-1. Finish the storefront/admin UI wiring for all category sections, slider content, reviews, and admin CRUD views.
-2. Add authenticated admin authorization before exposing write actions or metrics in production.
-3. Add Blob upload routes and persist returned asset path/URL in `store_product_assets`.
-4. Add a true realtime transport only if the product requires sub-minute updates; preserve SWR as fallback.
-5. Run schema validation, build validation, browser verification, then synchronize Git before handoff.
-6. Keep this file updated whenever integrations, environment variables, deployment settings, or migration conventions change.
+1. Confirm whether the intended product is the current morrow. home/lifestyle storefront or the Eye Contact Lenses brief, then align truthful catalog copy and assets.
+2. Add server-verified admin authentication and authorization before exposing write actions, metrics, or customer/order data in production.
+3. Finish the Admin/CRM product, order, and customer workflows after authorization is in place.
+4. Add Blob upload routes and persist returned asset path/URL in `store_product_assets`.
+5. Add a database-backed task workflow only if a persistent, editable Kanban is required; the current project Kanban is intentionally a read-only snapshot.
+6. Run schema validation when the configured database is available, build validation, the production build, and browser verification before deployment.
+7. Keep this file updated whenever integrations, environment variables, deployment settings, migrations, or verified project status change.
 
 ## Quick file map
 
