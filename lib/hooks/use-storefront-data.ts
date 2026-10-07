@@ -2,9 +2,14 @@
 
 import useSWR from 'swr'
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
+const fetcher = async (url: string) => {
+  const response = await fetch(url, { cache: 'no-store' })
+  const body = await response.json()
+  if (!response.ok) throw new Error(body.error || 'Unable to load products.')
+  return body
+}
 
-interface Product {
+export interface Product {
   id: string
   name: string
   slug: string
@@ -17,7 +22,17 @@ interface Product {
   heroImageUrl: string | null
   createdAt: string
   updatedAt: string
-  assets?: any[]
+  assets?: ProductAsset[]
+}
+
+export interface ProductAsset {
+  id: string
+  productId: string
+  blobPathname: string
+  blobUrl: string | null
+  altText: string | null
+  sortOrder: number
+  createdAt: string
 }
 
 interface ProductsResponse {
@@ -29,8 +44,12 @@ interface ProductsResponse {
  * Hook for fetching active products with real-time updates via SWR
  * Revalidates every 60 seconds for fresh inventory
  */
-export function useProducts(category?: string) {
-  const url = category ? `/api/products?category=${encodeURIComponent(category)}` : '/api/products'
+export function useProducts(category?: string, search?: string) {
+  const params = new URLSearchParams()
+  if (category) params.set('category', category)
+  if (search?.trim()) params.set('q', search.trim())
+  const suffix = params.size ? `?${params.toString()}` : ''
+  const url = `/api/products${suffix}`
 
   const { data, error, isLoading, mutate } = useSWR<ProductsResponse>(url, fetcher, {
     revalidateOnFocus: true,
@@ -53,7 +72,7 @@ export function useProducts(category?: string) {
  * Hook for fetching a single product by slug
  */
 export function useProduct(slug: string) {
-  const { data, error, isLoading, mutate } = useSWR<{ data: Product }>(`/api/products/${slug}`, fetcher, {
+  const { data, error, isLoading, mutate } = useSWR<{ data: Product }>(slug ? `/api/products/${encodeURIComponent(slug)}` : null, fetcher, {
     revalidateOnFocus: true,
     dedupingInterval: 60000,
     refreshInterval: 120000, // Revalidate every 2 minutes for single product

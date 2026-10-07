@@ -1,89 +1,106 @@
-import { Activity, CircleCheck, Database, Eye, FileUp, GitBranch, ShieldCheck, Workflow } from 'lucide-react'
+import { Activity, CircleCheck, CreditCard, Database, Eye, FileUp, GitBranch, ShieldCheck, Workflow } from 'lucide-react'
 
 const columns = [
   {
     id: 'backlog',
     title: 'Backlog',
-    description: 'No outstanding backlog items after review',
+    description: 'External decisions and configuration still needed',
     accent: 'bg-[#d9a78c]',
-    tasks: [],
+    tasks: [
+      {
+        title: 'Confirm the product identity',
+        area: 'Product',
+        icon: Eye,
+        description:
+          'The existing storefront is morrow. home/lifestyle goods, while the supplied brief says Eye Contact Lenses. Keep current copy and assets until the catalog identity is confirmed.',
+        files: 'app/page.tsx · app/layout.tsx',
+      },
+      {
+        title: 'Configure admin access',
+        area: 'Operations',
+        icon: ShieldCheck,
+        description:
+          'The signed-session admin login is implemented, but an operator must set the private ADMIN_EMAIL, ADMIN_PASSWORD, and ADMIN_SESSION_SECRET values in each target environment.',
+        files: 'lib/auth/admin.ts · Vercel project environment',
+      },
+      {
+        title: 'Connect checkout and payment processing',
+        area: 'Storefront',
+        icon: CreditCard,
+        description:
+          'Browsing, search, filters, and the in-page bag are functional. Do not create orders until a payment provider and its approved checkout flow are configured.',
+        files: 'components/storefront/storefront-panel.tsx · payment integration',
+      },
+      {
+        title: 'Enforce repository collaborator access',
+        area: 'GitHub',
+        icon: GitBranch,
+        description:
+          'The operator identity policy is documented, but repository-wide exclusivity requires a repository owner to change collaborator access in GitHub settings.',
+        files: 'AGENTS.md · GitHub collaborator settings',
+      },
+    ],
   },
   {
     id: 'in-progress',
     title: 'In progress',
-    description: 'No active workstreams remain on the current branch',
+    description: 'No active in-repository implementation tasks',
     accent: 'bg-[#b58b5b]',
     tasks: [],
   },
   {
     id: 'done',
     title: 'In place',
-    description: 'Verified in the repository and ready to merge',
+    description: 'Implemented and checked in the repository',
     accent: 'bg-[#68765f]',
     tasks: [
-      {
-        title: 'Protect admin operations',
-        area: 'Security',
-        icon: ShieldCheck,
-        description:
-          'Admin data stays behind the documented repository boundaries and does not claim active auth protection without a real server-verified mechanism.',
-        files: 'app/actions/admin.ts · app/api/admin/metrics/route.ts',
-      },
-      {
-        title: 'Finish product media uploads',
-        area: 'Storage',
-        icon: FileUp,
-        description:
-          'The schema and admin asset actions are in place for Blob-backed media metadata, while the app maintains the current storefront identity and storage contract.',
-        files: 'store_product_assets · BLOB_READ_WRITE_TOKEN',
-      },
-      {
-        title: 'Complete order and customer workspaces',
-        area: 'Admin / CRM',
-        icon: Workflow,
-        description:
-          'The repository exposes CRUD/data access for customers and orders, and the admin overview remains organized around the shared database layer.',
-        files: 'app/actions/admin.ts · app/page.tsx',
-      },
-      {
-        title: 'Enforce GitHub actor exclusivity',
-        area: 'GitHub',
-        icon: GitBranch,
-        description:
-          'The project guidance records the required @qaiserfccc identity and the repo policy for actor-gated workflow safeguards when GitHub automation is introduced.',
-        files: 'AGENTS.md · docs/NEXT_AGENT_HANDOFF.md',
-      },
-      {
-        title: 'Complete the Admin workspace',
-        area: 'Admin / CRM',
-        icon: Activity,
-        description:
-          'The admin overview is connected to live metrics and the project-plan workspace is available without pretending the remaining business screens are authenticated production features.',
-        files: 'app/page.tsx · app/api/admin/metrics/route.ts',
-      },
-      {
-        title: 'Confirm the product identity',
-        area: 'Product',
-        icon: Eye,
-        description:
-          'The current storefront is intentionally preserved as the morrow. home/lifestyle prototype unless a separate product decision is approved.',
-        files: 'app/page.tsx · app/layout.tsx',
-      },
       {
         title: 'Shared Neon data foundation',
         area: 'Database',
         icon: Database,
         description:
           'Storefront and admin data access use the same Drizzle schema and Postgres connection; catalog reads flow through a Next.js API route.',
-        files: 'lib/db/ · app/actions/ · app/api/products/route.ts',
+        files: 'lib/db/ · app/actions/ · app/api/products/',
       },
       {
-        title: 'Storefront catalog refresh',
-        area: 'Synchronization',
+        title: 'Storefront catalog and bag',
+        area: 'Storefront',
         icon: CircleCheck,
         description:
-          'The storefront uses SWR to load products from the API and revalidates periodically for updates.',
-        files: 'lib/hooks/use-storefront-data.ts',
+          'Active products, images, categories, search, prices, and stock come from the database. The in-page bag is session-memory only and explains why checkout is not available.',
+        files: 'components/storefront/storefront-panel.tsx · app/api/products/',
+      },
+      {
+        title: 'Protect admin operations',
+        area: 'Security',
+        icon: ShieldCheck,
+        description:
+          'Configured single-operator credentials create an HTTP-only signed session. Admin data actions, API reads, uploads, and deletes verify the session on the server.',
+        files: 'lib/auth/admin.ts · app/actions/admin.ts · app/api/admin/',
+      },
+      {
+        title: 'Finish product media uploads',
+        area: 'Storage',
+        icon: FileUp,
+        description:
+          'Authenticated image uploads validate file type and size, save files to Vercel Blob, and persist Blob URLs and metadata. Image deletion removes the Blob and its row.',
+        files: 'app/api/admin/products/ · store_product_assets',
+      },
+      {
+        title: 'Complete order and customer workspaces',
+        area: 'Admin / CRM',
+        icon: Workflow,
+        description:
+          'Signed-in operators can review orders, change permitted order statuses, search customer records, and update marketing preference. Writes are audit logged without customer fields.',
+        files: 'app/actions/admin.ts · components/admin/admin-workspace.tsx',
+      },
+      {
+        title: 'Complete the Admin workspace',
+        area: 'Admin / CRM',
+        icon: Activity,
+        description:
+          'Products, orders, customers, analytics, recent activity, and loading, empty, and error states are wired to the shared database.',
+        files: 'components/admin/admin-workspace.tsx · app/api/admin/',
       },
       {
         title: 'GitHub operator identity documented',
@@ -105,7 +122,7 @@ export function ProjectKanban() {
           Project Kanban
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-[#77756e]">
-          A repository-based snapshot of the commerce requirements and the work still needed to meet them.
+          A repository snapshot of implemented workflows and the decisions or environment setup still needed.
         </p>
       </div>
 
@@ -129,12 +146,11 @@ export function ProjectKanban() {
             <div className="space-y-3">
               {column.tasks.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-[#1c1c1a]/12 bg-white/35 px-4 py-6 text-center text-xs leading-5 text-[#77756e]">
-                  No tasks currently awaiting action.
+                  No active implementation tasks.
                 </div>
               ) : (
                 column.tasks.map((task) => {
                   const Icon = task.icon
-
                   return (
                     <article key={task.title} className="rounded-xl border border-[#1c1c1a]/8 bg-white p-4">
                       <div className="flex items-start justify-between gap-3">

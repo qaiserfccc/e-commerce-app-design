@@ -1,6 +1,6 @@
 # Next Agent Handoff
 
-_Last updated: 2026-10-07_
+_Last updated: 2026-10-08_
 
 This document is the operational handoff for continuing the ecommerce storefront + admin CRM project. It intentionally records environment-variable **names and sources**, never secret values.
 
@@ -16,12 +16,12 @@ This document is the operational handoff for continuing the ecommerce storefront
 - Drizzle schema mirror: `lib/db/schema.ts`.
 - Drizzle connection: `lib/db/index.ts`.
 - Data access: `app/actions/storefront.ts`, `app/actions/admin.ts`.
-- Read endpoints: `app/api/products/route.ts`, `app/api/admin/metrics/route.ts`.
+- Read endpoints: public catalog under `app/api/products/`; authenticated admin data under `app/api/admin/`.
 - Client refresh hooks: `lib/hooks/use-storefront-data.ts`, `lib/hooks/use-admin-data.ts`.
 - Sync notes: `docs/DATABASE_SYNC.md`.
 - GitHub Actions: no workflow files are currently tracked in `.github/workflows/`.
 - GitHub operation identity: project agents must verify and use `@qaiserfccc` for GitHub mutations; see `AGENTS.md`.
-- Kanban status: the project board was reviewed and the remaining backlog/in-progress entries were marked complete in the current branch. No active implementation workstreams are left open unless a new requirement is introduced.
+- Storefront and admin screens are wired to the shared database. The read-only project Kanban keeps open external decisions visible instead of treating them as completed implementation.
 
 ## Connected integrations
 
@@ -43,6 +43,11 @@ The variables are managed by the Vercel/v0 project environment and mirrored into
 |---|---|---|
 | `DATABASE_URL` | Neon | Primary pooled Postgres connection used by `lib/db/index.ts`. |
 | `BLOB_READ_WRITE_TOKEN` | Vercel Blob | Server-side Blob uploads/deletes/list operations. |
+| `ADMIN_EMAIL` | Project environment | Email for the single configured admin identity. |
+| `ADMIN_PASSWORD` | Project environment | Admin password; the application requires at least 16 characters. |
+| `ADMIN_SESSION_SECRET` | Project environment | HMAC key for the admin session cookie; set a cryptographically random value of at least 32 characters. |
+
+Admin access fails closed until all three admin variables are configured in the target environment. The current implementation supports one configured operator. Its in-process login throttle is defense in depth, not a distributed rate limiter; configure edge-level rate limiting before production exposure.
 
 ### Neon-provided connection aliases
 
@@ -91,11 +96,13 @@ Existing schema includes storefront/admin workspace tables for products, product
 ## Data synchronization contract
 
 - Storefront reads flow through SWR hooks to `/api/products`, then Drizzle/Neon.
-- Admin metrics flow through `/api/admin/metrics` and refresh on an interval.
-- Admin mutations are server actions and should log activity events.
+- Admin metrics, products, orders, customers, and activity flow through session-protected `/api/admin/*` routes.
+- Every admin server action checks the signed session independently. Mutations validate inputs and write audit events transactionally.
+- Product image upload/delete uses authenticated Next.js route handlers and Vercel Blob; only Blob URLs and metadata are persisted.
 - After a successful admin mutation, call the relevant SWR `mutate()`/refresh function for immediate UI consistency.
 - Current UI synchronization is polling/revalidation, not database WebSockets. Treat “realtime” as sync-ready periodic refresh unless a future agent adds an approved realtime transport.
-- Every user-owned query must be scoped by authenticated user ID once authentication is added. Do not rely on client-side filtering.
+- The admin is currently one environment-configured operator, not a multi-user identity system. Do not present the implementation as role-based or SSO authentication.
+- The storefront bag is in-page state only. Customer/order creation and order-history reads are intentionally unavailable until payment, checkout, and customer-access controls are configured.
 
 ## Deployment reference
 
@@ -121,7 +128,7 @@ If `tsx` is not installed, run the scripts with the available Node runtime or ad
 Also inspect:
 
 - `git diff -- db/migrations lib/db app/actions app/api lib/hooks docs`
-- live Neon schema through the integration tool
+- live Neon schema through the integration tool when available
 - Vercel deployment/build logs after publishing
 
 ## Safe handoff rules
@@ -135,27 +142,26 @@ Also inspect:
 
 ## Repository snapshot and agent memory
 
-_Verified in the repository on 2026-10-07._
+_Verified in the repository on 2026-10-08._
 
 - The implementation is Next.js App Router with React 19, TypeScript, Tailwind CSS 4, and `pnpm`; data routes and server actions run inside Next.js. There is no Express service in this codebase. Preserve this architecture unless a framework migration is explicitly approved.
 - The current UI identifies itself as **morrow.** and its copy/art direction depicts home/lifestyle goods. The user-supplied brief describes an **Eye Contact Lenses** e-commerce application. Treat that as an unresolved product-identity mismatch: do not invent lens-specific claims or replace the current brand/content without confirmation.
 - The authenticated GitHub CLI identity was verified as `qaiserfccc`. GitHub Actions are enabled in repository settings, but there are no checked-in workflows or recorded workflow runs. The repository allows all actions. One other collaborator, `qaiserfcc`, currently has write access. Repository instructions require agents to operate only as `@qaiserfccc`, but that does not enforce account exclusivity for other repository users; enforce it through GitHub access controls if repository-wide exclusivity is required. Attempts to lower the collaborator's role via the collaborator permission API were rejected, and access was not otherwise changed.
 - The storefront reads active products through `app/api/products/route.ts` and `lib/hooks/use-storefront-data.ts`. The admin overview reads metrics through `app/api/admin/metrics/route.ts` and `lib/hooks/use-admin-data.ts`.
-- The admin sidebar contains Products, Orders, Customers, and Analytics labels, but they are not complete working screens. Product/order/customer server actions exist; their existence does not mean the UI workflows are finished or protected.
-- Admin authentication is absent. Do not expose order/customer records or add business-critical mutations to the UI until server-side authorization is implemented.
-- The database schema includes `store_product_assets` fields for Blob metadata. A complete upload flow is not present in the repository; do not claim Blob uploads are implemented merely because the integration or schema exists.
+- Admin sign-in uses one environment-configured identity and a signed HTTP-only cookie. Product/order/customer reads, admin mutations, and image endpoints verify the session on the server. Configure the required environment values before use.
+- Product, order, customer, and analytics screens are connected to authenticated database routes; mutations validate inputs and log metadata-only audit events.
+- Product media upload/deletion is wired to Vercel Blob and `store_product_assets`. Checkout is deliberately not available: the storefront does not create orders without a configured payment provider.
 - `components/admin/project-kanban.tsx` is a read-only snapshot of requirements versus repository status. Its task definitions are code-level project context, not order/customer records or persistent task data. It deliberately does not mutate business data.
 
 ## Next recommended work
 
-1. Confirm whether the intended product is the current morrow. home/lifestyle storefront or the Eye Contact Lenses brief, then align truthful catalog copy and assets.
-2. Add server-verified admin authentication and authorization before exposing write actions, metrics, or customer/order data in production.
-3. Finish the Admin/CRM product, order, and customer workflows after authorization is in place.
-4. Add Blob upload routes and persist returned asset path/URL in `store_product_assets`.
-5. Add a database-backed task workflow only if a persistent, editable Kanban is required; the current project Kanban is intentionally a read-only snapshot.
-6. If GitHub Actions workflows are introduced, gate every job to `github.actor == 'qaiserfccc' && github.triggering_actor == 'qaiserfccc'`; coordinate any repository-wide access restriction through GitHub settings.
-7. Run schema validation when the configured database is available, build validation, the production build, and browser verification before deployment.
-8. Keep this file updated whenever integrations, environment variables, deployment settings, migrations, or verified project status change.
+1. Set `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `ADMIN_SESSION_SECRET` in each intended environment; apply edge-level sign-in rate limiting before production use.
+2. Choose a payment provider and approve checkout, order-creation, shipping, and tax behavior before accepting orders.
+3. Resolve the mismatch between the current morrow. home/lifestyle storefront and the Eye Contact Lenses brief before changing product truth, copy, or assets.
+4. Manage repository collaborator access in GitHub settings if repository-wide operator exclusivity is required.
+5. If GitHub Actions workflows are introduced, gate every job to `github.actor == 'qaiserfccc' && github.triggering_actor == 'qaiserfccc'`.
+6. Run schema validation when the configured database is available, build validation, the production build, and browser verification before deployment.
+7. Keep this file updated whenever integrations, environment variables, deployment settings, migrations, or verified project status change.
 
 ## Quick file map
 
@@ -166,7 +172,7 @@ lib/db/index.ts
 app/actions/storefront.ts
 app/actions/admin.ts
 app/api/products/route.ts
-app/api/admin/metrics/route.ts
+app/api/admin/
 lib/hooks/use-storefront-data.ts
 lib/hooks/use-admin-data.ts
 docs/DATABASE_SYNC.md

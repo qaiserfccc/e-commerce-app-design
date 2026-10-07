@@ -1,8 +1,8 @@
 'use server'
 
 import { db } from '@/lib/db'
-import { storeProducts, storeCustomers, storeOrders, storeOrderItems, storeProductAssets } from '@/lib/db/schema'
-import { eq, desc, asc, like, and } from 'drizzle-orm'
+import { storeProducts, storeProductAssets } from '@/lib/db/schema'
+import { eq, desc, asc, ilike, and, or } from 'drizzle-orm'
 
 /**
  * Storefront data access layer - READ operations
@@ -17,12 +17,13 @@ export async function getActiveProducts() {
       .where(eq(storeProducts.status, 'active'))
       .orderBy(desc(storeProducts.createdAt))
   } catch (error) {
-    console.error('[v0] Error fetching products:', error)
+    console.error('[storefront] Product query failed', error instanceof Error ? error.name : 'UnknownError')
     throw new Error('Failed to fetch products')
   }
 }
 
 export async function getProductBySlug(slug: string) {
+  if (typeof slug !== 'string' || slug.length > 180) throw new Error('Product slug is invalid.')
   try {
     const product = await db
       .select()
@@ -32,12 +33,13 @@ export async function getProductBySlug(slug: string) {
 
     return product[0] || null
   } catch (error) {
-    console.error('[v0] Error fetching product by slug:', error)
+    console.error('[storefront] Product detail query failed', error instanceof Error ? error.name : 'UnknownError')
     throw new Error('Failed to fetch product')
   }
 }
 
 export async function getProductsByCategory(category: string) {
+  if (typeof category !== 'string' || !category.trim() || category.length > 100) throw new Error('Category is invalid.')
   try {
     return await db
       .select()
@@ -45,12 +47,16 @@ export async function getProductsByCategory(category: string) {
       .where(and(eq(storeProducts.category, category), eq(storeProducts.status, 'active')))
       .orderBy(desc(storeProducts.createdAt))
   } catch (error) {
-    console.error('[v0] Error fetching products by category:', error)
+    console.error('[storefront] Category query failed', error instanceof Error ? error.name : 'UnknownError')
     throw new Error('Failed to fetch products')
   }
 }
 
 export async function searchProducts(query: string) {
+  if (typeof query !== 'string' || query.length > 100) throw new Error('Search query is invalid.')
+  const normalizedQuery = query.trim()
+  if (!normalizedQuery) return getActiveProducts()
+
   try {
     return await db
       .select()
@@ -58,18 +64,25 @@ export async function searchProducts(query: string) {
       .where(
         and(
           eq(storeProducts.status, 'active'),
-          like(storeProducts.name, `%${query}%`),
+          or(
+            ilike(storeProducts.name, `%${normalizedQuery}%`),
+            ilike(storeProducts.category, `%${normalizedQuery}%`),
+            ilike(storeProducts.description, `%${normalizedQuery}%`),
+          ),
         ),
       )
       .orderBy(desc(storeProducts.createdAt))
-      .limit(20)
+      .limit(100)
   } catch (error) {
-    console.error('[v0] Error searching products:', error)
+    console.error('[storefront] Search query failed', error instanceof Error ? error.name : 'UnknownError')
     throw new Error('Failed to search products')
   }
 }
 
 export async function getProductAssets(productId: string) {
+  if (typeof productId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(productId)) {
+    throw new Error('Product ID is invalid.')
+  }
   try {
     return await db
       .select()
@@ -77,128 +90,7 @@ export async function getProductAssets(productId: string) {
       .where(eq(storeProductAssets.productId, productId))
       .orderBy(asc(storeProductAssets.sortOrder))
   } catch (error) {
-    console.error('[v0] Error fetching product assets:', error)
+    console.error('[storefront] Product image query failed', error instanceof Error ? error.name : 'UnknownError')
     throw new Error('Failed to fetch product assets')
-  }
-}
-
-export async function getOrCreateCustomer(email: string, firstName?: string, lastName?: string) {
-  try {
-    const existing = await db
-      .select()
-      .from(storeCustomers)
-      .where(eq(storeCustomers.email, email))
-      .limit(1)
-
-    if (existing[0]) {
-      return existing[0]
-    }
-
-    const [newCustomer] = await db
-      .insert(storeCustomers)
-      .values({
-        email,
-        firstName: firstName || null,
-        lastName: lastName || null,
-      })
-      .returning()
-
-    return newCustomer
-  } catch (error) {
-    console.error('[v0] Error creating customer:', error)
-    throw new Error('Failed to create customer')
-  }
-}
-
-export async function createOrder(
-  customerId: string,
-  items: Array<{
-    productId: string
-    productName: string
-    unitPrice: string
-    quantity: number
-    lineTotal: string
-  }>,
-  subtotal: string,
-  shippingTotal: string,
-  taxTotal: string,
-  total: string,
-  shippingAddress: Record<string, any>,
-) {
-  try {
-    const [order] = await db
-      .insert(storeOrders)
-      .values({
-        customerId,
-        status: 'pending',
-        subtotal,
-        shippingTotal,
-        taxTotal,
-        total,
-        shippingAddress,
-      })
-      .returning()
-
-    const orderItems = await db
-      .insert(storeOrderItems)
-      .values(
-        items.map((item) => ({
-          orderId: order.id,
-          ...item,
-        })),
-      )
-      .returning()
-
-    return { order, items: orderItems }
-  } catch (error) {
-    console.error('[v0] Error creating order:', error)
-    throw new Error('Failed to create order')
-  }
-}
-
-export async function getOrdersByCustomerEmail(email: string) {
-  try {
-    const customer = await db
-      .select()
-      .from(storeCustomers)
-      .where(eq(storeCustomers.email, email))
-      .limit(1)
-
-    if (!customer[0]) {
-      return []
-    }
-
-    return await db
-      .select()
-      .from(storeOrders)
-      .where(eq(storeOrders.customerId, customer[0].id))
-      .orderBy(desc(storeOrders.createdAt))
-  } catch (error) {
-    console.error('[v0] Error fetching customer orders:', error)
-    throw new Error('Failed to fetch orders')
-  }
-}
-
-export async function getOrderDetails(orderId: string) {
-  try {
-    const [order] = await db
-      .select()
-      .from(storeOrders)
-      .where(eq(storeOrders.id, orderId))
-      .limit(1)
-
-    if (!order) {
-      return null
-    }
-
-    const items = await db
-      .select()
-      .from(storeOrderItems)
-      .where(eq(storeOrderItems.orderId, orderId))
-
-    return { order, items }
-  } catch (error) {
-    console.error('[v0] Error fetching order details:', error)
-    throw new Error('Failed to fetch order details')
   }
 }

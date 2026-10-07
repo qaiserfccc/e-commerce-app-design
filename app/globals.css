@@ -185,6 +185,7 @@
 }
 .product-clay::after { width: 30%; height: 55%; border-radius: 45% 45% 18% 18%; transform: rotate(8deg) translateY(20%); }
 .product-ink::after { width: 22%; height: 68%; border-radius: 50% 50% 10% 10%; transform: translateY(9%); }
+.product-has-image::after { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
