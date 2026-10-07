@@ -1,4 +1,4 @@
-import { Activity, CircleCheck, Database, Eye, FileUp, ShieldCheck, Workflow } from 'lucide-react'
+import { Activity, CircleCheck, Database, Eye, FileUp, GitBranch, ShieldCheck, Workflow } from 'lucide-react'
 
 const columns = [
   {
@@ -30,6 +30,14 @@ const columns = [
         description:
           'Connect the existing order and customer data actions to admin screens after authorization is in place.',
         files: 'app/actions/admin.ts · app/page.tsx',
+      },
+      {
+        title: 'Enforce GitHub actor exclusivity',
+        area: 'GitHub',
+        icon: GitBranch,
+        description:
+          'Agent guidance requires GitHub mutations to use @qaiserfccc. Repository-wide exclusivity still needs GitHub access controls because another collaborator currently has write access.',
+        files: 'AGENTS.md · GitHub collaborator settings',
       },
     ],
   },
@@ -78,6 +86,14 @@ const columns = [
         description:
           'The storefront uses SWR to load products from the API and revalidates periodically for updates.',
         files: 'lib/hooks/use-storefront-data.ts',
+      },
+      {
+        title: 'GitHub operator identity documented',
+        area: 'GitHub',
+        icon: GitBranch,
+        description:
+          'Project guidance requires agents to verify @qaiserfccc before GitHub mutations. No GitHub Actions workflows are currently tracked.',
+        files: 'AGENTS.md · docs/NEXT_AGENT_HANDOFF.md',
       },
     ],
   },
