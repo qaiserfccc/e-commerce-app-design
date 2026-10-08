@@ -18,6 +18,7 @@ The storefront and admin use the same Neon Postgres database through Drizzle. Cl
 - The initial owner is provisioned once using `node --env-file=.env.local scripts/bootstrap-admin.mjs`; the local `ADMIN_EMAIL` and `ADMIN_PASSWORD` values are bootstrap-only and are not used for sign-in. Create subsequent staff/admin accounts in the owner-only System users panel.
 - Staff accounts are read-only, admins can mutate store data, and owners can also manage system users. Owner access is required to create or deactivate accounts. The app does not support identity-provider SSO. Deactivation increments the session version and invalidates active sessions.
 - The sign-in route also limits failed attempts per process. This is not a distributed limiter; production deployments should apply edge-level rate limiting.
+- For local verification only, set `ADMIN_LOGIN_PREFILL=true` in ignored `.env.local` alongside the bootstrap `ADMIN_EMAIL` and `ADMIN_PASSWORD`. The session endpoint returns these values only in development on a localhost hostname with no existing session; Preview and Production never prefill credentials.
 - Session status and admin responses are never cached. The public product API is the only endpoint with CDN caching.
 
 ## Admin routes and mutations
