@@ -97,9 +97,17 @@ function PageControls({ offset, total, pageSize, onChange }: { offset: number; t
   )
 }
 
-function AdminLogin({ onSignedIn, configurationMessage }: { onSignedIn: (email: string, role: string, expiresAt: number) => void; configurationMessage?: string }) {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+function AdminLogin({
+  onSignedIn,
+  configurationMessage,
+  prefill,
+}: {
+  onSignedIn: (email: string, role: string, expiresAt: number) => void
+  configurationMessage?: string
+  prefill?: { email: string; password: string }
+}) {
+  const [email, setEmail] = useState(prefill?.email ?? '')
+  const [password, setPassword] = useState(prefill?.password ?? '')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -883,7 +891,7 @@ function AnalyticsWorkspace() {
 
 export function AdminWorkspace() {
   const [section, setSection] = useState<Section>('overview')
-  const [session, setSession] = useState<{ checked: boolean; authenticated: boolean; userId?: string; email?: string; role?: string; expiresAt?: number; configurationMessage?: string; error?: string }>({ checked: false, authenticated: false })
+  const [session, setSession] = useState<{ checked: boolean; authenticated: boolean; userId?: string; email?: string; role?: string; expiresAt?: number; loginPrefill?: { email: string; password: string }; configurationMessage?: string; error?: string }>({ checked: false, authenticated: false })
   const [signingOut, setSigningOut] = useState(false)
 
   useEffect(() => {
@@ -897,7 +905,15 @@ export function AdminWorkspace() {
         } else if (!response.ok) {
           setSession({ checked: true, authenticated: false, error: result.error || 'Admin access is unavailable.' })
         } else {
-          setSession({ checked: true, authenticated: Boolean(result.authenticated), userId: result.userId, email: result.email, role: result.role, expiresAt: result.expiresAt })
+          setSession({
+            checked: true,
+            authenticated: Boolean(result.authenticated),
+            userId: result.userId,
+            email: result.email,
+            role: result.role,
+            expiresAt: result.expiresAt,
+            loginPrefill: result.loginPrefill,
+          })
         }
       })
       .catch(() => {
@@ -948,7 +964,11 @@ export function AdminWorkspace() {
     return (
       <div className="mx-auto flex min-h-[55vh] max-w-[1440px] flex-col justify-center px-5 py-12 lg:px-10">
         {session.error && <div className="mx-auto mb-4 w-full max-w-lg"><Notice>{session.error}</Notice></div>}
-        <AdminLogin configurationMessage={session.configurationMessage} onSignedIn={(email, role, expiresAt) => setSession({ checked: true, authenticated: true, email, role, expiresAt })} />
+        <AdminLogin
+          configurationMessage={session.configurationMessage}
+          prefill={session.loginPrefill}
+          onSignedIn={(email, role, expiresAt) => setSession({ checked: true, authenticated: true, email, role, expiresAt })}
+        />
       </div>
     )
   }
