@@ -12,10 +12,12 @@ The storefront and admin use the same Neon Postgres database through Drizzle. Cl
 
 ## Admin authorization
 
-- Admin sign-in is configured using `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `ADMIN_SESSION_SECRET`.
+- Admin sign-in uses `store_admin_users` and `ADMIN_SESSION_SECRET`. Passwords are scrypt-hashed in the database; the signed HTTP-only cookie references a database user and session version.
 - Sign-in issues an eight-hour, HTTP-only, same-site signed cookie. Admin API routes, upload routes, and every admin server action verify it on the server.
-- Configure all three variables in each deployment environment before enabling admin access. Use a password of at least 16 characters and a cryptographically random session secret of at least 32 characters. The application fails closed if the configuration is absent or incomplete.
-- The sign-in route also limits failed attempts per process. This is not a distributed limiter; production deployments should apply edge-level rate limiting. This implementation supports one configured admin identity, not multi-user roles or identity-provider SSO.
+- Configure a cryptographically random `ADMIN_SESSION_SECRET` of at least 32 characters in each deployment environment. The application fails closed if it is absent or invalid.
+- The initial owner is provisioned once using `node --env-file=.env.local scripts/bootstrap-admin.mjs`; the local `ADMIN_EMAIL` and `ADMIN_PASSWORD` values are bootstrap-only and are not used for sign-in. Create subsequent staff/admin accounts in the owner-only System users panel.
+- Staff accounts are read-only, admins can mutate store data, and owners can also manage system users. Owner access is required to create or deactivate accounts. The app does not support identity-provider SSO. Deactivation increments the session version and invalidates active sessions.
+- The sign-in route also limits failed attempts per process. This is not a distributed limiter; production deployments should apply edge-level rate limiting.
 - Session status and admin responses are never cached. The public product API is the only endpoint with CDN caching.
 
 ## Admin routes and mutations
@@ -23,6 +25,7 @@ The storefront and admin use the same Neon Postgres database through Drizzle. Cl
 - `GET /api/admin/metrics` returns order counts, pending orders, counts by status, and recognized order value grouped by currency. Revenue includes paid, processing, shipped, and delivered orders; it excludes pending, cancelled, and refunded orders.
 - `GET /api/admin/products`, `/orders`, `/customers`, and `/activity` require an admin session.
 - Product create/edit/archive, stock updates, order status changes, and customer marketing-preference updates are authenticated server actions. Invalid values and invalid order-status transitions are rejected.
+- System-user listing, creation, and activation/deactivation are owner-only. Passwords require at least 16 characters and are stored as salted scrypt hashes.
 - Mutations create `store_activity_events` entries transactionally. Activity payloads do not contain customer names, addresses, email addresses, or other personal fields.
 - Order and customer endpoints return 50 records per page with database counts and server-side customer search. The admin screens paginate through all matching records and expose empty/loading/error states.
 - Admin writes refresh the relevant SWR keys immediately. Storefront catalog reads revalidate periodically and after product changes.

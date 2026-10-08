@@ -19,7 +19,7 @@ export async function DELETE(
   }
 
   try {
-    await requireAdminSession()
+    await requireAdminSession('admin')
     const { assetId } = await params
     const asset = await getProductAssetById(assetId)
     if (!asset) return NextResponse.json({ error: 'Product image not found.' }, { status: 404 })

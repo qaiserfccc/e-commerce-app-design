@@ -75,8 +75,8 @@ const columns = [
         area: 'Security',
         icon: ShieldCheck,
         description:
-          'Configured single-operator credentials create an HTTP-only signed session. Admin data actions, API reads, uploads, and deletes verify the session on the server.',
-        files: 'lib/auth/admin.ts · app/actions/admin.ts · app/api/admin/',
+          'Database-backed owner/admin/staff accounts use scrypt password hashes and signed, revocable HTTP-only sessions. Owner-only account management and server-side authorization protect admin data actions, APIs, uploads, and deletes.',
+        files: 'lib/auth/admin.ts · app/actions/admin.ts · app/api/admin/ · store_admin_users',
       },
       {
         title: 'Finish product media uploads',

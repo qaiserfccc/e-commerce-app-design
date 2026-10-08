@@ -1,4 +1,5 @@
-import { bigint, boolean, integer, jsonb, numeric, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
+import { bigint, boolean, integer, jsonb, numeric, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
+import { sql } from 'drizzle-orm'
 
 export const storeProducts = pgTable('store_products', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -70,3 +71,17 @@ export const storeActivityEvents = pgTable('store_activity_events', {
   payload: jsonb('payload').notNull().default({}),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
+
+export const storeAdminUsers = pgTable('store_admin_users', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  email: text('email').notNull(),
+  passwordHash: text('password_hash').notNull(),
+  role: text('role').notNull().default('staff'),
+  isActive: boolean('is_active').notNull().default(true),
+  sessionVersion: integer('session_version').notNull().default(1),
+  lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  emailUnique: uniqueIndex('store_admin_users_email_unique').on(sql`lower(${table.email})`),
+}))

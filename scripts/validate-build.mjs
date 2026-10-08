@@ -14,6 +14,8 @@ const PROJECT_ROOT = process.cwd()
 const FILES_TO_CHECK = [
   'lib/db/index.ts',
   'lib/db/schema.ts',
+  'db/migrations/0002_store_admin_users.sql',
+  'scripts/bootstrap-admin.mjs',
   'app/actions/storefront.ts',
   'app/actions/admin.ts',
   'app/api/products/route.ts',
@@ -70,6 +72,7 @@ try {
     'storeOrderItems',
     'storeProductAssets',
     'storeActivityEvents',
+    'storeAdminUsers',
   ]
 
   for (const table of exportedTables) {
