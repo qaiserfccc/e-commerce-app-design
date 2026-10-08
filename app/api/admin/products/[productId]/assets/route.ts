@@ -49,7 +49,7 @@ export async function POST(
 
   let uploadedUrl: string | undefined
   try {
-    await requireAdminSession()
+    await requireAdminSession('admin')
     const { productId } = await params
     const product = await getAdminProduct(productId)
     if (!product) return NextResponse.json({ error: 'Product not found.' }, { status: 404 })

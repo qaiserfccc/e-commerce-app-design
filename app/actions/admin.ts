@@ -1,6 +1,6 @@
 'use server'
 
-import { desc, eq, ilike, inArray, or, sql } from 'drizzle-orm'
+import { and, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import {
   storeActivityEvents,
@@ -9,8 +9,9 @@ import {
   storeOrders,
   storeProductAssets,
   storeProducts,
+  storeAdminUsers,
 } from '@/lib/db/schema'
-import { requireAdminSession } from '@/lib/auth/admin'
+import { clearAdminSession, hashAdminPassword, requireAdminSession } from '@/lib/auth/admin'
 
 const productStatuses = ['active', 'draft', 'archived'] as const
 const orderStatuses = ['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'] as const
@@ -86,7 +87,7 @@ export async function getAllProductAssets() {
 }
 
 export async function createProduct(data: ProductInput) {
-  await requireAdminSession()
+  await requireAdminSession('admin')
   const values = validateProductInput(data)
 
   return db.transaction(async (tx) => {
@@ -105,7 +106,7 @@ export async function updateProduct(
   productId: string,
   data: Partial<ProductInput> & { heroImageUrl?: string | null },
 ) {
-  await requireAdminSession()
+  await requireAdminSession('admin')
   if (!data || typeof data !== 'object') throw new Error('Product changes are required.')
   validateUuid(productId, 'Product ID')
 
@@ -172,13 +173,13 @@ export async function updateProduct(
 }
 
 export async function deleteProduct(productId: string) {
-  await requireAdminSession()
+  await requireAdminSession('admin')
   validateUuid(productId, 'Product ID')
   return updateProduct(productId, { status: 'archived' })
 }
 
 export async function updateProductStock(productId: string, quantity: number) {
-  await requireAdminSession()
+  await requireAdminSession('admin')
   validateUuid(productId, 'Product ID')
   if (!Number.isSafeInteger(quantity) || quantity < 0) throw new Error('Stock quantity must be a non-negative whole number.')
 
@@ -207,7 +208,7 @@ export async function addProductAsset(
   altText?: string,
   sortOrder = 0,
 ) {
-  await requireAdminSession()
+  await requireAdminSession('admin')
   validateUuid(productId, 'Product ID')
   const pathname = requireText(blobPathname, 'Blob path', 500)
   if (altText !== undefined && typeof altText !== 'string') throw new Error('Image description is invalid.')
@@ -248,7 +249,7 @@ export async function getProductAssetById(assetId: string) {
 }
 
 export async function deleteProductAsset(assetId: string) {
-  await requireAdminSession()
+  await requireAdminSession('admin')
   validateUuid(assetId, 'Asset ID')
 
   return db.transaction(async (tx) => {
@@ -361,7 +362,7 @@ export async function getOrderStats() {
 }
 
 export async function updateOrderStatus(orderId: string, status: string) {
-  await requireAdminSession()
+  await requireAdminSession('admin')
   validateUuid(orderId, 'Order ID')
   if (!orderStatuses.includes(status as (typeof orderStatuses)[number])) throw new Error('Order status is invalid.')
 
@@ -433,7 +434,7 @@ export async function updateCustomer(
   customerId: string,
   data: Partial<Pick<typeof storeCustomers.$inferInsert, 'firstName' | 'lastName' | 'phone' | 'marketingOptIn'>>,
 ) {
-  await requireAdminSession()
+  await requireAdminSession('admin')
   if (!data || typeof data !== 'object') throw new Error('Customer changes are required.')
   validateUuid(customerId, 'Customer ID')
 
@@ -494,4 +495,149 @@ export async function getDashboardMetrics() {
     },
     customers: { totalCustomers: Number(customers.totalCustomers) },
   }
+}
+
+const systemUserRoles = ['admin', 'staff'] as const
+
+function validateSystemUserEmail(email: unknown) {
+  if (typeof email !== 'string') throw new Error('A valid email address is required.')
+  const normalizedEmail = email.trim().toLowerCase()
+  if (normalizedEmail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    throw new Error('A valid email address is required.')
+  }
+  return normalizedEmail
+}
+
+export async function getSystemUsers() {
+  await requireAdminSession('owner')
+  return db
+    .select({
+      id: storeAdminUsers.id,
+      email: storeAdminUsers.email,
+      role: storeAdminUsers.role,
+      isActive: storeAdminUsers.isActive,
+      lastLoginAt: storeAdminUsers.lastLoginAt,
+      createdAt: storeAdminUsers.createdAt,
+    })
+    .from(storeAdminUsers)
+    .orderBy(desc(storeAdminUsers.createdAt))
+}
+
+export async function createSystemUser(input: { email: string; password: string; role: string }) {
+  const actor = await requireAdminSession('owner')
+  if (!input || typeof input !== 'object') throw new Error('System user details are required.')
+  const email = validateSystemUserEmail(input?.email)
+  if (!systemUserRoles.includes(input?.role as (typeof systemUserRoles)[number])) {
+    throw new Error('Choose an admin or staff account role.')
+  }
+  if (typeof input.password !== 'string') throw new Error('A password is required.')
+  const passwordHash = await hashAdminPassword(input.password)
+
+  try {
+    return await db.transaction(async (tx) => {
+      const [user] = await tx
+        .insert(storeAdminUsers)
+        .values({ email, passwordHash, role: input.role })
+        .returning({
+          id: storeAdminUsers.id,
+          email: storeAdminUsers.email,
+          role: storeAdminUsers.role,
+          isActive: storeAdminUsers.isActive,
+          lastLoginAt: storeAdminUsers.lastLoginAt,
+          createdAt: storeAdminUsers.createdAt,
+        })
+      await tx.insert(storeActivityEvents).values({
+        entityType: 'admin_user',
+        entityId: user.id,
+        eventType: 'created',
+        payload: { role: user.role, actorId: actor.userId },
+      })
+      return user
+    })
+  } catch (error) {
+    if (typeof error === 'object' && error !== null && 'code' in error && error.code === '23505') {
+      throw new Error('A system user with that email already exists.')
+    }
+    throw error
+  }
+}
+
+export async function setSystemUserActive(userId: string, isActive: boolean) {
+  const actor = await requireAdminSession('owner')
+  validateUuid(userId, 'System user ID')
+  if (typeof isActive !== 'boolean') throw new Error('Account status is invalid.')
+  if (userId === actor.userId && !isActive) throw new Error('You cannot deactivate your own account.')
+
+  return db.transaction(async (tx) => {
+    const [target] = await tx.select().from(storeAdminUsers).where(eq(storeAdminUsers.id, userId)).limit(1)
+    if (!target) throw new Error('System user not found.')
+    if (target.role === 'owner' && target.isActive && !isActive) {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(731824615)`)
+      const [owners] = await tx
+        .select({ total: sql<number>`count(*)::int` })
+        .from(storeAdminUsers)
+        .where(and(eq(storeAdminUsers.role, 'owner'), eq(storeAdminUsers.isActive, true)))
+      if (owners.total <= 1) throw new Error('The last active owner account cannot be deactivated.')
+    }
+
+    const [user] = await tx
+      .update(storeAdminUsers)
+      .set({ isActive, sessionVersion: sql`${storeAdminUsers.sessionVersion} + 1`, updatedAt: new Date() })
+      .where(eq(storeAdminUsers.id, userId))
+      .returning({
+        id: storeAdminUsers.id,
+        email: storeAdminUsers.email,
+        role: storeAdminUsers.role,
+        isActive: storeAdminUsers.isActive,
+        lastLoginAt: storeAdminUsers.lastLoginAt,
+        createdAt: storeAdminUsers.createdAt,
+      })
+    await tx.insert(storeActivityEvents).values({
+      entityType: 'admin_user',
+      entityId: userId,
+      eventType: isActive ? 'activated' : 'deactivated',
+      payload: { role: user.role, actorId: actor.userId },
+    })
+    return user
+  })
+}
+
+export async function updateOwnSystemUserCredentials(input: { email: string; password?: string }) {
+  const actor = await requireAdminSession('owner')
+  if (!input || typeof input !== 'object') throw new Error('Account details are required.')
+  const email = validateSystemUserEmail(input.email)
+  if (input.password !== undefined && typeof input.password !== 'string') {
+    throw new Error('Password is invalid.')
+  }
+  if (email === actor.email && !input.password) throw new Error('Enter a new email or password before saving.')
+  const changes: Partial<typeof storeAdminUsers.$inferInsert> = { email }
+  if (input.password) changes.passwordHash = await hashAdminPassword(input.password)
+
+  try {
+    await db.transaction(async (tx) => {
+      const [user] = await tx
+        .update(storeAdminUsers)
+        .set({
+          ...changes,
+          sessionVersion: sql`${storeAdminUsers.sessionVersion} + 1`,
+          updatedAt: new Date(),
+        })
+        .where(eq(storeAdminUsers.id, actor.userId))
+        .returning({ id: storeAdminUsers.id })
+      if (!user) throw new Error('Owner account not found.')
+      await tx.insert(storeActivityEvents).values({
+        entityType: 'admin_user',
+        entityId: user.id,
+        eventType: 'credentials_updated',
+        payload: { actorId: actor.userId, emailChanged: email !== actor.email, passwordChanged: Boolean(input.password) },
+      })
+    })
+  } catch (error) {
+    if (typeof error === 'object' && error !== null && 'code' in error && error.code === '23505') {
+      throw new Error('A system user with that email already exists.')
+    }
+    throw error
+  }
+  await clearAdminSession()
+  return { email }
 }

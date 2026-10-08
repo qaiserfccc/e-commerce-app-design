@@ -8,12 +8,16 @@ import {
 import { useSWRConfig } from 'swr'
 import {
   createProduct,
+  createSystemUser,
   deleteProduct,
   deleteProductAsset,
   updateOrderStatus,
   updateProduct,
   updateProductStock,
   updateCustomer,
+  getSystemUsers,
+  setSystemUserActive,
+  updateOwnSystemUserCredentials,
 } from '@/app/actions/admin'
 import {
   useAdminActivity,
@@ -27,7 +31,7 @@ import {
 } from '@/lib/hooks/use-admin-data'
 import { ProjectKanban } from '@/components/admin/project-kanban'
 
-type Section = 'overview' | 'products' | 'orders' | 'customers' | 'analytics' | 'project-plan'
+type Section = 'overview' | 'products' | 'orders' | 'customers' | 'analytics' | 'system-users' | 'project-plan'
 
 const sections: Array<{ id: Section; label: string; icon: typeof LayoutDashboard }> = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -35,6 +39,7 @@ const sections: Array<{ id: Section; label: string; icon: typeof LayoutDashboard
   { id: 'orders', label: 'Orders', icon: ShoppingBag },
   { id: 'customers', label: 'Customers', icon: Users },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+  { id: 'system-users', label: 'System users', icon: Users },
   { id: 'project-plan', label: 'Project Kanban', icon: ClipboardList },
 ]
 
@@ -92,7 +97,7 @@ function PageControls({ offset, total, pageSize, onChange }: { offset: number; t
   )
 }
 
-function AdminLogin({ onSignedIn, configurationMessage }: { onSignedIn: (email: string, expiresAt: number) => void; configurationMessage?: string }) {
+function AdminLogin({ onSignedIn, configurationMessage }: { onSignedIn: (email: string, role: string, expiresAt: number) => void; configurationMessage?: string }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -111,7 +116,7 @@ function AdminLogin({ onSignedIn, configurationMessage }: { onSignedIn: (email: 
       const result = await response.json()
       if (!response.ok) throw new Error(result.error || 'Unable to sign in.')
       if (typeof result.expiresAt !== 'number') throw new Error('The sign-in session could not be established. Try again.')
-      onSignedIn(email.trim(), result.expiresAt)
+      onSignedIn(result.email, result.role, result.expiresAt)
     } catch (submitError) {
       setError(errorMessage(submitError))
     } finally {
@@ -127,7 +132,7 @@ function AdminLogin({ onSignedIn, configurationMessage }: { onSignedIn: (email: 
       {configurationMessage ? (
         <div className="mt-5 space-y-3">
           <Notice>{configurationMessage}</Notice>
-          <p className="text-xs leading-5 text-[#68675f]">Configure `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `ADMIN_SESSION_SECRET` in the project environment. Use at least 16 characters for the password and 32 characters for the session secret.</p>
+          <p className="text-xs leading-5 text-[#68675f]">Configure `ADMIN_SESSION_SECRET` and apply the system-user database migration before signing in.</p>
         </div>
       ) : (
         <form onSubmit={submit} className="mt-6 space-y-4">
@@ -656,6 +661,175 @@ function CustomersWorkspace() {
   )
 }
 
+type AdminSystemUser = {
+  id: string
+  email: string
+  role: string
+  isActive: boolean
+  lastLoginAt: Date | null
+  createdAt: Date
+}
+
+function SystemUsersWorkspace({ signedInUserId, signedInEmail }: { signedInUserId: string; signedInEmail: string }) {
+  const [users, setUsers] = useState<AdminSystemUser[]>([])
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [role, setRole] = useState<'admin' | 'staff'>('staff')
+  const [ownerEmail, setOwnerEmail] = useState(signedInEmail)
+  const [ownerPassword, setOwnerPassword] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [busyUserId, setBusyUserId] = useState('')
+  const [message, setMessage] = useState('')
+  const [messageTone, setMessageTone] = useState<'error' | 'info'>('error')
+  const [loadError, setLoadError] = useState('')
+
+  async function refreshUsers() {
+    setLoading(true)
+    setLoadError('')
+    try {
+      setUsers(await getSystemUsers())
+    } catch (loadFailure) {
+      setLoadError(errorMessage(loadFailure))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { void refreshUsers() }, [])
+
+  async function addUser(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setSaving(true)
+    setMessage('')
+    try {
+      await createSystemUser({ email, password, role })
+      setEmail('')
+      setPassword('')
+      setMessageTone('info')
+      setMessage('System user created. Share the initial password with them securely.')
+      await refreshUsers()
+    } catch (createError) {
+      setMessageTone('error')
+      setMessage(errorMessage(createError))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function changeActiveState(user: AdminSystemUser) {
+    const nextActive = !user.isActive
+    if (!nextActive && !window.confirm(`Deactivate ${user.email}? Their active admin sessions will stop working.`)) return
+    setBusyUserId(user.id)
+    setMessage('')
+    try {
+      const updated = await setSystemUserActive(user.id, nextActive)
+      setUsers((current) => current.map((entry) => entry.id === updated.id ? updated : entry))
+      setMessageTone('info')
+      setMessage(nextActive ? 'System user activated.' : 'System user deactivated; their sessions were revoked.')
+    } catch (updateError) {
+      setMessageTone('error')
+      setMessage(errorMessage(updateError))
+    } finally {
+      setBusyUserId('')
+    }
+  }
+
+  async function updateOwnerCredentials(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setSaving(true)
+    setMessage('')
+    try {
+      await updateOwnSystemUserCredentials({ email: ownerEmail, password: ownerPassword || undefined })
+      window.dispatchEvent(new Event('admin-session-expired'))
+    } catch (updateError) {
+      setMessageTone('error')
+      setMessage(errorMessage(updateError))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <section className="min-w-0 flex-1">
+      <PanelHeading title="System users" description="Manage database-backed accounts. Staff can view store data, admins can change store data, and only an owner can manage accounts." />
+      {message && <div className="mb-4"><Notice tone={messageTone}>{message}</Notice></div>}
+      {loadError && <div className="mb-4"><Notice>{loadError}</Notice></div>}
+      <form onSubmit={updateOwnerCredentials} className="mb-8 grid gap-4 rounded-2xl border border-[#1c1c1a]/10 bg-white p-4 sm:grid-cols-2 sm:p-5">
+        <h2 className="text-base font-medium sm:col-span-2">Update your owner login</h2>
+        <label className="block text-sm font-medium">
+          Email
+          <input required type="email" maxLength={254} autoComplete="username" value={ownerEmail} onChange={(event) => setOwnerEmail(event.target.value)} className={`${inputClass} mt-2`} />
+        </label>
+        <label className="block text-sm font-medium">
+          New password <span className="font-normal text-[#68675f]">(optional)</span>
+          <input type="password" minLength={16} maxLength={256} autoComplete="new-password" value={ownerPassword} onChange={(event) => setOwnerPassword(event.target.value)} className={`${inputClass} mt-2`} />
+          <span className="mt-1 block text-xs font-normal text-[#68675f]">Leave blank to keep the current password; changing login details signs you out.</span>
+        </label>
+        <div className="flex items-end sm:col-span-2">
+          <button type="submit" disabled={saving} className={primaryButton}>{saving ? 'Updating…' : 'Update owner login'}</button>
+        </div>
+      </form>
+      <form onSubmit={addUser} className="mb-8 grid gap-4 rounded-2xl border border-[#1c1c1a]/10 bg-white p-4 sm:grid-cols-2 sm:p-5">
+        <h2 className="text-base font-medium sm:col-span-2">Create system user</h2>
+        <label className="block text-sm font-medium">
+          Email
+          <input required type="email" maxLength={254} autoComplete="off" value={email} onChange={(event) => setEmail(event.target.value)} className={`${inputClass} mt-2`} />
+        </label>
+        <label className="block text-sm font-medium">
+          Initial password
+          <input required type="password" minLength={16} maxLength={256} autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} className={`${inputClass} mt-2`} />
+          <span className="mt-1 block text-xs font-normal text-[#68675f]">Use at least 16 characters and share it securely.</span>
+        </label>
+        <label className="block text-sm font-medium">
+          Role
+          <select value={role} onChange={(event) => setRole(event.target.value as 'admin' | 'staff')} className={`${inputClass} mt-2`}>
+            <option value="staff">Staff · read-only</option>
+            <option value="admin">Admin · store operations</option>
+          </select>
+        </label>
+        <div className="flex items-end">
+          <button type="submit" disabled={saving} className={primaryButton}>
+            {saving && <LoaderCircle size={15} className="animate-spin" />}
+            {saving ? 'Creating…' : 'Create user'}
+          </button>
+        </div>
+      </form>
+      <h2 className="mb-3 text-base font-medium">Existing accounts</h2>
+      {loading ? <LoadingRows label="Loading system users" /> : loadError ? null : users.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-[#1c1c1a]/20 bg-white/60 px-5 py-10 text-center text-sm text-[#68675f]">No system users have been provisioned.</div>
+      ) : (
+        <div className="overflow-x-auto rounded-2xl border border-[#1c1c1a]/10 bg-white">
+          <table className="w-full min-w-[650px] text-left text-sm">
+            <thead className="bg-[#f2f1ed] text-xs text-[#55544e]"><tr><th className="px-4 py-3 font-medium">Account</th><th className="px-4 py-3 font-medium">Role</th><th className="px-4 py-3 font-medium">Last sign in</th><th className="px-4 py-3 font-medium">Status</th><th className="px-4 py-3 font-medium">Action</th></tr></thead>
+            <tbody className="divide-y divide-[#1c1c1a]/10">
+              {users.map((user) => (
+                <tr key={user.id}>
+                  <td className="px-4 py-3 break-all">{user.email}{user.id === signedInUserId && <span className="ml-2 text-xs text-[#68675f]">(you)</span>}</td>
+                  <td className="px-4 py-3 capitalize">{user.role}</td>
+                  <td className="px-4 py-3 text-xs text-[#68675f]">{user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : 'Never'}</td>
+                  <td className="px-4 py-3">{user.isActive ? 'Active' : 'Inactive'}</td>
+                  <td className="px-4 py-3">
+                    <button
+                      type="button"
+                      disabled={busyUserId === user.id || user.id === signedInUserId}
+                      onClick={() => void changeActiveState(user)}
+                      className={user.isActive ? 'rounded-full border border-[#9b4a36]/30 px-3 py-2 text-xs text-[#753b2d] hover:bg-[#f8eeeb] disabled:cursor-not-allowed disabled:opacity-50' : secondaryButton}
+                      aria-label={`${user.isActive ? 'Deactivate' : 'Activate'} ${user.email}`}
+                    >
+                      {busyUserId === user.id ? 'Saving…' : user.isActive ? 'Deactivate' : 'Activate'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  )
+}
+
 function AnalyticsWorkspace() {
   const { metrics, isLoading, isError, error } = useAdminMetrics()
   const { activity, isLoading: activityLoading, isError: activityError, error: activityLoadError } = useAdminActivity()
@@ -709,7 +883,7 @@ function AnalyticsWorkspace() {
 
 export function AdminWorkspace() {
   const [section, setSection] = useState<Section>('overview')
-  const [session, setSession] = useState<{ checked: boolean; authenticated: boolean; email?: string; expiresAt?: number; configurationMessage?: string; error?: string }>({ checked: false, authenticated: false })
+  const [session, setSession] = useState<{ checked: boolean; authenticated: boolean; userId?: string; email?: string; role?: string; expiresAt?: number; configurationMessage?: string; error?: string }>({ checked: false, authenticated: false })
   const [signingOut, setSigningOut] = useState(false)
 
   useEffect(() => {
@@ -723,7 +897,7 @@ export function AdminWorkspace() {
         } else if (!response.ok) {
           setSession({ checked: true, authenticated: false, error: result.error || 'Admin access is unavailable.' })
         } else {
-          setSession({ checked: true, authenticated: Boolean(result.authenticated), email: result.email, expiresAt: result.expiresAt })
+          setSession({ checked: true, authenticated: Boolean(result.authenticated), userId: result.userId, email: result.email, role: result.role, expiresAt: result.expiresAt })
         }
       })
       .catch(() => {
@@ -774,7 +948,7 @@ export function AdminWorkspace() {
     return (
       <div className="mx-auto flex min-h-[55vh] max-w-[1440px] flex-col justify-center px-5 py-12 lg:px-10">
         {session.error && <div className="mx-auto mb-4 w-full max-w-lg"><Notice>{session.error}</Notice></div>}
-        <AdminLogin configurationMessage={session.configurationMessage} onSignedIn={(email, expiresAt) => setSession({ checked: true, authenticated: true, email, expiresAt })} />
+        <AdminLogin configurationMessage={session.configurationMessage} onSignedIn={(email, role, expiresAt) => setSession({ checked: true, authenticated: true, email, role, expiresAt })} />
       </div>
     )
   }
@@ -785,6 +959,9 @@ export function AdminWorkspace() {
     orders: <OrdersWorkspace />,
     customers: <CustomersWorkspace />,
     analytics: <AnalyticsWorkspace />,
+    'system-users': session.role === 'owner' && session.userId
+      ? <SystemUsersWorkspace signedInUserId={session.userId} signedInEmail={session.email ?? ''} />
+      : <AdminOverview onNavigate={setSection} />,
     'project-plan': <ProjectKanban />,
   }[section]
 
@@ -798,7 +975,7 @@ export function AdminWorkspace() {
           </button>
         </div>
         <nav aria-label="Admin workspace" className="grid grid-cols-2 gap-1 text-sm sm:grid-cols-3 lg:flex lg:flex-col">
-          {sections.map(({ id, label, icon: Icon }) => (
+          {sections.filter(({ id }) => id !== 'system-users' || session.role === 'owner').map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               type="button"

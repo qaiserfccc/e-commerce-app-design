@@ -12,7 +12,7 @@ This document is the operational handoff for continuing the ecommerce storefront
 - File storage: Vercel Blob.
 - AI integration: Vercel AI Gateway is connected, but no AI feature is currently required by the storefront/admin data layer.
 - Deployment target: Vercel. The project is already linked in `.vercel/`.
-- Existing database source of truth in the repository: `db/migrations/0001_storefront_workspace.sql`.
+- Database migration history: `db/migrations/`.
 - Drizzle schema mirror: `lib/db/schema.ts`.
 - Drizzle connection: `lib/db/index.ts`.
 - Data access: `app/actions/storefront.ts`, `app/actions/admin.ts`.
@@ -22,6 +22,7 @@ This document is the operational handoff for continuing the ecommerce storefront
 - GitHub Actions: no workflow files are currently tracked in `.github/workflows/`.
 - GitHub operation identity: project agents must verify and use `@qaiserfccc` for GitHub mutations; see `AGENTS.md`.
 - Storefront and admin screens are wired to the shared database. The read-only project Kanban keeps open external decisions visible instead of treating them as completed implementation.
+- Admin access now uses database-backed owner/admin/staff accounts, scrypt password hashes, and revocable signed sessions. Migration `0002_store_admin_users.sql` is applied to the connected Neon main branch, and an initial owner exists.
 
 ## Connected integrations
 
@@ -37,17 +38,17 @@ Do not replace Neon with another database unless explicitly requested. Do not ad
 
 The variables are managed by the Vercel/v0 project environment and mirrored into the local development environment. Use the project Vars/integration settings to inspect or change values. Never commit `.env*`, tokens, passwords, or full connection strings.
 
-### Required for current database and storage code
+### Required for current database, storage, and admin auth code
 
 | Variable | Source | Usage |
 |---|---|---|
 | `DATABASE_URL` | Neon | Primary pooled Postgres connection used by `lib/db/index.ts`. |
 | `BLOB_READ_WRITE_TOKEN` | Vercel Blob | Server-side Blob uploads/deletes/list operations. |
-| `ADMIN_EMAIL` | Project environment | Email for the single configured admin identity. |
-| `ADMIN_PASSWORD` | Project environment | Admin password; the application requires at least 16 characters. |
-| `ADMIN_SESSION_SECRET` | Project environment | HMAC key for the admin session cookie; set a cryptographically random value of at least 32 characters. |
+| `ADMIN_SESSION_SECRET` | Project environment | HMAC key for signed admin session cookies; set a cryptographically random value of at least 32 characters in each environment. |
 
-Admin access fails closed until all three admin variables are configured in the target environment. The current implementation supports one configured operator. Its in-process login throttle is defense in depth, not a distributed rate limiter; configure edge-level rate limiting before production exposure.
+Admin access fails closed until `ADMIN_SESSION_SECRET` is configured and the database migration has been applied. Credentials and roles are stored in `store_admin_users`; passwords are salted scrypt hashes. `ADMIN_EMAIL` and `ADMIN_PASSWORD` are used only by the one-time local bootstrap script and are not read by the deployed application. Staff accounts are read-only; admins can change store data; owners can manage accounts. The owner-only System users panel can create admin/staff accounts and revoke their sessions. The in-process login throttle is defense in depth, not a distributed rate limiter; configure edge-level rate limiting before production exposure.
+
+The initial owner currently uses the provisional address `owner@localhost.invalid`; its generated password is stored in the ignored, mode-`600` `.env.local`. Sign in and update the owner email/password in **System users** before normal team use. `ADMIN_SESSION_SECRET` is configured separately for local, Development, Preview, and Production.
 
 ### Neon-provided connection aliases
 
@@ -101,7 +102,7 @@ Existing schema includes storefront/admin workspace tables for products, product
 - Product image upload/delete uses authenticated Next.js route handlers and Vercel Blob; only Blob URLs and metadata are persisted.
 - After a successful admin mutation, call the relevant SWR `mutate()`/refresh function for immediate UI consistency.
 - Current UI synchronization is polling/revalidation, not database WebSockets. Treat “realtime” as sync-ready periodic refresh unless a future agent adds an approved realtime transport.
-- The admin is currently one environment-configured operator, not a multi-user identity system. Do not present the implementation as role-based or SSO authentication.
+- Admin access is a database-backed owner/admin/staff system with scrypt-hashed passwords and revocable signed sessions; it is not SSO.
 - The storefront bag is in-page state only. Customer/order creation and order-history reads are intentionally unavailable until payment, checkout, and customer-access controls are configured.
 
 ## Deployment reference
@@ -148,14 +149,15 @@ _Verified in the repository on 2026-10-08._
 - The current UI identifies itself as **morrow.** and its copy/art direction depicts home/lifestyle goods. The user-supplied brief describes an **Eye Contact Lenses** e-commerce application. Treat that as an unresolved product-identity mismatch: do not invent lens-specific claims or replace the current brand/content without confirmation.
 - The authenticated GitHub CLI identity was verified as `qaiserfccc`. GitHub Actions are enabled in repository settings, but there are no checked-in workflows or recorded workflow runs. The repository allows all actions. One other collaborator, `qaiserfcc`, currently has write access. Repository instructions require agents to operate only as `@qaiserfccc`, but that does not enforce account exclusivity for other repository users; enforce it through GitHub access controls if repository-wide exclusivity is required. Attempts to lower the collaborator's role via the collaborator permission API were rejected, and access was not otherwise changed.
 - The storefront reads active products through `app/api/products/route.ts` and `lib/hooks/use-storefront-data.ts`. The admin overview reads metrics through `app/api/admin/metrics/route.ts` and `lib/hooks/use-admin-data.ts`.
-- Admin sign-in uses one environment-configured identity and a signed HTTP-only cookie. Product/order/customer reads, admin mutations, and image endpoints verify the session on the server. Configure the required environment values before use.
+- Admin sign-in uses database-backed identities and a signed HTTP-only cookie. Product/order/customer reads, admin mutations, and image endpoints verify the session on the server.
+- Admin sign-in uses database-backed owner/admin/staff accounts and signed HTTP-only cookies; owner-only user management is available in the workspace. The migration and initial owner have been provisioned in Neon.
 - Product, order, customer, and analytics screens are connected to authenticated database routes; mutations validate inputs and log metadata-only audit events.
 - Product media upload/deletion is wired to Vercel Blob and `store_product_assets`. Checkout is deliberately not available: the storefront does not create orders without a configured payment provider.
 - `components/admin/project-kanban.tsx` is a read-only snapshot of requirements versus repository status. Its task definitions are code-level project context, not order/customer records or persistent task data. It deliberately does not mutate business data.
 
 ## Next recommended work
 
-1. Set `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `ADMIN_SESSION_SECRET` in each intended environment; apply edge-level sign-in rate limiting before production use.
+1. Replace the provisional owner email/password in **System users** before normal team use; apply edge-level sign-in rate limiting before production exposure.
 2. Choose a payment provider and approve checkout, order-creation, shipping, and tax behavior before accepting orders.
 3. Resolve the mismatch between the current morrow. home/lifestyle storefront and the Eye Contact Lenses brief before changing product truth, copy, or assets.
 4. Manage repository collaborator access in GitHub settings if repository-wide operator exclusivity is required.

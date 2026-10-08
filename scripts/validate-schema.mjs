@@ -24,6 +24,7 @@ const REQUIRED_TABLES = [
   'store_order_items',
   'store_product_assets',
   'store_activity_events',
+  'store_admin_users',
 ]
 
 const TABLE_SCHEMAS = {
@@ -68,6 +69,17 @@ const TABLE_SCHEMAS = {
   ],
   store_product_assets: ['id', 'product_id', 'blob_pathname', 'blob_url', 'alt_text', 'sort_order', 'created_at'],
   store_activity_events: ['id', 'entity_type', 'entity_id', 'event_type', 'payload', 'created_at'],
+  store_admin_users: [
+    'id',
+    'email',
+    'password_hash',
+    'role',
+    'is_active',
+    'session_version',
+    'last_login_at',
+    'created_at',
+    'updated_at',
+  ],
 }
 
 async function validateSchema() {

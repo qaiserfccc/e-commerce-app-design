@@ -69,7 +69,13 @@ export async function GET() {
     }
     const session = await getAdminSession()
     return NextResponse.json(
-      { authenticated: Boolean(session), email: session?.email, expiresAt: session?.expiresAt },
+      {
+        authenticated: Boolean(session),
+        userId: session?.userId,
+        email: session?.email,
+        role: session?.role,
+        expiresAt: session?.expiresAt,
+      },
       { headers: { 'Cache-Control': 'no-store' } },
     )
   } catch (error) {
@@ -112,14 +118,18 @@ export async function POST(request: NextRequest) {
     if (!isAdminAuthConfigured()) {
       return NextResponse.json({ error: 'Admin access needs to be configured.' }, { status: 503 })
     }
-    if (!verifyAdminCredentials(body.email, body.password)) {
+    const user = await verifyAdminCredentials(body.email, body.password)
+    if (!user) {
       recordFailedAttempt(address)
       return NextResponse.json({ error: 'The email or password is incorrect.' }, { status: 401 })
     }
 
-    const expiresAt = await createAdminSession(body.email)
+    const expiresAt = await createAdminSession(user)
     failedAttempts.delete(address)
-    return NextResponse.json({ authenticated: true, expiresAt }, { headers: { 'Cache-Control': 'no-store' } })
+    return NextResponse.json(
+      { authenticated: true, email: user.email, role: user.role, expiresAt },
+      { headers: { 'Cache-Control': 'no-store' } },
+    )
   } catch (error) {
     if (error instanceof SyntaxError) {
       return NextResponse.json({ error: 'Invalid sign-in request.' }, { status: 400 })
