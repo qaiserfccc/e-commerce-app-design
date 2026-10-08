@@ -167,13 +167,14 @@ function AdminLogin({
               className="mt-2 w-full rounded-xl border border-[#1c1c1a]/15 bg-white px-3 py-2.5 text-sm font-normal focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1c1c1a]"
             />
           </label>
+          {prefill && <p className="text-xs leading-5 text-[#68675f]">Local development shortcut. Credentials are never prefilled on deployed environments.</p>}
           <button
             type="submit"
             disabled={submitting}
             className="flex w-full items-center justify-center gap-2 rounded-full bg-[#1c1c1a] px-4 py-3 text-sm font-medium text-white hover:bg-[#353531] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1c1c1a] disabled:cursor-wait disabled:opacity-60"
           >
             {submitting && <LoaderCircle size={16} className="animate-spin" />}
-            {submitting ? 'Signing in…' : 'Sign in'}
+            {submitting ? 'Signing in…' : prefill ? 'Quick sign in' : 'Sign in'}
           </button>
         </form>
       )}
