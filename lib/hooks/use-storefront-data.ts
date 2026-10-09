@@ -23,6 +23,23 @@ export interface Product {
   createdAt: string
   updatedAt: string
   assets?: ProductAsset[]
+  variants?: ProductVariant[]
+}
+
+export interface ProductVariant {
+  id: string
+  productId: string
+  sku: string | null
+  name: string
+  color: string | null
+  powerDiopters: string | null
+  baseCurve: string | null
+  diameterMm: string | null
+  packSize: number | null
+  price: string
+  currency: string
+  stockQuantity: number
+  isActive?: boolean
 }
 
 export interface ProductAsset {
@@ -31,6 +48,7 @@ export interface ProductAsset {
   blobPathname: string
   blobUrl: string | null
   altText: string | null
+  mediaType: 'image' | 'video'
   sortOrder: number
   createdAt: string
 }
@@ -71,8 +89,9 @@ export function useProducts(category?: string, search?: string) {
 /**
  * Hook for fetching a single product by slug
  */
-export function useProduct(slug: string) {
+export function useProduct(slug: string, initialProduct?: Product) {
   const { data, error, isLoading, mutate } = useSWR<{ data: Product }>(slug ? `/api/products/${encodeURIComponent(slug)}` : null, fetcher, {
+    fallbackData: initialProduct ? { data: initialProduct } : undefined,
     revalidateOnFocus: true,
     dedupingInterval: 60000,
     refreshInterval: 120000, // Revalidate every 2 minutes for single product

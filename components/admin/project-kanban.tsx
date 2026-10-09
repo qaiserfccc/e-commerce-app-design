@@ -1,43 +1,44 @@
-import { Activity, CircleCheck, CreditCard, Database, Eye, FileUp, GitBranch, ShieldCheck, Workflow } from 'lucide-react'
+import {
+  Activity,
+  CircleCheck,
+  CreditCard,
+  Database,
+  FileUp,
+  GitBranch,
+  ScanEye,
+  ShieldCheck,
+} from 'lucide-react'
 
 const columns = [
   {
     id: 'backlog',
-    title: 'Backlog',
-    description: 'External decisions and configuration still needed',
+    title: 'Needs review or an external decision',
+    description: 'Do not publish or transact until these operator decisions are made',
     accent: 'bg-[#d9a78c]',
     tasks: [
       {
-        title: 'Confirm the product identity',
-        area: 'Product',
-        icon: Eye,
+        title: 'Review imported listings before publishing',
+        area: 'Catalog',
+        icon: ScanEye,
         description:
-          'The existing storefront is morrow. home/lifestyle goods, while the supplied brief says Eye Contact Lenses. Keep current copy and assets until the catalog identity is confirmed.',
-        files: 'app/page.tsx · app/layout.tsx',
+          '495 source listings are drafts with zero stock. 89 have no source category and are labeled Uncategorized. Verify product details, lens parameters, prices, images, and claims before publishing.',
+        files: 'Admin → Products · source references on each draft',
       },
       {
-        title: 'Configure admin access',
-        area: 'Operations',
-        icon: ShieldCheck,
-        description:
-          'The signed-session admin login is implemented, but an operator must set the private ADMIN_EMAIL, ADMIN_PASSWORD, and ADMIN_SESSION_SECRET values in each target environment.',
-        files: 'lib/auth/admin.ts · Vercel project environment',
-      },
-      {
-        title: 'Connect checkout and payment processing',
+        title: 'Approve checkout and payment processing',
         area: 'Storefront',
         icon: CreditCard,
         description:
-          'Browsing, search, filters, and the in-page bag are functional. Do not create orders until a payment provider and its approved checkout flow are configured.',
-        files: 'components/storefront/storefront-panel.tsx · payment integration',
+          'The in-page bag is browse-only and does not create orders. Choose a payment provider and approve order, delivery, tax, and customer-data handling before enabling checkout.',
+        files: 'components/storefront/ · payment integration',
       },
       {
-        title: 'Enforce repository collaborator access',
+        title: 'Review repository collaborator access',
         area: 'GitHub',
         icon: GitBranch,
         description:
-          'The operator identity policy is documented, but repository-wide exclusivity requires a repository owner to change collaborator access in GitHub settings.',
-        files: 'AGENTS.md · GitHub collaborator settings',
+          'The repository documents the @qaiserfccc operator policy, but repository-wide exclusivity can only be enforced through GitHub collaborator and organization settings.',
+        files: 'AGENTS.md · GitHub repository settings',
       },
     ],
   },
@@ -50,65 +51,57 @@ const columns = [
   },
   {
     id: 'done',
-    title: 'In place',
-    description: 'Implemented and checked in the repository',
+    title: 'Implemented',
+    description: 'Wired to the shared catalog and checked in the repository',
     accent: 'bg-[#68765f]',
     tasks: [
       {
-        title: 'Shared Neon data foundation',
-        area: 'Database',
-        icon: Database,
-        description:
-          'Storefront and admin data access use the same Drizzle schema and Postgres connection; catalog reads flow through a Next.js API route.',
-        files: 'lib/db/ · app/actions/ · app/api/products/',
-      },
-      {
-        title: 'Storefront catalog and bag',
+        title: 'ISK Lenses storefront identity',
         area: 'Storefront',
         icon: CircleCheck,
         description:
-          'Active products, images, categories, search, prices, and stock come from the database. The in-page bag is session-memory only and explains why checkout is not available.',
-        files: 'components/storefront/storefront-panel.tsx · app/api/products/',
+          'The storefront is an ISK Lenses contact-lens catalog with factual listing copy, responsive product browsing, search, categories, and a clear checkout-unavailable state.',
+        files: 'app/layout.tsx · components/storefront/storefront-panel.tsx',
       },
       {
-        title: 'Protect admin operations',
-        area: 'Security',
-        icon: ShieldCheck,
+        title: 'Database-backed catalog and product details',
+        area: 'Database',
+        icon: Database,
         description:
-          'Database-backed owner/admin/staff accounts use scrypt password hashes and signed, revocable HTTP-only sessions. Owner-only account management and server-side authorization protect admin data actions, APIs, uploads, and deletes.',
-        files: 'lib/auth/admin.ts · app/actions/admin.ts · app/api/admin/ · store_admin_users',
+          'Public catalog reads expose published products, active options, and supported media. Product details show only recorded facts and do not expose import provenance.',
+        files: 'app/actions/storefront.ts · app/api/products/ · app/products/',
       },
       {
-        title: 'Finish product media uploads',
+        title: 'Lens option management',
+        area: 'Admin',
+        icon: Activity,
+        description:
+          'Authorized operators can create, edit, archive, and restore variants with SKU, color, prescription power, base curve, diameter, pack size, price, and stock. Parent price and stock are derived from active options.',
+        files: 'components/admin/product-variant-manager.tsx · store_product_variants',
+      },
+      {
+        title: 'Product image and video galleries',
         area: 'Storage',
         icon: FileUp,
         description:
-          'Authenticated image uploads validate file type and size, save files to Vercel Blob, and persist Blob URLs and metadata. Image deletion removes the Blob and its row.',
+          'Admin uploads validate image/video file contents and size, store media in Vercel Blob, and persist metadata. Operators can preview, reorder, and delete media.',
         files: 'app/api/admin/products/ · store_product_assets',
       },
       {
-        title: 'Complete order and customer workspaces',
-        area: 'Admin / CRM',
-        icon: Workflow,
+        title: 'Source catalog import',
+        area: 'Catalog',
+        icon: Database,
         description:
-          'Signed-in operators can review orders, change permitted order statuses, search customer records, and update marketing preference. Writes are audit logged without customer fields.',
-        files: 'app/actions/admin.ts · components/admin/admin-workspace.tsx',
+          'The authenticated, duplicate-safe importer pages through the public ISK Lenses catalog. Imported prices and source links are retained for review; descriptions and images are not copied, and drafts start with zero stock.',
+        files: 'app/api/admin/products/import/ · source_product_id',
       },
       {
-        title: 'Complete the Admin workspace',
+        title: 'Database-backed admin workspace',
         area: 'Admin / CRM',
-        icon: Activity,
+        icon: ShieldCheck,
         description:
-          'Products, orders, customers, analytics, recent activity, and loading, empty, and error states are wired to the shared database.',
-        files: 'components/admin/admin-workspace.tsx · app/api/admin/',
-      },
-      {
-        title: 'GitHub operator identity documented',
-        area: 'GitHub',
-        icon: GitBranch,
-        description:
-          'Project guidance requires agents to verify @qaiserfccc before GitHub mutations. No GitHub Actions workflows are currently tracked.',
-        files: 'AGENTS.md · docs/NEXT_AGENT_HANDOFF.md',
+          'Owner, admin, and staff accounts use scrypt hashes and revocable signed sessions. Protected product, order, customer, activity, analytics, and system-user workflows share the Neon database.',
+        files: 'lib/auth/admin.ts · app/actions/admin.ts · app/api/admin/',
       },
     ],
   },
@@ -122,7 +115,7 @@ export function ProjectKanban() {
           Project Kanban
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-[#77756e]">
-          A repository snapshot of implemented workflows and the decisions or environment setup still needed.
+          A live project snapshot of shipped workflows and the operator decisions still needed.
         </p>
       </div>
 
@@ -159,7 +152,7 @@ export function ProjectKanban() {
                       </div>
                       <p className="mt-2 text-xs leading-5 text-[#66645e]">{task.description}</p>
                       <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-[#1c1c1a]/8 pt-3">
-                        <span className="rounded-full bg-[#f2f1ed] px-2.5 py-1 text-[11px] font-medium text-[#5f5d57]">
+                        <span className="rounded-full bg-[#f2f1ed] px-2.5 py-1 text-xs font-medium text-[#5f5d57]">
                           {task.area}
                         </span>
                         <span className="max-w-full break-words text-[10px] leading-4 text-[#8c8a82]">

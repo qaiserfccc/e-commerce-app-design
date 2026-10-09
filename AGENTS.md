@@ -4,8 +4,8 @@ These instructions describe the application that exists in this repository. Keep
 
 ## Product and existing application
 
-- This is a web storefront and admin-workspace prototype using the visible brand name **morrow.** The current storefront copy and CSS product art read as home/lifestyle goods. The repository does not currently establish that its catalog is an eye-contact-lens business.
-- The original product brief calls this an **Eye Contact Lenses** e-commerce application. That conflicts with the current UI and sample content. Do not silently rename the brand, invent lens-specific product claims, or replace existing product content; resolve the product identity with the user before doing so.
+- This is a web storefront and admin workspace for **ISK Lenses**, a contact-lens catalog and store operations interface.
+- Treat imported source listings as unverified drafts. Do not invent lens specifications, clinical claims, stock, or other product details; keep checkout unavailable until its payment and order flow is approved.
 - Preserve the existing storefront/admin experience and visual language unless a request explicitly calls for a redesign.
 
 ## Architecture and implementation
@@ -44,3 +44,13 @@ These instructions describe the application that exists in this repository. Keep
 ## Project memory
 
 Read `docs/NEXT_AGENT_HANDOFF.md` before changing database integrations, environment variables, migrations, authentication, or deployment. Treat it as operational notes, not a secret store; verify time-sensitive details against the current code and connected project configuration.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

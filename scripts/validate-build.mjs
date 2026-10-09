@@ -15,6 +15,7 @@ const FILES_TO_CHECK = [
   'lib/db/index.ts',
   'lib/db/schema.ts',
   'db/migrations/0002_store_admin_users.sql',
+  'db/migrations/0003_isk_lens_catalog.sql',
   'scripts/bootstrap-admin.mjs',
   'app/actions/storefront.ts',
   'app/actions/admin.ts',
@@ -23,9 +24,13 @@ const FILES_TO_CHECK = [
   'app/api/admin/session/route.ts',
   'lib/auth/admin.ts',
   'components/admin/admin-workspace.tsx',
+  'components/admin/product-variant-manager.tsx',
   'components/storefront/storefront-panel.tsx',
+  'components/storefront/product-detail.tsx',
+  'lib/hooks/use-storefront-cart.tsx',
   'lib/hooks/use-storefront-data.ts',
   'lib/hooks/use-admin-data.ts',
+  'app/api/admin/products/import/route.ts',
 ]
 
 const REQUIRED_PACKAGES = ['drizzle-orm', 'pg', 'swr', 'next', '@vercel/blob']
@@ -71,6 +76,7 @@ try {
     'storeOrders',
     'storeOrderItems',
     'storeProductAssets',
+    'storeProductVariants',
     'storeActivityEvents',
     'storeAdminUsers',
   ]

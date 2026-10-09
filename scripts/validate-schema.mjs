@@ -23,6 +23,7 @@ const REQUIRED_TABLES = [
   'store_orders',
   'store_order_items',
   'store_product_assets',
+  'store_product_variants',
   'store_activity_events',
   'store_admin_users',
 ]
@@ -39,6 +40,9 @@ const TABLE_SCHEMAS = {
     'status',
     'stock_quantity',
     'hero_image_url',
+    'source_product_id',
+    'source_url',
+    'source_image_url',
     'created_at',
     'updated_at',
   ],
@@ -67,7 +71,24 @@ const TABLE_SCHEMAS = {
     'line_total',
     'created_at',
   ],
-  store_product_assets: ['id', 'product_id', 'blob_pathname', 'blob_url', 'alt_text', 'sort_order', 'created_at'],
+  store_product_assets: ['id', 'product_id', 'blob_pathname', 'blob_url', 'alt_text', 'media_type', 'sort_order', 'created_at'],
+  store_product_variants: [
+    'id',
+    'product_id',
+    'sku',
+    'name',
+    'color',
+    'power_diopters',
+    'base_curve',
+    'diameter_mm',
+    'pack_size',
+    'price',
+    'currency',
+    'stock_quantity',
+    'is_active',
+    'created_at',
+    'updated_at',
+  ],
   store_activity_events: ['id', 'entity_type', 'entity_id', 'event_type', 'payload', 'created_at'],
   store_admin_users: [
     'id',
@@ -85,6 +106,7 @@ const TABLE_SCHEMAS = {
 async function validateSchema() {
   try {
     console.log('🔍 Validating database schema...\n')
+    let hasErrors = false
 
     for (const tableName of REQUIRED_TABLES) {
       const result = await pool.query(
@@ -100,6 +122,7 @@ async function validateSchema() {
 
       if (!result.rows[0].exists) {
         console.error(`❌ Table missing: ${tableName}`)
+        hasErrors = true
         continue
       }
 
@@ -125,7 +148,10 @@ async function validateSchema() {
         console.log(`✅ ${tableName}`)
       } else {
         console.log(`⚠️  ${tableName}`)
-        if (missing.length > 0) console.log(`   Missing: ${missing.join(', ')}`)
+        if (missing.length > 0) {
+          console.log(`   Missing: ${missing.join(', ')}`)
+          hasErrors = true
+        }
         if (extra.length > 0) console.log(`   Extra: ${extra.join(', ')}`)
       }
     }
@@ -139,9 +165,10 @@ async function validateSchema() {
 
     const triggers = triggerResult.rows.map((row) => row.trigger_name)
     const requiredTriggers = [
-      'set_store_products_updated_at',
-      'set_store_customers_updated_at',
-      'set_store_orders_updated_at',
+      'store_products_updated_at',
+      'store_customers_updated_at',
+      'store_orders_updated_at',
+      'store_product_variants_updated_at',
     ]
 
     for (const trigger of requiredTriggers) {
@@ -149,11 +176,12 @@ async function validateSchema() {
         console.log(`✅ ${trigger}`)
       } else {
         console.log(`⚠️  ${trigger} (missing)`)
+        hasErrors = true
       }
     }
 
-    console.log('\n✅ Schema validation complete')
-    process.exit(0)
+    console.log(hasErrors ? '\n❌ Schema validation failed' : '\n✅ Schema validation complete')
+    if (hasErrors) process.exitCode = 1
   } catch (error) {
     console.error('❌ Validation error:', error.message)
     process.exit(1)

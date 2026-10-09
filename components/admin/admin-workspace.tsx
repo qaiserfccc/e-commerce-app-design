@@ -2,7 +2,7 @@
 
 import { useDeferredValue, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import {
-  Activity, BarChart3, ClipboardList, LayoutDashboard, LoaderCircle,
+  Activity, ArrowDown, ArrowUp, BarChart3, ClipboardList, Download, LayoutDashboard, LoaderCircle,
   LogOut, Package, Plus, Search, ShoppingBag, ShieldCheck, Users, X,
 } from 'lucide-react'
 import { useSWRConfig } from 'swr'
@@ -14,6 +14,7 @@ import {
   updateOrderStatus,
   updateProduct,
   updateProductStock,
+  moveProductAsset,
   updateCustomer,
   getSystemUsers,
   setSystemUserActive,
@@ -30,6 +31,7 @@ import {
   type AdminProduct,
 } from '@/lib/hooks/use-admin-data'
 import { ProjectKanban } from '@/components/admin/project-kanban'
+import { ProductVariantManager } from '@/components/admin/product-variant-manager'
 
 type Section = 'overview' | 'products' | 'orders' | 'customers' | 'analytics' | 'system-users' | 'project-plan'
 
@@ -269,6 +271,7 @@ function ProductEditor({
 }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const variantManaged = Boolean(product?.variants.some((variant) => variant.isActive !== false))
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -281,12 +284,20 @@ function ProductEditor({
       description: String(form.get('description') ?? ''),
       category: String(form.get('category') ?? ''),
       price: String(form.get('price') ?? ''),
-      currency: String(form.get('currency') ?? 'USD'),
+      currency: String(form.get('currency') ?? 'PKR'),
       stockQuantity: Number(form.get('stockQuantity')),
       status: String(form.get('status') ?? 'active'),
     }
     try {
-      if (product) await updateProduct(product.id, values)
+      if (product && variantManaged) {
+        await updateProduct(product.id, {
+          name: values.name,
+          slug: values.slug,
+          description: values.description,
+          category: values.category,
+          status: values.status,
+        })
+      } else if (product) await updateProduct(product.id, values)
       else await createProduct(values)
       onSaved()
     } catch (saveError) {
@@ -303,15 +314,16 @@ function ProductEditor({
         <button type="button" onClick={onCancel} aria-label="Close product editor" className="rounded-full p-2 hover:bg-[#f2f1ed] focus-visible:outline-2 focus-visible:outline-[#1c1c1a]"><X size={17} /></button>
       </div>
       {error && <div className="mb-4"><Notice>{error}</Notice></div>}
+      {variantManaged && <p className="mb-4 border border-[#1c1c1a]/15 bg-[#f2f1ed] px-3 py-2 text-xs text-[#55544e]">Price and stock are calculated from active lens options. Edit those values in Lens options below.</p>}
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Name"><input name="name" required maxLength={180} defaultValue={product?.name} className={inputClass} /></Field>
         <Field label="Slug"><input name="slug" required maxLength={180} pattern="[a-z0-9]+(-[a-z0-9]+)*" defaultValue={product?.slug} className={inputClass} /></Field>
         <Field label="Category"><input name="category" required maxLength={100} defaultValue={product?.category} className={inputClass} /></Field>
         <div className="grid grid-cols-[1fr_100px] gap-3">
-          <Field label="Price"><input name="price" required inputMode="decimal" pattern="\d+(\.\d{1,2})?" defaultValue={product?.price} className={inputClass} /></Field>
-          <Field label="Currency"><input name="currency" required maxLength={3} pattern="[A-Za-z]{3}" defaultValue={product?.currency ?? 'USD'} className={inputClass} /></Field>
+          <Field label="Price"><input name="price" required inputMode="decimal" pattern="\d+(\.\d{1,2})?" readOnly={variantManaged} defaultValue={product?.price} className={inputClass} /></Field>
+          <Field label="Currency"><input name="currency" required maxLength={3} pattern="[A-Za-z]{3}" readOnly={variantManaged} defaultValue={product?.currency ?? 'PKR'} className={inputClass} /></Field>
         </div>
-        <Field label="Stock quantity"><input name="stockQuantity" type="number" required min="0" step="1" defaultValue={product?.stockQuantity ?? 0} className={inputClass} /></Field>
+        <Field label="Stock quantity"><input name="stockQuantity" type="number" required min="0" step="1" readOnly={variantManaged} defaultValue={product?.stockQuantity ?? 0} className={inputClass} /></Field>
         <Field label="Status">
           <select name="status" defaultValue={product?.status ?? 'active'} className={inputClass}>
             <option value="active">Active</option><option value="draft">Draft</option><option value="archived">Archived</option>
@@ -340,16 +352,21 @@ const inputClass = 'w-full rounded-lg border border-[#1c1c1a]/15 bg-white px-3 p
 const primaryButton = 'inline-flex items-center justify-center gap-2 rounded-full bg-[#1c1c1a] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#353531] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1c1c1a] disabled:cursor-wait disabled:opacity-60'
 const secondaryButton = 'rounded-full border border-[#1c1c1a]/15 bg-white px-4 py-2.5 text-sm hover:bg-[#f2f1ed] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1c1c1a] disabled:opacity-60'
 
-function ProductWorkspace() {
+function ProductWorkspace({ canEdit }: { canEdit: boolean }) {
   const { products, isLoading, isError, error, mutate } = useAdminProducts()
   const { mutate: globalMutate } = useSWRConfig()
   const [editing, setEditing] = useState<AdminProduct | undefined>()
   const [creating, setCreating] = useState(false)
   const [query, setQuery] = useState('')
+  const [offset, setOffset] = useState(0)
   const [message, setMessage] = useState('')
+  const [messageTone, setMessageTone] = useState<'error' | 'info'>('error')
   const [busyId, setBusyId] = useState('')
+  const [importPage, setImportPage] = useState(0)
 
   const filtered = useMemo(() => products.filter((product) => `${product.name} ${product.category} ${product.slug}`.toLowerCase().includes(query.toLowerCase())), [products, query])
+  const visibleProducts = filtered.slice(offset, offset + 20)
+  useEffect(() => { setOffset(0) }, [query])
 
   async function refresh() {
     setCreating(false)
@@ -384,14 +401,65 @@ function ProductWorkspace() {
     }
   }
 
+  async function importCatalog() {
+    setImportPage(1)
+    setMessage('')
+    setMessageTone('error')
+    let imported = 0
+    let skipped = 0
+    let page = 1
+    try {
+      for (; page <= 10; page += 1) {
+        setImportPage(page)
+        const response = await fetch('/api/admin/products/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ page }),
+        })
+        const body: unknown = await response.json()
+        if (response.status === 401) window.dispatchEvent(new Event('admin-session-expired'))
+        if (!response.ok || typeof body !== 'object' || body === null || !('data' in body) || typeof body.data !== 'object' || body.data === null) {
+          const detail = typeof body === 'object' && body !== null && 'error' in body && typeof body.error === 'string' ? body.error : 'The catalog import failed.'
+          throw new Error(detail)
+        }
+        const result = body.data
+        if (!('imported' in result) || typeof result.imported !== 'number' ||
+            !('skipped' in result) || typeof result.skipped !== 'number' ||
+            !('hasMore' in result) || typeof result.hasMore !== 'boolean') {
+          throw new Error('The catalog import returned an invalid result.')
+        }
+        imported += result.imported
+        skipped += result.skipped
+        if (!result.hasMore) break
+      }
+      await refresh()
+      setMessageTone('info')
+      setMessage(`Imported ${imported} draft listings; skipped ${skipped} records already present. Review source details before publishing.`)
+    } catch (importError) {
+      setMessageTone('error')
+      setMessage(errorMessage(importError))
+    } finally {
+      setImportPage(0)
+    }
+  }
+
   return (
     <section className="min-w-0 flex-1">
       <PanelHeading
         title="Products"
-        description="Manage catalog details and inventory. Changes save to the shared database and revalidate the storefront."
-        action={<button type="button" onClick={() => { setEditing(undefined); setCreating(true) }} className={primaryButton}><Plus size={16} /> Add product</button>}
+        description="Manage published listings, review ISK Lenses source imports, and maintain the shared catalog."
+        action={<div className="flex flex-wrap gap-2">
+          {canEdit && <button type="button" disabled={Boolean(importPage)} onClick={() => void importCatalog()} className={secondaryButton}>
+            {importPage ? <LoaderCircle size={15} className="animate-spin" /> : <Download size={15} />}
+            {importPage ? `Importing page ${importPage}…` : 'Import ISK catalogue'}
+          </button>}
+          {canEdit && <button type="button" onClick={() => { setEditing(undefined); setCreating(true) }} className={primaryButton}><Plus size={16} /> Add product</button>}
+        </div>}
       />
-      {(message || isError) && <div className="mb-4"><Notice>{message || errorMessage(error)}</Notice></div>}
+      <p className="mb-4 max-w-3xl border border-[#1c1c1a]/12 bg-white/60 px-3 py-2 text-xs leading-5 text-[#55544e]">
+        Source imports store the product name, category, current source price, and source links as drafts with zero stock. Description text and images are not copied. Verify every listing before publishing.
+      </p>
+      {(message || isError) && <div className="mb-4"><Notice tone={message ? messageTone : 'error'}>{message || errorMessage(error)}</Notice></div>}
       {(creating || editing) && <div className="mb-5"><ProductEditor product={editing} onSaved={() => void refresh()} onCancel={() => { setCreating(false); setEditing(undefined) }} /></div>}
       <div className="mb-4 flex items-center gap-2 rounded-xl border border-[#1c1c1a]/10 bg-white px-3">
         <Search size={16} className="text-[#68675f]" />
@@ -399,14 +467,15 @@ function ProductWorkspace() {
       </div>
       {isLoading ? <LoadingRows label="Loading products" /> : isError ? null : filtered.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-[#1c1c1a]/20 bg-white/60 px-5 py-10 text-center text-sm text-[#68675f]">
-          {products.length ? 'No products match this filter.' : 'No products are in the catalog yet. Add a product to publish your first listing.'}
+          {products.length ? 'No products match this filter.' : 'No products are in the catalog yet. Import source listings as drafts or add a product.'}
         </div>
       ) : (
         <div className="space-y-3">
-          {filtered.map((product) => (
+          {visibleProducts.map((product) => (
             <ProductRow
               key={`${product.id}-${product.stockQuantity}`}
               product={product}
+              canEdit={canEdit}
               busy={busyId === product.id}
               onEdit={() => { setCreating(false); setEditing(product) }}
               onArchive={() => void archive(product)}
@@ -416,12 +485,14 @@ function ProductWorkspace() {
           ))}
         </div>
       )}
+      <PageControls offset={offset} total={filtered.length} pageSize={20} onChange={setOffset} />
     </section>
   )
 }
 
 function ProductRow({
   product,
+  canEdit,
   busy,
   onEdit,
   onArchive,
@@ -429,6 +500,7 @@ function ProductRow({
   onRefresh,
 }: {
   product: AdminProduct
+  canEdit: boolean
   busy: boolean
   onEdit: () => void
   onArchive: () => void
@@ -436,7 +508,8 @@ function ProductRow({
   onRefresh: () => void
 }) {
   const [quantity, setQuantity] = useState(String(product.stockQuantity))
-  const [expanded, setExpanded] = useState(false)
+  const [mediaExpanded, setMediaExpanded] = useState(false)
+  const [variantsExpanded, setVariantsExpanded] = useState(false)
   const [assetMessage, setAssetMessage] = useState('')
   const [uploading, setUploading] = useState(false)
   const { mutate: globalMutate } = useSWRConfig()
@@ -452,7 +525,7 @@ function ProductRow({
       const response = await fetch(`/api/admin/products/${product.id}/assets`, { method: 'POST', body: form })
       const result = await response.json()
       if (response.status === 401) window.dispatchEvent(new Event('admin-session-expired'))
-      if (!response.ok) throw new Error(result.error || 'Image upload failed.')
+      if (!response.ok) throw new Error(result.error || 'Product media upload failed.')
       await Promise.all([globalMutate('/api/admin/products'), globalMutate('/api/products'), globalMutate(`/api/products/${product.slug}`)])
       formElement.reset()
       onRefresh()
@@ -469,13 +542,26 @@ function ProductRow({
       const response = await fetch(`/api/admin/assets/${assetId}`, { method: 'DELETE' })
       const result = await response.json()
       if (response.status === 401) window.dispatchEvent(new Event('admin-session-expired'))
-      if (!response.ok) throw new Error(result.error || 'Image deletion failed.')
+      if (!response.ok) throw new Error(result.error || 'Product media deletion failed.')
       await Promise.all([globalMutate('/api/admin/products'), globalMutate('/api/products')])
       onRefresh()
     } catch (removeError) {
       setAssetMessage(errorMessage(removeError))
     }
   }
+
+  async function reorderAsset(assetId: string, direction: 'up' | 'down') {
+    setAssetMessage('')
+    try {
+      await moveProductAsset(assetId, direction)
+      await Promise.all([globalMutate('/api/admin/products'), globalMutate('/api/products'), globalMutate(`/api/products/${product.slug}`)])
+      onRefresh()
+    } catch (reorderError) {
+      setAssetMessage(errorMessage(reorderError))
+    }
+  }
+
+  const activeVariants = product.variants.some((variant) => variant.isActive !== false)
 
   return (
     <article className="rounded-2xl border border-[#1c1c1a]/10 bg-white p-4 sm:p-5">
@@ -486,34 +572,61 @@ function ProductRow({
             <h2 className="truncate text-sm font-medium">{product.name}</h2>
             <p className="mt-1 text-xs text-[#68675f]">{product.category} · {product.slug}</p>
             <p className="mt-1 text-xs text-[#68675f]">{currencyLabel(product.price, product.currency)} · <span className="capitalize">{product.status}</span></p>
+            {product.sourceProductId !== null && product.sourceUrl && (
+              <p className="mt-1 text-xs text-[#68675f]">
+                Imported source #{product.sourceProductId} · <a href={product.sourceUrl} target="_blank" rel="noreferrer" className="underline underline-offset-2">View source</a>
+                {product.sourceImageUrl && <> · <a href={product.sourceImageUrl} target="_blank" rel="noreferrer" className="underline underline-offset-2">View source image</a></>}
+              </p>
+            )}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <label className="sr-only" htmlFor={`stock-${product.id}`}>Stock quantity for {product.name}</label>
-          <input id={`stock-${product.id}`} type="number" min="0" step="1" value={quantity} onChange={(event) => setQuantity(event.target.value)} className="w-20 rounded-lg border border-[#1c1c1a]/15 px-2 py-2 text-sm" />
-          <button type="button" disabled={busy || !/^\d+$/.test(quantity) || Number(quantity) === product.stockQuantity} onClick={() => onStock(Number(quantity))} className={secondaryButton}>Save stock</button>
-          <button type="button" disabled={busy} onClick={onEdit} className={secondaryButton}>Edit</button>
-          {product.status !== 'archived' && <button type="button" disabled={busy} onClick={onArchive} className="rounded-full border border-[#9b4a36]/30 px-4 py-2.5 text-sm text-[#753b2d] hover:bg-[#f8eeeb] disabled:opacity-60">Archive</button>}
+          {canEdit && !activeVariants && <>
+            <label className="sr-only" htmlFor={`stock-${product.id}`}>Stock quantity for {product.name}</label>
+            <input id={`stock-${product.id}`} type="number" min="0" step="1" value={quantity} onChange={(event) => setQuantity(event.target.value)} className="w-20 rounded-lg border border-[#1c1c1a]/15 px-2 py-2 text-sm" />
+            <button type="button" disabled={busy || !/^\d+$/.test(quantity) || Number(quantity) === product.stockQuantity} onClick={() => onStock(Number(quantity))} className={secondaryButton}>Save stock</button>
+          </>}
+          {canEdit && <>
+            <button type="button" disabled={busy} onClick={onEdit} className={secondaryButton}>Edit</button>
+            {product.status !== 'archived' && <button type="button" disabled={busy} onClick={onArchive} className="rounded-full border border-[#9b4a36]/30 px-4 py-2.5 text-sm text-[#753b2d] hover:bg-[#f8eeeb] disabled:opacity-60">Archive</button>}
+          </>}
         </div>
       </div>
-      <button type="button" aria-expanded={expanded} onClick={() => setExpanded((value) => !value)} className="mt-4 text-xs underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-[#1c1c1a]">
-        {expanded ? 'Hide product images' : `Manage product images (${product.assets.length})`}
-      </button>
-      {expanded && (
+      <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
+        <button type="button" aria-expanded={variantsExpanded} onClick={() => setVariantsExpanded((value) => !value)} className="text-xs underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-[#1c1c1a]">
+          {variantsExpanded ? 'Hide lens options' : `Manage lens options (${product.variants.length})`}
+        </button>
+        <button type="button" aria-expanded={mediaExpanded} onClick={() => setMediaExpanded((value) => !value)} className="text-xs underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-[#1c1c1a]">
+          {mediaExpanded ? 'Hide product media' : `Manage product media (${product.assets.length})`}
+        </button>
+      </div>
+      {variantsExpanded && <ProductVariantManager product={product} canEdit={canEdit} onChanged={onRefresh} />}
+      {mediaExpanded && (
         <div className="mt-4 border-t border-[#1c1c1a]/10 pt-4">
           {assetMessage && <div className="mb-3"><Notice>{assetMessage}</Notice></div>}
-          <form onSubmit={upload} className="flex flex-wrap items-end gap-3">
-            <Field label="Image file"><input name="file" type="file" required accept="image/jpeg,image/png,image/webp,image/avif" className="max-w-full text-xs file:mr-3 file:rounded-full file:border-0 file:bg-[#f2f1ed] file:px-3 file:py-2" /></Field>
-            <Field label="Image description"><input name="altText" maxLength={500} placeholder={product.name} className={`${inputClass} min-w-48`} /></Field>
-            <button type="submit" disabled={uploading} className={primaryButton}>{uploading && <LoaderCircle size={15} className="animate-spin" />}{uploading ? 'Uploading…' : 'Upload image'}</button>
-          </form>
-          <p className="mt-2 text-xs text-[#68675f]">JPEG, PNG, WebP, or AVIF · maximum 4 MB.</p>
+          {canEdit && <form onSubmit={upload} className="flex flex-wrap items-end gap-3">
+            <Field label="Image or video file"><input name="file" type="file" required accept="image/jpeg,image/png,image/webp,image/avif,video/mp4,video/webm" className="max-w-full text-xs file:mr-3 file:rounded-full file:border-0 file:bg-[#f2f1ed] file:px-3 file:py-2" /></Field>
+            <Field label="Alternative text or caption"><input name="altText" maxLength={500} placeholder={product.name} className={`${inputClass} min-w-48`} /></Field>
+            <button type="submit" disabled={uploading} className={primaryButton}>{uploading && <LoaderCircle size={15} className="animate-spin" />}{uploading ? 'Uploading…' : 'Upload media'}</button>
+          </form>}
+          <p className="mt-2 text-xs text-[#68675f]">JPEG, PNG, WebP, AVIF, MP4, or WebM · maximum 4 MB per file.</p>
           {product.assets.length > 0 && (
             <ul className="mt-4 flex flex-wrap gap-3">
-              {product.assets.map((asset) => (
-                <li key={asset.id} className="relative">
-                  {asset.blobUrl ? <img src={asset.blobUrl} alt={asset.altText ?? ''} className="size-20 rounded-lg object-cover" /> : <div className="grid size-20 place-items-center rounded-lg bg-[#f2f1ed] text-xs">Missing URL</div>}
-                  <button type="button" onClick={() => void removeAsset(asset.id)} aria-label={`Delete ${asset.altText || 'product image'}`} className="absolute -right-2 -top-2 grid size-7 place-items-center rounded-full bg-white text-[#753b2d] shadow-sm focus-visible:outline-2 focus-visible:outline-[#1c1c1a]"><X size={14} /></button>
+              {product.assets.map((asset, index) => (
+                <li key={asset.id} className="w-24">
+                  {asset.blobUrl && asset.mediaType === 'video'
+                    ? <video src={asset.blobUrl} controls preload="metadata" aria-label={asset.altText || `${product.name} video ${index + 1}`} className="h-20 w-24 bg-[#1c1c1a] object-cover" />
+                    : asset.blobUrl
+                      ? <img src={asset.blobUrl} alt={asset.altText ?? ''} className="h-20 w-24 object-cover" />
+                      : <div className="grid h-20 w-24 place-items-center bg-[#f2f1ed] text-xs">Missing media URL</div>}
+                  <div className="mt-1 flex items-center justify-between gap-1">
+                    <span className="truncate text-[10px] uppercase text-[#68675f]">{asset.mediaType} · {index + 1}</span>
+                    {canEdit && <div className="flex">
+                      <button type="button" disabled={index === 0} onClick={() => void reorderAsset(asset.id, 'up')} aria-label={`Move ${asset.mediaType} ${index + 1} earlier`} className="grid size-7 place-items-center hover:bg-[#f2f1ed] disabled:opacity-35"><ArrowUp size={13} /></button>
+                      <button type="button" disabled={index === product.assets.length - 1} onClick={() => void reorderAsset(asset.id, 'down')} aria-label={`Move ${asset.mediaType} ${index + 1} later`} className="grid size-7 place-items-center hover:bg-[#f2f1ed] disabled:opacity-35"><ArrowDown size={13} /></button>
+                      <button type="button" onClick={() => void removeAsset(asset.id)} aria-label={`Delete ${asset.altText || `product ${asset.mediaType}`}`} className="grid size-7 place-items-center text-[#753b2d] hover:bg-[#f8eeeb]"><X size={13} /></button>
+                    </div>}
+                  </div>
                 </li>
               ))}
             </ul>
@@ -585,7 +698,7 @@ function OrderRow({ order, saving, onStatus }: { order: AdminOrder; saving: bool
         </div>
         <div className="text-right">
           <p className="text-sm font-medium">{currencyLabel(order.total, order.currency)}</p>
-          <label className="mt-2 block text-left text-[11px] text-[#68675f]">Order status
+          <label className="mt-2 block text-left text-xs text-[#68675f]">Order status
             <select disabled={saving} value={order.status} onChange={(event) => onStatus(event.target.value)} className="mt-1 block rounded-lg border border-[#1c1c1a]/15 bg-white px-2 py-1.5 text-xs capitalize">
               {['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'].map((status) => <option key={status} value={status}>{status}</option>)}
             </select>
@@ -976,7 +1089,7 @@ export function AdminWorkspace() {
 
   const content = {
     overview: <AdminOverview onNavigate={setSection} />,
-    products: <ProductWorkspace />,
+    products: <ProductWorkspace canEdit={session.role === 'owner' || session.role === 'admin'} />,
     orders: <OrdersWorkspace />,
     customers: <CustomersWorkspace />,
     analytics: <AnalyticsWorkspace />,
@@ -1008,7 +1121,7 @@ export function AdminWorkspace() {
             </button>
           ))}
         </nav>
-        <p className="mt-5 hidden break-all text-[11px] leading-4 text-[#68675f] lg:block">Signed in as {session.email}</p>
+        <p className="mt-5 hidden break-all text-xs leading-4 text-[#68675f] lg:block">Signed in as {session.email}</p>
       </aside>
       {session.error && <div className="w-full lg:hidden"><Notice>{session.error}</Notice></div>}
       {content}

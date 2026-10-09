@@ -1,0 +1,175 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-09T16:15:45.256Z",
+  "title": "Design System: ISK Lenses",
+  "extensions": {
+    "colorMeta": {
+      "ink-blue": {
+        "role": "primary",
+        "displayName": "Ink Blue",
+        "canonical": "oklch(29.2% 0.078 261.9)",
+        "tonalRamp": ["oklch(15% 0.078 261.9)", "oklch(25% 0.078 261.9)", "oklch(35% 0.078 261.9)", "oklch(45% 0.078 261.9)", "oklch(55% 0.078 261.9)", "oklch(65% 0.078 261.9)", "oklch(80% 0.078 261.9)", "oklch(95% 0.078 261.9)"]
+      },
+      "optic-blue": {
+        "role": "secondary",
+        "displayName": "Optic Blue",
+        "canonical": "oklch(40.3% 0.124 258.1)",
+        "tonalRamp": ["oklch(15% 0.124 258.1)", "oklch(25% 0.124 258.1)", "oklch(35% 0.124 258.1)", "oklch(45% 0.124 258.1)", "oklch(55% 0.124 258.1)", "oklch(65% 0.124 258.1)", "oklch(80% 0.124 258.1)", "oklch(95% 0.124 258.1)"]
+      },
+      "signal-chartreuse": {
+        "role": "tertiary",
+        "displayName": "Signal Chartreuse",
+        "canonical": "oklch(93.8% 0.205 122.4)",
+        "tonalRamp": ["oklch(15% 0.205 122.4)", "oklch(25% 0.205 122.4)", "oklch(35% 0.205 122.4)", "oklch(45% 0.205 122.4)", "oklch(55% 0.205 122.4)", "oklch(65% 0.205 122.4)", "oklch(80% 0.205 122.4)", "oklch(95% 0.205 122.4)"]
+      },
+      "leaf-paper": {
+        "role": "neutral",
+        "displayName": "Leaf Paper",
+        "canonical": "oklch(96.0% 0.010 155.1)",
+        "tonalRamp": ["oklch(15% 0.010 155.1)", "oklch(25% 0.010 155.1)", "oklch(35% 0.010 155.1)", "oklch(45% 0.010 155.1)", "oklch(55% 0.010 155.1)", "oklch(65% 0.010 155.1)", "oklch(80% 0.010 155.1)", "oklch(95% 0.010 155.1)"]
+      },
+      "mist-green": {
+        "role": "neutral",
+        "displayName": "Mist Green",
+        "canonical": "oklch(91.7% 0.015 164.7)",
+        "tonalRamp": ["oklch(15% 0.015 164.7)", "oklch(25% 0.015 164.7)", "oklch(35% 0.015 164.7)", "oklch(45% 0.015 164.7)", "oklch(55% 0.015 164.7)", "oklch(65% 0.015 164.7)", "oklch(80% 0.015 164.7)", "oklch(95% 0.015 164.7)"]
+      },
+      "blue-gray": {
+        "role": "neutral",
+        "displayName": "Blue Gray",
+        "canonical": "oklch(40.0% 0.052 249.3)",
+        "tonalRamp": ["oklch(15% 0.052 249.3)", "oklch(25% 0.052 249.3)", "oklch(35% 0.052 249.3)", "oklch(45% 0.052 249.3)", "oklch(55% 0.052 249.3)", "oklch(65% 0.052 249.3)", "oklch(80% 0.052 249.3)", "oklch(95% 0.052 249.3)"]
+      },
+      "sage-line": {
+        "role": "neutral",
+        "displayName": "Sage Line",
+        "canonical": "oklch(82.3% 0.018 183.4)",
+        "tonalRamp": ["oklch(15% 0.018 183.4)", "oklch(25% 0.018 183.4)", "oklch(35% 0.018 183.4)", "oklch(45% 0.018 183.4)", "oklch(55% 0.018 183.4)", "oklch(65% 0.018 183.4)", "oklch(80% 0.018 183.4)", "oklch(95% 0.018 183.4)"]
+      },
+      "alert-red": {
+        "role": "error",
+        "displayName": "Alert Red",
+        "canonical": "oklch(48.7% 0.155 18.3)",
+        "tonalRamp": ["oklch(15% 0.155 18.3)", "oklch(25% 0.155 18.3)", "oklch(35% 0.155 18.3)", "oklch(45% 0.155 18.3)", "oklch(55% 0.155 18.3)", "oklch(65% 0.155 18.3)", "oklch(80% 0.155 18.3)", "oklch(95% 0.155 18.3)"]
+      },
+      "white": {
+        "role": "neutral",
+        "displayName": "White",
+        "canonical": "oklch(100% 0.000 89.9)",
+        "tonalRamp": ["oklch(15% 0.000 89.9)", "oklch(25% 0.000 89.9)", "oklch(35% 0.000 89.9)", "oklch(45% 0.000 89.9)", "oklch(55% 0.000 89.9)", "oklch(65% 0.000 89.9)", "oklch(80% 0.000 89.9)", "oklch(95% 0.000 89.9)"]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Compressed Display",
+        "purpose": "Storefront proposition and major catalog headings."
+      },
+      "label": {
+        "displayName": "Index Label",
+        "purpose": "Measurements, availability, and compact navigation metadata."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "optical-study",
+        "value": "700ms cubic-bezier(.2,.8,.2,1)",
+        "purpose": "One authored transformation of the abstract optical study when a category is selected."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Action",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "High-contrast browse or submit action.",
+      "html": "<button class=\"ds-button-primary\">EXPLORE PRODUCTS</button>",
+      "css": ".ds-button-primary { background: #152a52; color: #d3ff48; padding: 16px 20px; border: 0; border-radius: 0; font: 700 12px/1.4 ui-sans-serif, system-ui, sans-serif; letter-spacing: .13em; text-transform: uppercase; transition: background-color 180ms ease-out; } .ds-button-primary:hover { background: #16468a; } .ds-button-primary:focus-visible { outline: 2px solid #16468a; outline-offset: 3px; }"
+    },
+    {
+      "name": "Search Field",
+      "kind": "input",
+      "refersTo": "input-search",
+      "description": "Search the live catalog by product name or category.",
+      "html": "<label class=\"ds-search\"><span>Search lenses</span><input class=\"ds-input\" type=\"search\" placeholder=\"Search lenses\"></label>",
+      "css": ".ds-search { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #b9c9c6; padding: 10px 12px; color: #152a52; font: 12px/1.4 ui-sans-serif, system-ui, sans-serif; } .ds-input { min-width: 8rem; border: 0; background: transparent; color: #152a52; font: inherit; outline: 0; } .ds-search:focus-within { outline: 2px solid #16468a; outline-offset: 1px; }"
+    },
+    {
+      "name": "Selected Filter",
+      "kind": "chip",
+      "refersTo": "filter-selected",
+      "description": "Marks the active product category.",
+      "html": "<button class=\"ds-filter\" aria-pressed=\"true\">ALL PRODUCTS</button>",
+      "css": ".ds-filter { background: #152a52; color: #d3ff48; padding: 8px 12px; border: 0; border-radius: 0; font: 700 10px/1.4 ui-sans-serif, system-ui, sans-serif; letter-spacing: .1em; text-transform: uppercase; } .ds-filter:focus-visible { outline: 2px solid #16468a; outline-offset: 2px; }"
+    },
+    {
+      "name": "Admin Work Surface",
+      "kind": "card",
+      "refersTo": "admin-panel",
+      "description": "Groups operational product and customer work.",
+      "html": "<article class=\"ds-admin-panel\"><h2>Products</h2><p>Manage catalog listings.</p></article>",
+      "css": ".ds-admin-panel { background: #fff; color: #152a52; border: 1px solid #b9c9c6; border-radius: 16px; padding: 16px; font: 14px/1.5 ui-sans-serif, system-ui, sans-serif; } .ds-admin-panel h2 { margin: 0 0 8px; font-size: 16px; font-weight: 600; } .ds-admin-panel p { margin: 0; color: #314a63; }"
+    },
+    {
+      "name": "Optical Study",
+      "kind": "custom",
+      "description": "Abstract catalog illustration that is explicitly not product photography.",
+      "html": "<div class=\"ds-optical-study\" role=\"img\" aria-label=\"Abstract optical study\"><span class=\"ds-ring\"></span><span class=\"ds-center\"></span></div>",
+      "css": ".ds-optical-study { position: relative; display: grid; place-items: center; min-height: 260px; overflow: hidden; background: #152a52; } .ds-ring { width: 68%; aspect-ratio: 1; border: 1px solid rgba(211,255,72,.62); border-radius: 50%; } .ds-center { position: absolute; width: 34%; aspect-ratio: 1; border: 12px solid rgba(237,244,239,.8); border-radius: 50%; box-shadow: 0 0 0 2px #16468a, 0 0 0 13px rgba(211,255,72,.82), inset 10px 6px 24px rgba(255,255,255,.38); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Chromatic Specimen Index",
+    "overview": "The storefront treats each published listing as a specimen with inspectable facts, not a beauty promise. A cool, botanical paper field supports deep optical blue and a precise chartreuse signal; compressed display lettering and measurement-like labels make the catalog feel indexed. The admin workspace stays quieter and task-first, using white work surfaces, restrained borders, and familiar controls.\n\nThe abstract lens study is a graphic device, never product evidence. Real product media, prices, availability, and lens parameters appear only when operators add and verify them. The same truth-first rule governs empty states, option selectors, and the browse-only bag.",
+    "keyCharacteristics": [
+      "Chromatic fields, not scattered accent decoration",
+      "Specimen-like product listings with factual metadata",
+      "Quiet, readable admin operations",
+      "Explicit separation between abstract illustration and real product media"
+    ],
+    "rules": [
+      {
+        "name": "The Chromatic Field Rule",
+        "body": "Let large regions carry the palette; do not reduce chartreuse to a handful of unrelated badges.",
+        "section": "colors"
+      },
+      {
+        "name": "The Instrument-Scale Rule",
+        "body": "Use monospace for real catalog measurements or indexing; never as a generic “technical” costume.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "Use tonal fields and borders for structure; reserve inset light for the abstract optical study.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep product claims and specifications tied to fields actually present in the catalog.",
+      "Do preserve visible keyboard focus and clearly named actions.",
+      "Do distinguish abstract illustration from product photography.",
+      "Do keep admin controls familiar and operationally clear."
+    ],
+    "donts": [
+      "Don't use unverified source details as published product claims.",
+      "Don't imply the in-page bag can submit an order.",
+      "Don't use the optical study as evidence of a real product color or specification.",
+      "Don't use chartreuse as body text on light surfaces."
+    ]
+  }
+}

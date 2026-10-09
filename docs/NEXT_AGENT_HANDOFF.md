@@ -21,8 +21,9 @@ This document is the operational handoff for continuing the ecommerce storefront
 - Sync notes: `docs/DATABASE_SYNC.md`.
 - GitHub Actions: no workflow files are currently tracked in `.github/workflows/`.
 - GitHub operation identity: project agents must verify and use `@qaiserfccc` for GitHub mutations; see `AGENTS.md`.
-- Storefront and admin screens are wired to the shared database. The read-only project Kanban keeps open external decisions visible instead of treating them as completed implementation.
+- The ISK Lenses storefront and admin screens use the shared Neon database. Product variants, published product details, image/video galleries, and a protected public-catalog draft importer are implemented.
 - Admin access now uses database-backed owner/admin/staff accounts, scrypt password hashes, and revocable signed sessions. Migration `0002_store_admin_users.sql` is applied to the connected Neon main branch, and an initial owner exists.
+- Migration `0003_isk_lens_catalog.sql` is applied and schema validation passes. The initial source import created 495 draft products with zero stock; 89 listings without a source category are labeled `Uncategorized`. Product descriptions and image files were not copied.
 
 ## Connected integrations
 
@@ -92,14 +93,16 @@ The active Neon project identifier observed during schema work is `polished-dust
 5. Update `lib/db/schema.ts` to exactly mirror the live schema.
 6. Run the repository validation script after schema changes.
 
-Existing schema includes storefront/admin workspace tables for products, product assets, customers, orders, order items, and activity events. The migration also defines the `set_store_updated_at()` trigger function and updated-at triggers where applicable.
+The current schema includes products, product assets, product variants, customers, orders, order items, activity events, and admin users. Migration `0003_isk_lens_catalog.sql` adds source provenance, image/video media typing, product variants, the PKR product-currency default, and updated-at triggers.
 
 ## Data synchronization contract
 
 - Storefront reads flow through SWR hooks to `/api/products`, then Drizzle/Neon.
 - Admin metrics, products, orders, customers, and activity flow through session-protected `/api/admin/*` routes.
 - Every admin server action checks the signed session independently. Mutations validate inputs and write audit events transactionally.
-- Product image upload/delete uses authenticated Next.js route handlers and Vercel Blob; only Blob URLs and metadata are persisted.
+- Product image/video upload, reorder, and delete use authenticated Next.js route handlers and Vercel Blob; only Blob URLs and metadata are persisted.
+- Public catalog/detail responses include active lens options and supported media. Import provenance is admin-only.
+- The public WooCommerce Store API importer is authenticated, pages through 50 records at a time, and deduplicates by source product ID. Imported source prices and links are for review only; each listing remains a draft with zero stock. Verify the source link, price, category, lens parameters, imagery, and claims before publishing.
 - After a successful admin mutation, call the relevant SWR `mutate()`/refresh function for immediate UI consistency.
 - Current UI synchronization is polling/revalidation, not database WebSockets. Treat “realtime” as sync-ready periodic refresh unless a future agent adds an approved realtime transport.
 - Admin access is a database-backed owner/admin/staff system with scrypt-hashed passwords and revocable signed sessions; it is not SSO.
@@ -116,15 +119,16 @@ Existing schema includes storefront/admin workspace tables for products, product
 
 ## Validation checklist
 
-From `/vercel/share/v0-project`:
+From the repository root:
 
 ```bash
-pnpm exec tsx scripts/validate-schema.mjs
-pnpm exec tsx scripts/validate-build.mjs
+pnpm exec tsc --noEmit
+node scripts/validate-build.mjs
+node --env-file=.env.local scripts/validate-schema.mjs
 pnpm build
 ```
 
-If `tsx` is not installed, run the scripts with the available Node runtime or add the missing development dependency only if the repository policy permits it. The canonical production check remains `pnpm build`.
+Schema validation requires `DATABASE_URL` and access to the configured Neon database. The canonical production check remains `pnpm build`.
 
 Also inspect:
 
@@ -146,24 +150,23 @@ Also inspect:
 _Verified in the repository on 2026-10-08._
 
 - The implementation is Next.js App Router with React 19, TypeScript, Tailwind CSS 4, and `pnpm`; data routes and server actions run inside Next.js. There is no Express service in this codebase. Preserve this architecture unless a framework migration is explicitly approved.
-- The current UI identifies itself as **morrow.** and its copy/art direction depicts home/lifestyle goods. The user-supplied brief describes an **Eye Contact Lenses** e-commerce application. Treat that as an unresolved product-identity mismatch: do not invent lens-specific claims or replace the current brand/content without confirmation.
+- The approved customer-facing brand is **ISK Lenses**, replacing the previous lifestyle-goods direction. Keep product statements factual and do not invent medical or performance claims.
 - The authenticated GitHub CLI identity was verified as `qaiserfccc`. GitHub Actions are enabled in repository settings, but there are no checked-in workflows or recorded workflow runs. The repository allows all actions. One other collaborator, `qaiserfcc`, currently has write access. Repository instructions require agents to operate only as `@qaiserfccc`, but that does not enforce account exclusivity for other repository users; enforce it through GitHub access controls if repository-wide exclusivity is required. Attempts to lower the collaborator's role via the collaborator permission API were rejected, and access was not otherwise changed.
 - The storefront reads active products through `app/api/products/route.ts` and `lib/hooks/use-storefront-data.ts`. The admin overview reads metrics through `app/api/admin/metrics/route.ts` and `lib/hooks/use-admin-data.ts`.
 - Admin sign-in uses database-backed identities and a signed HTTP-only cookie. Product/order/customer reads, admin mutations, and image endpoints verify the session on the server.
 - Admin sign-in uses database-backed owner/admin/staff accounts and signed HTTP-only cookies; owner-only user management is available in the workspace. The migration and initial owner have been provisioned in Neon.
 - Product, order, customer, and analytics screens are connected to authenticated database routes; mutations validate inputs and log metadata-only audit events.
-- Product media upload/deletion is wired to Vercel Blob and `store_product_assets`. Checkout is deliberately not available: the storefront does not create orders without a configured payment provider.
+- Product image/video upload, preview, reorder, and deletion are wired to Vercel Blob and `store_product_assets`. Lens-option management is database-backed. Checkout is deliberately unavailable: the storefront does not create orders without a configured payment provider.
 - `components/admin/project-kanban.tsx` is a read-only snapshot of requirements versus repository status. Its task definitions are code-level project context, not order/customer records or persistent task data. It deliberately does not mutate business data.
 
 ## Next recommended work
 
-1. Replace the provisional owner email/password in **System users** before normal team use; apply edge-level sign-in rate limiting before production exposure.
-2. Choose a payment provider and approve checkout, order-creation, shipping, and tax behavior before accepting orders.
-3. Resolve the mismatch between the current morrow. home/lifestyle storefront and the Eye Contact Lenses brief before changing product truth, copy, or assets.
+1. Replace the provisional owner credentials in **System users** before normal team use; apply edge-level sign-in rate limiting before production exposure.
+2. Review the imported draft listings and verify lens specifications, prices, imagery, stock, and claims before publishing.
+3. Choose a payment provider and approve checkout, order-creation, shipping, tax, and customer-data handling before accepting orders.
 4. Manage repository collaborator access in GitHub settings if repository-wide operator exclusivity is required.
 5. If GitHub Actions workflows are introduced, gate every job to `github.actor == 'qaiserfccc' && github.triggering_actor == 'qaiserfccc'`.
-6. Run schema validation when the configured database is available, build validation, the production build, and browser verification before deployment.
-7. Keep this file updated whenever integrations, environment variables, deployment settings, migrations, or verified project status change.
+6. Keep this file updated whenever integrations, environment variables, deployment settings, migrations, or verified project status change.
 
 ## Quick file map
 
