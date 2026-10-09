@@ -1,7 +1,7 @@
 'use client'
 
 import useSWR from 'swr'
-import type { Product, ProductAsset } from '@/lib/hooks/use-storefront-data'
+import type { Product, ProductAsset, ProductVariant } from '@/lib/hooks/use-storefront-data'
 
 async function fetcher<T>(url: string): Promise<T> {
   const response = await fetch(url, { cache: 'no-store' })
@@ -53,6 +53,10 @@ export interface AdminCustomer {
 
 export interface AdminProduct extends Product {
   assets: ProductAsset[]
+  variants: ProductVariant[]
+  sourceProductId: number | null
+  sourceUrl: string | null
+  sourceImageUrl: string | null
 }
 
 export interface AdminActivity {

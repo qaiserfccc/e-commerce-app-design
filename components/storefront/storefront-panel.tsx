@@ -1,69 +1,86 @@
 'use client'
 
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
-import { ArrowRight, Search, ShoppingBag, X } from 'lucide-react'
+import Link from 'next/link'
+import { ArrowDown, ArrowRight, Search, ShoppingBag } from 'lucide-react'
+import { StorefrontBag } from '@/components/storefront/storefront-bag'
+import { useStorefrontCart } from '@/lib/hooks/use-storefront-cart'
 import { useProducts, type Product } from '@/lib/hooks/use-storefront-data'
 
-type CartLine = { product: Product; quantity: number }
-
-function cents(value: string) {
-  const [whole, fraction = ''] = value.split('.')
-  return Number(whole) * 100 + Number(`${fraction}00`.slice(0, 2))
-}
-
 function priceLabel(value: string, currency: string) {
-  const amount = (Number(value) || 0).toFixed(2)
-  return currency === 'USD' ? `$${amount}` : `${currency} ${amount}`
+  const amount = Number(value)
+  if (!Number.isFinite(amount)) return `${currency} ${value}`
+  try {
+    return new Intl.NumberFormat('en-PK', { style: 'currency', currency, maximumFractionDigits: 2 }).format(amount)
+  } catch {
+    return `${currency} ${amount.toFixed(2)}`
+  }
 }
 
-function ProductCard({
-  product,
-  addToBag,
-  quantityInBag,
-}: {
-  product: Product
-  addToBag: (product: Product) => void
-  quantityInBag: number
-}) {
-  const unavailable = product.stockQuantity <= quantityInBag
-  const artwork = product.heroImageUrl ? 'product-has-image' : `product-${['sand', 'clay', 'ink'][product.name.length % 3]}`
+function productImage(product: Product) {
+  return product.heroImageUrl ??
+    product.assets?.find((asset) => asset.mediaType === 'image' && asset.blobUrl)?.blobUrl ??
+    null
+}
+
+function ProductCard({ product, addToBag }: { product: Product; addToBag: (product: Product) => void }) {
+  const image = productImage(product)
+  const options = product.variants?.length ?? 0
+  const unavailable = options
+    ? !product.variants?.some((variant) => variant.stockQuantity > 0)
+    : product.stockQuantity === 0
+  const minVariant = product.variants?.length
+    ? product.variants.reduce((lowest, variant) =>
+        Number(variant.price) < Number(lowest.price) ? variant : lowest,
+      )
+    : undefined
+  const price = minVariant?.price ?? product.price
+  const currency = minVariant?.currency ?? product.currency
 
   return (
-    <article className="min-w-0">
-      <div className={`product-art ${artwork} relative flex aspect-[.9] items-end overflow-hidden rounded-2xl p-4`}>
-        {product.heroImageUrl ? (
-          <img
-            src={product.heroImageUrl}
-            alt={product.name}
-            className="absolute inset-0 size-full object-cover"
-            loading="lazy"
-          />
-        ) : (
-          <span className="sr-only">{product.name}</span>
-        )}
-        <span className="relative z-10 rounded-full bg-white/85 px-3 py-1.5 text-[10px] uppercase tracking-[.16em]">
-          {product.category}
-        </span>
+    <article className="group min-w-0">
+      <Link
+        href={`/products/${product.slug}`}
+        aria-label={`View ${product.name}`}
+        className="block focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#16468a]"
+      >
+        <div className="relative aspect-[.94] overflow-hidden bg-[#dbe7e1]">
+          {image ? (
+            <img src={image} alt={product.name} loading="lazy" className="size-full object-cover transition-transform duration-700 group-hover:scale-[1.035]" />
+          ) : (
+            <div aria-hidden="true" className="product-placeholder size-full" />
+          )}
+          <span className="absolute left-3 top-3 max-w-[75%] truncate bg-[#edf4ef] px-3 py-2 font-mono text-[10px] uppercase tracking-[.14em] text-[#152a52]">
+            {product.category}
+          </span>
+          <span className="absolute bottom-3 right-3 grid size-11 place-items-center rounded-full bg-[#d3ff48] text-[#152a52] transition-transform group-hover:rotate-45">
+            <ArrowRight size={18} aria-hidden="true" />
+          </span>
+        </div>
+      </Link>
+      <div className="flex items-start justify-between gap-3 border-b border-[#152a52]/25 py-4">
+        <div className="min-w-0">
+          <Link href={`/products/${product.slug}`} className="font-semibold leading-5 hover:underline focus-visible:outline-2 focus-visible:outline-[#16468a]">
+            {product.name}
+          </Link>
+          <p className="mt-1 text-xs text-[#314a63]">
+            {options
+              ? `${options} ${options === 1 ? 'option' : 'options'}${unavailable ? ' · unavailable' : ''}`
+              : product.stockQuantity > 0 ? 'Available' : 'Unavailable'}
+          </p>
+        </div>
+        <span className="shrink-0 font-mono text-xs font-semibold">{options ? 'From ' : ''}{priceLabel(price, currency)}</span>
+      </div>
+      {product.description && <p className="mt-3 line-clamp-2 text-xs leading-5 text-[#314a63]">{product.description}</p>}
+      {!options && product.stockQuantity > 0 && (
         <button
           type="button"
           onClick={() => addToBag(product)}
-          disabled={unavailable}
-          aria-label={unavailable ? `${product.name} is out of stock` : `Add ${product.name} to bag`}
-          className="absolute right-4 top-4 z-10 grid size-10 place-items-center rounded-full bg-white text-sm font-medium opacity-100 transition hover:bg-[#1c1c1a] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1c1c1a] disabled:cursor-not-allowed disabled:opacity-55"
+          className="mt-3 text-xs font-bold uppercase tracking-[.12em] underline decoration-[#16468a]/50 underline-offset-4 hover:text-[#16468a] focus-visible:outline-2 focus-visible:outline-[#16468a]"
         >
-          {unavailable ? '—' : '+'}
+          Add to bag
         </button>
-      </div>
-      <div className="mt-4 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="text-sm font-medium">{product.name}</h3>
-          <p className="mt-1 text-xs text-[#6d6c67]">
-            {product.stockQuantity > quantityInBag ? `${product.stockQuantity - quantityInBag} available` : 'Out of stock'}
-          </p>
-        </div>
-        <span className="shrink-0 text-sm">{priceLabel(product.price, product.currency)}</span>
-      </div>
-      {product.description && <p className="mt-2 line-clamp-2 text-xs leading-5 text-[#77756e]">{product.description}</p>}
+      )}
     </article>
   )
 }
@@ -71,180 +88,107 @@ function ProductCard({
 export function StorefrontPanel() {
   const [category, setCategory] = useState('')
   const [search, setSearch] = useState('')
-  const [cartOpen, setCartOpen] = useState(false)
-  const [cart, setCart] = useState<Record<string, CartLine>>({})
+  const [bagOpen, setBagOpen] = useState(false)
   const deferredSearch = useDeferredValue(search)
   const { products: allProducts, isLoading, isError: allProductsError, error } = useProducts()
-  const { products, isLoading: filteredLoading, isError: filteredError, error: filteredRequestError } = useProducts(category || undefined, deferredSearch || undefined)
-
+  const { products, isLoading: filteredLoading, isError: filteredError, error: filteredRequestError } = useProducts(
+    category || undefined,
+    deferredSearch || undefined,
+  )
+  const { add, count, syncProducts } = useStorefrontCart()
   const categories = useMemo(() => [...new Set(allProducts.map((product) => product.category))].sort(), [allProducts])
-  const cartLines = Object.values(cart)
-  const cartCount = cartLines.reduce((sum, line) => sum + line.quantity, 0)
-  const subtotalsByCurrency = cartLines.reduce<Record<string, number>>((totals, line) => {
-    totals[line.product.currency] = (totals[line.product.currency] ?? 0) + cents(line.product.price) * line.quantity
-    return totals
-  }, {})
 
   useEffect(() => {
-    if (isLoading || allProductsError) return
-    const activeProducts = new Map(allProducts.map((product) => [product.id, product]))
-    setCart((current) => {
-      let changed = false
-      const next: typeof current = {}
-      for (const [productId, line] of Object.entries(current)) {
-        const currentProduct = activeProducts.get(productId)
-        if (!currentProduct || currentProduct.stockQuantity === 0) {
-          changed = true
-          continue
-        }
-        const quantity = Math.min(line.quantity, currentProduct.stockQuantity)
-        if (quantity !== line.quantity || currentProduct.price !== line.product.price || currentProduct.currency !== line.product.currency) changed = true
-        next[productId] = { product: currentProduct, quantity }
-      }
-      return changed ? next : current
-    })
-  }, [allProducts, allProductsError, isLoading])
-
-  function addToBag(product: Product) {
-    setCart((current) => {
-      const existing = current[product.id]?.quantity ?? 0
-      if (existing >= product.stockQuantity) return current
-      return { ...current, [product.id]: { product, quantity: existing + 1 } }
-    })
-    setCartOpen(true)
-  }
-
-  function setQuantity(productId: string, quantity: number) {
-    if (!Number.isSafeInteger(quantity)) return
-    setCart((current) => {
-      const line = current[productId]
-      if (!line) return current
-      if (quantity <= 0) {
-        const next = { ...current }
-        delete next[productId]
-        return next
-      }
-      if (quantity > line.product.stockQuantity) return current
-      return { ...current, [productId]: { ...line, quantity } }
-    })
-  }
+    if (!isLoading && !allProductsError) syncProducts(allProducts)
+  }, [allProducts, allProductsError, isLoading, syncProducts])
 
   return (
-    <div className="mx-auto max-w-[1440px] px-5 pb-24 lg:px-10">
-      <nav aria-label="Store navigation" className="flex flex-wrap items-center justify-between gap-4 py-5 text-sm">
-        <div className="flex flex-wrap gap-5 text-[#6d6c67]">
-          <a className="text-[#1c1c1a] hover:text-[#77756e]" href="#collection">Shop all</a>
-          <a href="#collection" onClick={() => setCategory('')}>Collection</a>
-          <a href="#about">About the edit</a>
+    <div className="mx-auto max-w-[1500px] px-5 pb-24 sm:px-8 lg:px-12">
+      <div hidden dangerouslySetInnerHTML={{ __html: '<!-- THESIS: An eye-color contact-lens catalogue reads as an index of published products, not a generic beauty hero. OWN-WORLD: Ink-blue fields, electric chartreuse indexing, cool leaf-white stock; compressed display type, tabular mono labels, unboxed product plates. STORY: Shoppers browse the live catalog by category and open listings to compare the options and product facts actually published; no clinical claim or checkout is implied. FIRST VIEWPORT: A split ink-blue field puts the product proposition and catalogue action at left and a large abstract lens study at right; the live-product count anchors the lower edge. FORM: Grounded direction 7, the chromatic specimen index, adapted to the product-option bellows staging; seed 0d4d3b24.' }} />
+      <nav aria-label="Store navigation" className="flex min-h-[66px] items-center justify-between gap-4 border-b border-[#152a52]/20 py-3">
+        <div className="flex flex-wrap items-center gap-x-7 gap-y-2 text-xs font-bold uppercase tracking-[.12em]">
+          <a href="#collection" className="hover:text-[#16468a] focus-visible:outline-2 focus-visible:outline-[#16468a]">Products</a>
+          <a href="#collection" className="hidden text-[#314a63] hover:text-[#16468a] sm:inline">Color index</a>
+          <a href="#catalogue-notes" className="hidden text-[#314a63] hover:text-[#16468a] sm:inline">How to read listings</a>
         </div>
         <div className="flex items-center gap-2">
-          <label className="flex items-center gap-2 rounded-full border border-[#1c1c1a]/10 bg-white/70 px-3 py-2.5">
-            <Search size={16} aria-hidden="true" />
+          <label className="flex items-center border border-[#152a52]/25 bg-white px-3 py-2.5 focus-within:outline-2 focus-within:outline-[#16468a]">
+            <Search size={15} aria-hidden="true" />
             <span className="sr-only">Search products</span>
             <input
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search the collection"
-              className="w-36 bg-transparent text-xs outline-none placeholder:text-[#77756e] focus-visible:ring-2 focus-visible:ring-[#1c1c1a] sm:w-48"
+              placeholder="Search lenses"
+              className="w-28 bg-transparent pl-2 text-xs outline-none placeholder:text-[#314a63] sm:w-44"
             />
           </label>
           <button
             type="button"
-            onClick={() => setCartOpen((open) => !open)}
-            aria-expanded={cartOpen}
+            onClick={() => setBagOpen((open) => !open)}
+            aria-expanded={bagOpen}
             aria-controls="shopping-bag"
-            className="flex items-center gap-2 rounded-full border border-[#1c1c1a]/15 bg-white/60 px-4 py-2.5 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1c1c1a]"
+            className="inline-flex items-center gap-2 border border-[#152a52] bg-[#152a52] px-3 py-2.5 text-xs font-bold uppercase tracking-[.08em] text-[#d3ff48] hover:bg-[#16468a] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16468a] sm:px-4"
           >
-            <ShoppingBag size={16} /> Bag ({cartCount})
+            <ShoppingBag size={15} aria-hidden="true" /> <span className="hidden sm:inline">Bag</span> {count}
           </button>
         </div>
       </nav>
 
-      {cartOpen && (
-        <section id="shopping-bag" aria-label="Shopping bag" className="mb-6 rounded-2xl border border-[#1c1c1a]/10 bg-white p-5 sm:p-6">
-          <div className="flex items-center justify-between gap-4">
-            <h2 className="text-lg font-medium">Your bag <span className="text-sm text-[#77756e]">({cartCount})</span></h2>
-            <button type="button" onClick={() => setCartOpen(false)} aria-label="Close bag" className="rounded-full p-2 hover:bg-[#f2f1ed] focus-visible:outline-2 focus-visible:outline-[#1c1c1a]">
-              <X size={18} />
-            </button>
-          </div>
-          {cartLines.length === 0 ? (
-            <p className="mt-4 text-sm text-[#6d6c67]">Your bag is empty. Add an available piece to get started.</p>
-          ) : (
-            <>
-              <ul className="mt-4 divide-y divide-[#1c1c1a]/10">
-                {cartLines.map(({ product, quantity }) => (
-                  <li key={product.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                    <div>
-                      <p className="text-sm font-medium">{product.name}</p>
-                      <p className="mt-1 text-xs text-[#6d6c67]">{priceLabel(product.price, product.currency)} each</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <label className="sr-only" htmlFor={`quantity-${product.id}`}>Quantity for {product.name}</label>
-                      <input
-                        id={`quantity-${product.id}`}
-                        type="number"
-                        min="0"
-                        max={product.stockQuantity}
-                        value={quantity}
-                        onChange={(event) => setQuantity(product.id, Number(event.target.value))}
-                        className="w-16 rounded-lg border border-[#1c1c1a]/15 px-2 py-1.5 text-sm focus-visible:outline-2 focus-visible:outline-[#1c1c1a]"
-                      />
-                      <span className="min-w-20 text-right text-sm">{priceLabel(((cents(product.price) * quantity) / 100).toFixed(2), product.currency)}</span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[#1c1c1a]/10 pt-4">
-                <span className="text-sm font-medium">Subtotal</span>
-                <span className="flex flex-wrap justify-end gap-3 text-sm font-medium">
-                  {Object.entries(subtotalsByCurrency).map(([currency, subtotal]) => <span key={currency}>{priceLabel((subtotal / 100).toFixed(2), currency)}</span>)}
-                </span>
-              </div>
-              <p className="mt-3 text-xs leading-5 text-[#6d6c67]">
-                Checkout is not available yet because payment processing has not been configured. Your bag stays on this page and is not submitted as an order.
-              </p>
-            </>
-          )}
-        </section>
-      )}
+      <StorefrontBag open={bagOpen} onClose={() => setBagOpen(false)} />
 
-      <section className="relative grid min-h-[430px] overflow-hidden rounded-[30px] bg-[#e2e7df] lg:grid-cols-[.9fr_1.1fr]">
-        <div className="flex flex-col justify-between p-8 sm:p-12 lg:p-16">
+      <section className="mt-5 grid overflow-hidden bg-[#152a52] text-[#edf4ef] lg:min-h-[545px] lg:grid-cols-[.94fr_1.06fr]">
+        <div className="flex flex-col items-start justify-between gap-10 px-6 py-9 sm:px-10 sm:py-12 lg:px-14 lg:py-14">
           <div>
-            <h1 className="max-w-[620px] text-5xl font-medium leading-[.97] tracking-[-.065em] sm:text-7xl">A quieter way to live.</h1>
-            <p className="mt-7 max-w-[390px] text-base leading-7 text-[#495249]">Considered forms and everyday objects for slower rituals at home.</p>
-            <a href="#collection" className="mt-9 inline-flex items-center gap-3 rounded-full bg-[#1c1c1a] px-6 py-3.5 text-sm font-medium text-white hover:bg-[#353531] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1c1c1a]">
-              Shop the collection <ArrowRight size={16} />
+            <p className="font-mono text-[10px] uppercase tracking-[.22em] text-[#d3ff48]">ISK Lenses · Product index</p>
+            <h1 className="display-type mt-8 max-w-[620px] text-[clamp(3.2rem,8vw,6rem)] uppercase leading-[.84] tracking-[-.035em]">
+              Contact lenses.<br /><span className="text-[#d3ff48]">In color.</span>
+            </h1>
+            <p className="mt-8 max-w-[430px] text-sm leading-6 text-[#e0eae6] sm:text-base sm:leading-7">
+              Browse contact lenses by collection. Compare the options, prices, and availability published for each product.
+            </p>
+            <a href="#collection" className="mt-8 inline-flex items-center gap-4 bg-[#d3ff48] px-5 py-4 text-xs font-black uppercase tracking-[.13em] text-[#152a52] hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
+              Explore products <ArrowDown size={16} aria-hidden="true" />
             </a>
           </div>
-          <p className="mt-12 text-xs text-[#596459]">Pieces currently available: {isLoading ? '…' : allProducts.length}</p>
+          <p className="font-mono text-[10px] uppercase tracking-[.13em] text-[#dbe7e1]">
+            Published products <span className="ml-2 text-[#d3ff48]">{isLoading ? '…' : allProducts.length}</span>
+          </p>
         </div>
-        <div aria-hidden="true" className="relative min-h-[260px] overflow-hidden bg-[#d4dbd2]">
-          <div className="hero-orb absolute left-[18%] top-[12%] h-[72%] w-[58%] rotate-[-8deg] rounded-[48%_48%_10%_10%]" />
-          <div className="absolute left-[28%] top-[22%] h-[36%] w-[38%] rounded-full bg-white/45 shadow-inner" />
-          <div className="absolute bottom-[12%] left-[12%] h-8 w-[70%] rounded-full bg-black/15 blur-xl" />
+        <div
+          aria-label="Abstract optical study illustrating a contact-lens catalogue"
+          role="img"
+          data-selected={Boolean(category)}
+          className="lens-study relative grid min-h-[300px] place-items-center overflow-hidden border-t border-[#d3ff48]/30 sm:min-h-[390px] lg:min-h-full lg:border-l lg:border-t-0"
+        >
+          <div className="absolute left-5 top-5 font-mono text-[10px] uppercase tracking-[.18em] text-[#d3ff48] sm:left-8 sm:top-8">Colour / option / availability</div>
+          <div className="lens-crosshair" />
+          <span className="absolute bottom-5 right-5 max-w-36 text-right font-mono text-[10px] uppercase leading-4 tracking-[.12em] text-[#edf4ef] sm:bottom-8 sm:right-8">
+            Abstract optical study<br />Not a product photograph
+          </span>
+          <span className="sr-only">This illustration is decorative and does not show a product or lens specification.</span>
         </div>
       </section>
 
-      <section id="collection" className="pt-12">
-        <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
+      <section id="collection" className="scroll-mt-6 pt-20">
+        <div className="grid gap-6 border-b-2 border-[#152a52] pb-6 sm:grid-cols-[1fr_auto] sm:items-end">
           <div>
-            <h2 className="text-3xl font-medium tracking-[-.05em]">Shop the collection</h2>
-            <p className="mt-2 text-sm text-[#6d6c67]">Live products, availability, descriptions, and prices from the store catalog.</p>
+            <h2 className="display-type text-5xl uppercase leading-none tracking-[-.025em] sm:text-6xl">The live catalogue</h2>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-[#314a63]">Listings and availability are loaded from the store database. Open a product to see its published options.</p>
           </div>
-          <span className="text-sm text-[#6d6c67]">{isLoading || filteredLoading ? 'Updating…' : `${products.length} ${products.length === 1 ? 'piece' : 'pieces'}`}</span>
+          <p className="font-mono text-[10px] uppercase tracking-[.14em] text-[#314a63]">
+            {isLoading || filteredLoading ? 'Updating index' : `${products.length} ${products.length === 1 ? 'listing' : 'listings'}`}
+          </p>
         </div>
 
-        <div className="mb-7 flex flex-wrap gap-2" aria-label="Filter by category">
+        <div className="flex flex-wrap items-center gap-2 border-b border-[#152a52]/20 py-4" aria-label="Filter by product category">
           <button
             type="button"
             onClick={() => setCategory('')}
             aria-pressed={!category}
-            className={`rounded-full border px-4 py-2 text-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1c1c1a] ${!category ? 'border-[#1c1c1a] bg-[#1c1c1a] text-white' : 'border-[#1c1c1a]/10 bg-white/70 hover:bg-white'}`}
+            className={`px-3 py-2 text-[10px] font-bold uppercase tracking-[.1em] focus-visible:outline-2 focus-visible:outline-[#16468a] ${!category ? 'bg-[#152a52] text-[#d3ff48]' : 'border border-[#152a52]/25 bg-transparent hover:bg-[#dbe7e1]'}`}
           >
-            All pieces
+            All products
           </button>
           {categories.map((item) => (
             <button
@@ -252,7 +196,7 @@ export function StorefrontPanel() {
               type="button"
               onClick={() => setCategory(item)}
               aria-pressed={category === item}
-              className={`rounded-full border px-4 py-2 text-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1c1c1a] ${category === item ? 'border-[#1c1c1a] bg-[#1c1c1a] text-white' : 'border-[#1c1c1a]/10 bg-white/70 hover:bg-white'}`}
+              className={`max-w-full truncate px-3 py-2 text-[10px] font-bold uppercase tracking-[.1em] focus-visible:outline-2 focus-visible:outline-[#16468a] ${category === item ? 'bg-[#152a52] text-[#d3ff48]' : 'border border-[#152a52]/25 bg-transparent hover:bg-[#dbe7e1]'}`}
             >
               {item}
             </button>
@@ -260,44 +204,52 @@ export function StorefrontPanel() {
         </div>
 
         {allProductsError || filteredError ? (
-          <div role="alert" className="rounded-xl border border-[#9b4a36]/25 bg-[#f8eeeb] px-5 py-4 text-sm text-[#753b2d]">
+          <div role="alert" className="mt-6 border border-[#a52d3c]/35 bg-[#fff4f2] px-5 py-4 text-sm text-[#782b36]">
             {(filteredError ? filteredRequestError : error) instanceof Error
               ? (filteredError ? filteredRequestError : error)?.message
-              : 'The collection could not be loaded. Refresh the page to try again.'}
+              : 'The catalogue could not be loaded. Refresh the page to try again.'}
           </div>
         ) : isLoading ? (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4" aria-label="Loading products">
-            {[0, 1, 2, 3].map((item) => <div key={item} className="aspect-[.9] animate-pulse rounded-2xl bg-[#e8e6e0]" />)}
+          <div className="grid gap-x-5 gap-y-9 py-8 sm:grid-cols-2 lg:grid-cols-4" aria-label="Loading catalogue">
+            {[0, 1, 2, 3].map((item) => <div key={item} className="aspect-[.94] animate-pulse bg-[#dbe7e1]" />)}
           </div>
         ) : products.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-[#1c1c1a]/20 bg-white/50 px-5 py-10 text-center text-sm text-[#6d6c67]">
-            No available products match those filters. Try a different category or search term.
-          </p>
+          <div className="relative mt-8 overflow-hidden border border-[#152a52]/20 bg-[#e4eee9] px-6 py-12 sm:px-10">
+            <div className="absolute -right-20 -top-24 size-72 rounded-full border border-[#16468a]/25" aria-hidden="true" />
+            <div className="absolute -right-8 -top-12 size-48 rounded-full border-[20px] border-[#d3ff48]/75" aria-hidden="true" />
+            <h3 className="relative max-w-xl text-2xl font-black tracking-[-.04em]">The product index is waiting for its first listing.</h3>
+            <p className="relative mt-3 max-w-xl text-sm leading-6 text-[#314a63]">
+              No products have been published to the storefront. An operator can review drafts and publish verified product details in Admin.
+            </p>
+          </div>
         ) : (
-          <div className="grid gap-x-5 gap-y-9 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-x-5 gap-y-10 py-8 sm:grid-cols-2 lg:grid-cols-4">
             {products.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                addToBag={addToBag}
-                quantityInBag={cart[product.id]?.quantity ?? 0}
-              />
+              <ProductCard key={product.id} product={product} addToBag={add} />
             ))}
           </div>
         )}
       </section>
 
-      <section id="about" className="mt-24 grid gap-8 rounded-[28px] bg-[#e8e4dc] p-8 sm:p-12 md:grid-cols-[1fr_auto] md:items-end">
+      <section id="catalogue-notes" className="mt-24 grid gap-8 border-y border-[#152a52]/25 py-8 sm:grid-cols-[.8fr_1.2fr] sm:py-10">
         <div>
-          <h2 className="max-w-lg text-3xl font-medium tracking-[-.05em]">Objects that earn their place.</h2>
-          <p className="mt-4 max-w-2xl text-sm leading-6 text-[#5f5d57]">
-            Browse the current catalog and find the pieces that fit your everyday. Product information and availability come directly from the store database.
-          </p>
+          <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[#16468a]">How to read this index</p>
+          <h2 className="display-type mt-4 max-w-sm text-4xl uppercase leading-[.92] sm:text-5xl">Only what the listing says.</h2>
         </div>
-        <a href="#collection" className="inline-flex items-center gap-2 text-sm underline underline-offset-4">
-          Browse all pieces <ArrowRight size={15} />
-        </a>
+        <div className="flex flex-col justify-between gap-7 sm:flex-row">
+          <p className="max-w-lg text-sm leading-6 text-[#314a63]">
+            Product names, categories, prices, availability, and variant details come from published catalogue records. A detail that has not been added to a listing will not be filled in by this page.
+          </p>
+          <a href="#collection" className="inline-flex shrink-0 items-center gap-2 self-start text-xs font-bold uppercase tracking-[.12em] underline underline-offset-4 hover:text-[#16468a] focus-visible:outline-2 focus-visible:outline-[#16468a]">
+            Back to products <ArrowRight size={15} aria-hidden="true" />
+          </a>
+        </div>
       </section>
+
+      <footer className="flex flex-wrap items-center justify-between gap-4 pt-8 text-[10px] font-mono uppercase tracking-[.15em] text-[#314a63]">
+        <span>ISK Lenses · Product catalogue</span>
+        <span>Browse only · Checkout unavailable</span>
+      </footer>
     </div>
   )
 }

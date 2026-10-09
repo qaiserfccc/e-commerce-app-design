@@ -4,8 +4,8 @@ The storefront and admin use the same Neon Postgres database through Drizzle. Cl
 
 ## Storefront
 
-- `GET /api/products` returns active products and associated public image metadata. It supports `category` and `q` filters and is refreshed by `useProducts`.
-- `GET /api/products/[slug]` returns one active product with its images.
+- `GET /api/products` returns active products, supported public media metadata, and active lens options. It supports `category` and `q` filters and is refreshed by `useProducts`.
+- `GET /api/products/[slug]` returns one active product with its public media and active options.
 - Search, category selection, price, availability, and product imagery reflect the database catalog.
 - The bag is in-page state only. It does not write customer or order records. Checkout is intentionally unavailable until an approved payment provider and order-submission flow are configured.
 - Public server actions only expose catalog reads. Customer and order reads/writes are not callable from the public storefront.
@@ -26,17 +26,23 @@ The storefront and admin use the same Neon Postgres database through Drizzle. Cl
 - `GET /api/admin/metrics` returns order counts, pending orders, counts by status, and recognized order value grouped by currency. Revenue includes paid, processing, shipped, and delivered orders; it excludes pending, cancelled, and refunded orders.
 - `GET /api/admin/products`, `/orders`, `/customers`, and `/activity` require an admin session.
 - Product create/edit/archive, stock updates, order status changes, and customer marketing-preference updates are authenticated server actions. Invalid values and invalid order-status transitions are rejected.
+- Product options support SKU, color, prescription power, base curve, diameter, pack size, price, currency, and stock. Parent price and stock are derived from active options; direct price/stock edits are blocked while options are active.
+- `POST /api/admin/products/import` reads the public ISK Lenses WooCommerce Store API in pages of 50. It is admin-protected and source IDs are unique, so reruns skip listings already imported. Source price and source links are retained for review; product descriptions and image files are not copied. Every import is a draft with zero stock, and missing source categories are labeled `Uncategorized`.
 - System-user listing, creation, and activation/deactivation are owner-only. Passwords require at least 16 characters and are stored as salted scrypt hashes.
 - Mutations create `store_activity_events` entries transactionally. Activity payloads do not contain customer names, addresses, email addresses, or other personal fields.
 - Order and customer endpoints return 50 records per page with database counts and server-side customer search. The admin screens paginate through all matching records and expose empty/loading/error states.
 - Admin writes refresh the relevant SWR keys immediately. Storefront catalog reads revalidate periodically and after product changes.
 
-## Product image storage
+## Product media storage
 
-- Admin uploads accept JPEG, PNG, WebP, or AVIF images up to 4 MB through `POST /api/admin/products/[productId]/assets`.
+- Admin uploads accept JPEG, PNG, WebP, or AVIF images and MP4 or WebM video up to 4 MB through `POST /api/admin/products/[productId]/assets`.
 - Uploads go to Vercel Blob. The database stores only the Blob URL, pathname, alt text, and product relation in `store_product_assets`.
-- `DELETE /api/admin/assets/[assetId]` removes the Blob and its metadata. Blob and database writes cannot share a transaction; the API reports cleanup failures rather than claiming success.
+- Admins can reorder assets with `PATCH /api/admin/assets/[assetId]`. `DELETE /api/admin/assets/[assetId]` removes the Blob and its metadata. Blob and database writes cannot share a transaction; the API reports cleanup failures rather than claiming success.
 - `BLOB_READ_WRITE_TOKEN` must be configured for uploads and deletions.
+
+## Lens catalog state
+
+Migration `0003_isk_lens_catalog.sql` is applied to the connected Neon database. It adds source provenance, image/video media typing, product variants, PKR as the product currency default, and updated-at triggers. The initial public-catalog import created 495 draft listings with zero stock. Of these, 89 source records lacked a category and are marked `Uncategorized`. No source description or image files were copied; operators must verify each listing and supply approved lens specifications and media before publishing.
 
 ## Data flow
 
@@ -44,7 +50,8 @@ The storefront and admin use the same Neon Postgres database through Drizzle. Cl
 Storefront SWR ──> /api/products ──> public catalog reads ──> Neon
 Admin SWR ───────> /api/admin/* ──> session-checked reads ──> Neon
 Admin forms ─────> server actions ─> session + validation ──> Neon transaction + audit event
-Image upload ────> authenticated route ──> Vercel Blob + asset metadata in Neon
+Media upload ────> authenticated route ──> Vercel Blob + asset metadata in Neon
+Catalog import ──> authenticated route ──> public ISK Store API ──> draft records + audit events
 ```
 
 Polling/revalidation is used; the application does not use database WebSockets. Do not describe these updates as instantaneous realtime subscriptions.

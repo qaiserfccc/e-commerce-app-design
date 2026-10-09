@@ -1,6 +1,6 @@
 'use server'
 
-import { and, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import {
   storeActivityEvents,
@@ -9,6 +9,7 @@ import {
   storeOrders,
   storeProductAssets,
   storeProducts,
+  storeProductVariants,
   storeAdminUsers,
 } from '@/lib/db/schema'
 import { clearAdminSession, hashAdminPassword, requireAdminSession } from '@/lib/auth/admin'
@@ -30,6 +31,22 @@ type ProductInput = {
   status?: string
 }
 
+type ProductVariantInput = {
+  sku?: unknown
+  name: unknown
+  color?: unknown
+  powerDiopters?: unknown
+  baseCurve?: unknown
+  diameterMm?: unknown
+  packSize?: unknown
+  price: unknown
+  currency?: unknown
+  stockQuantity: unknown
+  isActive?: unknown
+}
+
+const variantDecimalPattern = /^-?\d{1,4}(?:\.\d{1,2})?$/
+
 function requireText(value: unknown, field: string, maxLength: number) {
   if (typeof value !== 'string' || !value.trim() || value.trim().length > maxLength) {
     throw new Error(`${field} is required and must be at most ${maxLength} characters.`)
@@ -50,7 +67,7 @@ function validateProductInput(data: ProductInput) {
   if (data.description !== undefined && typeof data.description !== 'string') throw new Error('Product description is invalid.')
   if (data.currency !== undefined && typeof data.currency !== 'string') throw new Error('Currency is invalid.')
   const description = data.description?.trim() || null
-  const currency = (data.currency || 'USD').trim().toUpperCase()
+  const currency = (data.currency || 'PKR').trim().toUpperCase()
   const status = data.status || 'active'
   const stockQuantity = data.stockQuantity ?? 0
 
@@ -58,10 +75,102 @@ function validateProductInput(data: ProductInput) {
   if (!pricePattern.test(price)) throw new Error('Enter a price with up to two decimal places.')
   if (!/^[A-Z]{3}$/.test(currency)) throw new Error('Currency must be a three-letter ISO code.')
   if (!productStatuses.includes(status as (typeof productStatuses)[number])) throw new Error('Product status is invalid.')
-  if (!Number.isSafeInteger(stockQuantity) || stockQuantity < 0) throw new Error('Stock quantity must be a non-negative whole number.')
+  if (!Number.isSafeInteger(stockQuantity) || stockQuantity < 0 || stockQuantity > 2_147_483_647) {
+    throw new Error('Stock quantity must be a whole number between zero and 2,147,483,647.')
+  }
   if (description && description.length > 5000) throw new Error('Description must be at most 5000 characters.')
 
   return { name, slug, category, price, description, currency, status, stockQuantity }
+}
+
+function validateProductVariantInput(data: ProductVariantInput) {
+  if (!data || typeof data !== 'object') throw new Error('Variant details are required.')
+  const name = requireText(data.name, 'Variant name', 180)
+  const optionalText = (value: unknown, field: string, maxLength: number) => {
+    if (value === undefined || value === null || value === '') return null
+    return requireText(value, field, maxLength)
+  }
+  const sku = optionalText(data.sku, 'SKU', 64)
+  const color = optionalText(data.color, 'Color', 80)
+  const optionalDecimal = (value: unknown, field: string) => {
+    if (value === undefined || value === null || value === '') return null
+    if (typeof value !== 'string' && typeof value !== 'number') throw new Error(`${field} is invalid.`)
+    const normalized = String(value).trim()
+    if (!variantDecimalPattern.test(normalized)) throw new Error(`${field} must be a number with up to two decimal places.`)
+    return normalized
+  }
+  const powerDiopters = optionalDecimal(data.powerDiopters, 'Power')
+  const baseCurve = optionalDecimal(data.baseCurve, 'Base curve')
+  const diameterMm = optionalDecimal(data.diameterMm, 'Diameter')
+  if (powerDiopters !== null && (Number(powerDiopters) < -9999.99 || Number(powerDiopters) > 9999.99)) {
+    throw new Error('Power is outside the supported range.')
+  }
+  for (const [value, field] of [[baseCurve, 'Base curve'], [diameterMm, 'Diameter']] as const) {
+    if (value !== null && (Number(value) <= 0 || Number(value) > 99.99)) throw new Error(`${field} must be greater than zero and at most 99.99.`)
+  }
+  let packSize: number | null = null
+  if (data.packSize !== undefined && data.packSize !== null && data.packSize !== '') {
+    if ((typeof data.packSize !== 'number' && typeof data.packSize !== 'string') ||
+        (typeof data.packSize === 'string' && !/^\d+$/.test(data.packSize))) {
+      throw new Error('Pack size must be a whole number from 1 to 1000.')
+    }
+    packSize = Number(data.packSize)
+    if (!Number.isSafeInteger(packSize) || packSize < 1 || packSize > 1000) {
+      throw new Error('Pack size must be a whole number from 1 to 1000.')
+    }
+  }
+  const price = requireText(data.price, 'Price', 16)
+  if (data.currency !== undefined && typeof data.currency !== 'string') throw new Error('Currency is invalid.')
+  const currency = (data.currency || 'PKR').trim().toUpperCase()
+  const stockQuantity = data.stockQuantity
+  if (!pricePattern.test(price)) throw new Error('Enter a price with up to two decimal places.')
+  if (!/^[A-Z]{3}$/.test(currency)) throw new Error('Currency must be a three-letter ISO code.')
+  if (typeof stockQuantity !== 'number' || !Number.isSafeInteger(stockQuantity) || stockQuantity < 0 || stockQuantity > 2_147_483_647) {
+    throw new Error('Stock quantity must be a whole number between zero and 2,147,483,647.')
+  }
+  if (data.isActive !== undefined && typeof data.isActive !== 'boolean') throw new Error('Variant status is invalid.')
+  return {
+    sku,
+    name,
+    color,
+    powerDiopters,
+    baseCurve,
+    diameterMm,
+    packSize,
+    price,
+    currency,
+    stockQuantity,
+    isActive: data.isActive ?? true,
+  }
+}
+
+async function refreshProductVariantSummary(tx: Parameters<Parameters<typeof db.transaction>[0]>[0], productId: string) {
+  const activeVariants = await tx
+    .select({ price: storeProductVariants.price, currency: storeProductVariants.currency, stockQuantity: storeProductVariants.stockQuantity })
+    .from(storeProductVariants)
+    .where(and(eq(storeProductVariants.productId, productId), eq(storeProductVariants.isActive, true)))
+    .orderBy(storeProductVariants.price)
+  if (activeVariants.length) {
+    const maximumStock = 2_147_483_647
+    let stockQuantity = 0
+    for (const variant of activeVariants) {
+      if (variant.stockQuantity > maximumStock - stockQuantity) {
+        throw new Error('Combined variant stock exceeds the supported range.')
+      }
+      stockQuantity += variant.stockQuantity
+    }
+    await tx
+      .update(storeProducts)
+      .set({
+        price: activeVariants[0].price,
+        currency: activeVariants[0].currency,
+        stockQuantity: Number(stockQuantity),
+        updatedAt: new Date(),
+      })
+      .where(eq(storeProducts.id, productId))
+  } else {
+    await tx.update(storeProducts).set({ stockQuantity: 0, updatedAt: new Date() }).where(eq(storeProducts.id, productId))
+  }
 }
 
 function boundedLimit(limit: number, fallback: number, maximum: number) {
@@ -83,7 +192,94 @@ export async function getAdminProduct(productId: string) {
 
 export async function getAllProductAssets() {
   await requireAdminSession()
-  return db.select().from(storeProductAssets).orderBy(storeProductAssets.sortOrder)
+  return db.select().from(storeProductAssets).orderBy(asc(storeProductAssets.sortOrder), asc(storeProductAssets.createdAt))
+}
+
+export async function getAllProductVariants() {
+  await requireAdminSession()
+  return db.select().from(storeProductVariants).orderBy(storeProductVariants.name)
+}
+
+export async function getProductVariants(productId: string) {
+  await requireAdminSession()
+  validateUuid(productId, 'Product ID')
+  return db
+    .select()
+    .from(storeProductVariants)
+    .where(eq(storeProductVariants.productId, productId))
+    .orderBy(storeProductVariants.name)
+}
+
+export async function createProductVariant(productId: string, data: ProductVariantInput) {
+  await requireAdminSession('admin')
+  validateUuid(productId, 'Product ID')
+  const values = validateProductVariantInput(data)
+
+  return db.transaction(async (tx) => {
+    const [product] = await tx.select().from(storeProducts).where(eq(storeProducts.id, productId)).limit(1).for('update')
+    if (!product) throw new Error('Product not found.')
+    if (values.currency !== product.currency) throw new Error('Variant currency must match the product currency.')
+    const [variant] = await tx.insert(storeProductVariants).values({ ...values, productId }).returning()
+    await refreshProductVariantSummary(tx, productId)
+    await tx.insert(storeActivityEvents).values({
+      entityType: 'product_variant',
+      entityId: variant.id,
+      eventType: 'created',
+      payload: { productId },
+    })
+    return variant
+  })
+}
+
+export async function updateProductVariant(productId: string, variantId: string, data: ProductVariantInput) {
+  await requireAdminSession('admin')
+  validateUuid(productId, 'Product ID')
+  validateUuid(variantId, 'Variant ID')
+  const values = validateProductVariantInput(data)
+
+  return db.transaction(async (tx) => {
+    const [product] = await tx.select().from(storeProducts).where(eq(storeProducts.id, productId)).limit(1).for('update')
+    if (!product) throw new Error('Product not found.')
+    if (values.currency !== product.currency) throw new Error('Variant currency must match the product currency.')
+    const [variant] = await tx
+      .update(storeProductVariants)
+      .set({ ...values, updatedAt: new Date() })
+      .where(and(eq(storeProductVariants.id, variantId), eq(storeProductVariants.productId, productId)))
+      .returning()
+    if (!variant) throw new Error('Product variant not found.')
+    await refreshProductVariantSummary(tx, productId)
+    await tx.insert(storeActivityEvents).values({
+      entityType: 'product_variant',
+      entityId: variant.id,
+      eventType: 'updated',
+      payload: { productId },
+    })
+    return variant
+  })
+}
+
+export async function archiveProductVariant(productId: string, variantId: string) {
+  await requireAdminSession('admin')
+  validateUuid(productId, 'Product ID')
+  validateUuid(variantId, 'Variant ID')
+  return db.transaction(async (tx) => {
+    const [product] = await tx.select({ id: storeProducts.id }).from(storeProducts).where(eq(storeProducts.id, productId)).limit(1).for('update')
+    if (!product) throw new Error('Product not found.')
+    const [variant] = await tx
+      .update(storeProductVariants)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(and(eq(storeProductVariants.id, variantId), eq(storeProductVariants.productId, productId)))
+      .returning()
+    if (!variant) throw new Error('Product variant not found.')
+    await refreshProductVariantSummary(tx, productId)
+    await tx.insert(storeActivityEvents).values({
+      entityType: 'product_variant',
+      entityId: variant.id,
+      eventType: 'archived',
+      payload: { productId },
+    })
+    return variant
+  })
 }
 
 export async function createProduct(data: ProductInput) {
@@ -102,6 +298,121 @@ export async function createProduct(data: ProductInput) {
   })
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function boundedIskProduct(value: unknown) {
+  if (!isRecord(value) || typeof value.id !== 'number' || !Number.isSafeInteger(value.id) || value.id < 1) {
+    throw new Error('The ISK Lenses catalog returned an invalid product.')
+  }
+  const name = requireText(value.name, 'Imported product name', 180)
+  const slug = requireText(value.slug, 'Imported product slug', 180)
+  if (!slugPattern.test(slug)) throw new Error('The ISK Lenses catalog returned an invalid product slug.')
+
+  let sourceUrl: URL
+  try {
+    sourceUrl = new URL(requireText(value.permalink, 'Imported product link', 2048))
+  } catch {
+    throw new Error('The ISK Lenses catalog returned an invalid product link.')
+  }
+  if (sourceUrl.protocol !== 'https:' || sourceUrl.hostname !== 'isklenses.com' || !sourceUrl.pathname.startsWith('/product/')) {
+    throw new Error('The ISK Lenses catalog returned a link outside its product pages.')
+  }
+
+  if (!isRecord(value.prices)) throw new Error('The ISK Lenses catalog returned an invalid product price.')
+  const minorAmount = value.prices.price
+  const minorUnit = value.prices.currency_minor_unit
+  const currency = value.prices.currency_code
+  if (typeof minorAmount !== 'string' || !/^\d+$/.test(minorAmount) ||
+      typeof minorUnit !== 'number' || !Number.isSafeInteger(minorUnit) || minorUnit < 0 || minorUnit > 2 ||
+      typeof currency !== 'string' || !/^[A-Z]{3}$/.test(currency)) {
+    throw new Error('The ISK Lenses catalog returned an unsupported price format.')
+  }
+  const minorDigits = minorUnit
+  const paddedAmount = minorAmount.padStart(minorDigits + 1, '0')
+  const price = minorDigits
+    ? `${paddedAmount.slice(0, -minorDigits)}.${paddedAmount.slice(-minorDigits)}`
+    : minorAmount
+  if (!pricePattern.test(price)) throw new Error('The ISK Lenses catalog returned a price outside the supported range.')
+
+  const sourceCategory = Array.isArray(value.categories)
+    ? value.categories.find((item) =>
+        isRecord(item) &&
+        typeof item.name === 'string' &&
+        item.name.trim().length > 0 &&
+        item.name.length <= 100,
+      )
+    : undefined
+  const category = sourceCategory ? requireText(sourceCategory.name, 'Imported product category', 100) : 'Uncategorized'
+  let sourceImageUrl: string | null = null
+  if (Array.isArray(value.images) && value.images.length > 0 && isRecord(value.images[0]) && typeof value.images[0].src === 'string') {
+    try {
+      const imageUrl = new URL(value.images[0].src)
+      if (imageUrl.protocol === 'https:' && imageUrl.hostname === 'isklenses.com') sourceImageUrl = imageUrl.toString()
+    } catch {
+      sourceImageUrl = null
+    }
+  }
+
+  return {
+    sourceProductId: value.id,
+    sourceUrl: sourceUrl.toString(),
+    sourceImageUrl,
+    name,
+    slug,
+    category,
+    price,
+    currency,
+  }
+}
+
+export async function importIskCatalogPage(page: number) {
+  await requireAdminSession('admin')
+  if (!Number.isSafeInteger(page) || page < 1 || page > 10) throw new Error('Import page must be between 1 and 10.')
+  const perPage = 50
+  const response = await fetch(
+    `https://isklenses.com/wp-json/wc/store/v1/products?per_page=${perPage}&page=${page}`,
+    { cache: 'no-store', signal: AbortSignal.timeout(15_000) },
+  )
+  if (!response.ok) {
+    console.error('[admin-import] ISK catalog request failed', { status: response.status })
+    throw new Error('The ISK Lenses catalog could not be reached. Try again shortly.')
+  }
+  const payload: unknown = await response.json()
+  if (!Array.isArray(payload) || payload.length > perPage) throw new Error('The ISK Lenses catalog returned an invalid page.')
+  const products = payload.map(boundedIskProduct)
+  if (!products.length) return { page, imported: 0, skipped: 0, hasMore: false }
+
+  return db.transaction(async (tx) => {
+    const imported = await tx
+      .insert(storeProducts)
+      .values(products.map((product) => ({
+        ...product,
+        description: null,
+        heroImageUrl: null,
+        stockQuantity: 0,
+        status: 'draft',
+      })))
+      .onConflictDoNothing()
+      .returning({ id: storeProducts.id, sourceProductId: storeProducts.sourceProductId })
+    if (imported.length) {
+      await tx.insert(storeActivityEvents).values(imported.map((product) => ({
+        entityType: 'product',
+        entityId: product.id,
+        eventType: 'imported',
+        payload: { sourceProductId: product.sourceProductId },
+      })))
+    }
+    return {
+      page,
+      imported: imported.length,
+      skipped: products.length - imported.length,
+      hasMore: products.length === perPage,
+    }
+  })
+}
+
 export async function updateProduct(
   productId: string,
   data: Partial<ProductInput> & { heroImageUrl?: string | null },
@@ -109,6 +420,14 @@ export async function updateProduct(
   await requireAdminSession('admin')
   if (!data || typeof data !== 'object') throw new Error('Product changes are required.')
   validateUuid(productId, 'Product ID')
+  if (data.price !== undefined || data.currency !== undefined || data.stockQuantity !== undefined) {
+    const [variant] = await db
+      .select({ id: storeProductVariants.id })
+      .from(storeProductVariants)
+      .where(and(eq(storeProductVariants.productId, productId), eq(storeProductVariants.isActive, true)))
+      .limit(1)
+    if (variant) throw new Error('Manage price and stock on active variants for this product.')
+  }
 
   const changes: Partial<typeof storeProducts.$inferInsert> = {}
   if (data.name !== undefined) changes.name = requireText(data.name, 'Product name', 180)
@@ -182,6 +501,12 @@ export async function updateProductStock(productId: string, quantity: number) {
   await requireAdminSession('admin')
   validateUuid(productId, 'Product ID')
   if (!Number.isSafeInteger(quantity) || quantity < 0) throw new Error('Stock quantity must be a non-negative whole number.')
+  const [variant] = await db
+    .select({ id: storeProductVariants.id })
+    .from(storeProductVariants)
+    .where(and(eq(storeProductVariants.productId, productId), eq(storeProductVariants.isActive, true)))
+    .limit(1)
+  if (variant) throw new Error('Manage stock on active variants for this product.')
 
   return db.transaction(async (tx) => {
     const [product] = await tx
@@ -206,7 +531,7 @@ export async function addProductAsset(
   blobPathname: string,
   blobUrl: string,
   altText?: string,
-  sortOrder = 0,
+  mediaType: 'image' | 'video' = 'image',
 ) {
   await requireAdminSession('admin')
   validateUuid(productId, 'Product ID')
@@ -214,7 +539,7 @@ export async function addProductAsset(
   if (altText !== undefined && typeof altText !== 'string') throw new Error('Image description is invalid.')
   const text = altText?.trim() || null
   if (text && text.length > 500) throw new Error('Image description must be at most 500 characters.')
-  if (!Number.isSafeInteger(sortOrder) || sortOrder < 0) throw new Error('Image order is invalid.')
+  if (mediaType !== 'image' && mediaType !== 'video') throw new Error('Media type is invalid.')
   const url = new URL(blobUrl)
   if (url.protocol !== 'https:' || !url.hostname.endsWith('.blob.vercel-storage.com')) {
     throw new Error('Only public Vercel Blob image URLs can be saved.')
@@ -223,21 +548,67 @@ export async function addProductAsset(
   return db.transaction(async (tx) => {
     const [product] = await tx.select().from(storeProducts).where(eq(storeProducts.id, productId)).limit(1)
     if (!product) throw new Error('Product not found.')
+    const [lastAsset] = await tx
+      .select({ sortOrder: storeProductAssets.sortOrder })
+      .from(storeProductAssets)
+      .where(eq(storeProductAssets.productId, productId))
+      .orderBy(desc(storeProductAssets.sortOrder))
+      .limit(1)
 
     const [asset] = await tx
       .insert(storeProductAssets)
-      .values({ productId, blobPathname: pathname, blobUrl: url.toString(), altText: text, sortOrder })
+      .values({
+        productId,
+        blobPathname: pathname,
+        blobUrl: url.toString(),
+        altText: text,
+        mediaType,
+        sortOrder: (lastAsset?.sortOrder ?? -1) + 1,
+      })
       .returning()
-    if (!product.heroImageUrl) {
+    if (mediaType === 'image' && !product.heroImageUrl) {
       await tx.update(storeProducts).set({ heroImageUrl: asset.blobUrl, updatedAt: new Date() }).where(eq(storeProducts.id, productId))
     }
     await tx.insert(storeActivityEvents).values({
       entityType: 'product_asset',
       entityId: asset.id,
       eventType: 'created',
-      payload: { productId },
+      payload: { productId, mediaType },
     })
     return asset
+  })
+}
+
+export async function moveProductAsset(assetId: string, direction: 'up' | 'down') {
+  await requireAdminSession('admin')
+  validateUuid(assetId, 'Asset ID')
+  if (direction !== 'up' && direction !== 'down') throw new Error('Media direction is invalid.')
+  return db.transaction(async (tx) => {
+    const [asset] = await tx.select().from(storeProductAssets).where(eq(storeProductAssets.id, assetId)).limit(1)
+    if (!asset) throw new Error('Product media not found.')
+    const assets = await tx
+      .select()
+      .from(storeProductAssets)
+      .where(eq(storeProductAssets.productId, asset.productId))
+      .orderBy(asc(storeProductAssets.sortOrder), asc(storeProductAssets.createdAt))
+    const index = assets.findIndex((item) => item.id === assetId)
+    const neighbor = assets[index + (direction === 'up' ? -1 : 1)]
+    if (!neighbor) return asset
+    const reordered = [...assets]
+    ;[reordered[index], reordered[index + (direction === 'up' ? -1 : 1)]] = [
+      reordered[index + (direction === 'up' ? -1 : 1)],
+      reordered[index],
+    ]
+    for (const [sortOrder, item] of reordered.entries()) {
+      await tx.update(storeProductAssets).set({ sortOrder }).where(eq(storeProductAssets.id, item.id))
+    }
+    await tx.insert(storeActivityEvents).values({
+      entityType: 'product_asset',
+      entityId: asset.id,
+      eventType: 'reordered',
+      payload: { productId: asset.productId, direction },
+    })
+    return { ...asset, sortOrder: reordered.findIndex((item) => item.id === assetId) }
   })
 }
 
@@ -258,12 +629,12 @@ export async function deleteProductAsset(assetId: string) {
 
     await tx.delete(storeProductAssets).where(eq(storeProductAssets.id, assetId))
     const [product] = await tx.select().from(storeProducts).where(eq(storeProducts.id, asset.productId)).limit(1)
-    if (product?.heroImageUrl === asset.blobUrl) {
+    if (product?.heroImageUrl === asset.blobUrl && asset.mediaType === 'image') {
       const [nextAsset] = await tx
         .select()
         .from(storeProductAssets)
-        .where(eq(storeProductAssets.productId, asset.productId))
-        .orderBy(storeProductAssets.sortOrder)
+        .where(and(eq(storeProductAssets.productId, asset.productId), eq(storeProductAssets.mediaType, 'image')))
+        .orderBy(asc(storeProductAssets.sortOrder))
         .limit(1)
       await tx
         .update(storeProducts)

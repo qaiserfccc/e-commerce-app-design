@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { storeAdminUsers } from '@/lib/db/schema'
 
-const COOKIE_NAME = 'morrow-admin-session'
+const COOKIE_NAME = 'isk-lenses-admin-session'
 const SESSION_DURATION_SECONDS = 8 * 60 * 60
 const PASSWORD_HASH_SCHEME = 'scrypt'
 

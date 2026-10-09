@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getProductAssets, getProductBySlug } from '@/app/actions/storefront'
+import { getActiveProductVariants, getProductAssets, getProductBySlug } from '@/app/actions/storefront'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,9 +14,12 @@ export async function GET(
     }
     const product = await getProductBySlug(slug)
     if (!product) return NextResponse.json({ error: 'Product not found.' }, { status: 404 })
-    const assets = await getProductAssets(product.id)
+    const [assets, variants] = await Promise.all([
+      getProductAssets(product.id),
+      getActiveProductVariants(product.id),
+    ])
     return NextResponse.json(
-      { data: { ...product, assets }, timestamp: new Date().toISOString() },
+      { data: { ...product, assets, variants }, timestamp: new Date().toISOString() },
       { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' } },
     )
   } catch (error) {

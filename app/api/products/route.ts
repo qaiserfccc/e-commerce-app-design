@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getActiveProducts, getProductAssets, getProductsByCategory, searchProducts } from '@/app/actions/storefront'
+import {
+  getActiveProductVariants,
+  getActiveProducts,
+  getProductAssets,
+  getProductsByCategory,
+  searchProducts,
+} from '@/app/actions/storefront'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,6 +26,7 @@ export async function GET(request: NextRequest) {
       products.map(async (product) => ({
         ...product,
         assets: await getProductAssets(product.id),
+        variants: await getActiveProductVariants(product.id),
       })),
     )
 

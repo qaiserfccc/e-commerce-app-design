@@ -1,10 +1,11 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
+import { StorefrontCartProvider } from '@/lib/hooks/use-storefront-cart'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'morrow. — Objects for slower living',
-  description: 'A considered storefront and commerce workspace for everyday rituals.',
+  title: 'ISK Lenses — Contact lens catalogue',
+  description: 'Browse the ISK Lenses catalogue and compare published product details.',
   generator: 'v0.app',
   icons: {
     icon: [
@@ -26,11 +27,8 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  colorScheme: 'light dark',
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: 'white' },
-    { media: '(prefers-color-scheme: dark)', color: 'black' },
-  ],
+  colorScheme: 'light',
+  themeColor: '#edf4ef',
 }
 
 export default function RootLayout({
@@ -41,7 +39,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
-        {children}
+        <StorefrontCartProvider>{children}</StorefrontCartProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

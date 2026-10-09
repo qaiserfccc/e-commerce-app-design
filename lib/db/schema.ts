@@ -8,13 +8,20 @@ export const storeProducts = pgTable('store_products', {
   description: text('description'),
   category: text('category').notNull(),
   price: numeric('price', { precision: 12, scale: 2 }).notNull(),
-  currency: text('currency').notNull().default('USD'),
+  currency: text('currency').notNull().default('PKR'),
   status: text('status').notNull().default('active'),
   stockQuantity: integer('stock_quantity').notNull().default(0),
   heroImageUrl: text('hero_image_url'),
+  sourceProductId: integer('source_product_id'),
+  sourceUrl: text('source_url'),
+  sourceImageUrl: text('source_image_url'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-})
+}, (table) => ({
+  sourceProductUnique: uniqueIndex('store_products_source_product_id_unique')
+    .on(table.sourceProductId)
+    .where(sql`${table.sourceProductId} IS NOT NULL`),
+}))
 
 export const storeCustomers = pgTable('store_customers', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -59,9 +66,30 @@ export const storeProductAssets = pgTable('store_product_assets', {
   blobPathname: text('blob_pathname').notNull(),
   blobUrl: text('blob_url'),
   altText: text('alt_text'),
+  mediaType: text('media_type').notNull().default('image'),
   sortOrder: integer('sort_order').notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
+
+export const storeProductVariants = pgTable('store_product_variants', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  productId: uuid('product_id').notNull().references(() => storeProducts.id, { onDelete: 'cascade' }),
+  sku: text('sku'),
+  name: text('name').notNull(),
+  color: text('color'),
+  powerDiopters: numeric('power_diopters', { precision: 6, scale: 2 }),
+  baseCurve: numeric('base_curve', { precision: 4, scale: 2 }),
+  diameterMm: numeric('diameter_mm', { precision: 4, scale: 2 }),
+  packSize: integer('pack_size'),
+  price: numeric('price', { precision: 12, scale: 2 }).notNull(),
+  currency: text('currency').notNull().default('PKR'),
+  stockQuantity: integer('stock_quantity').notNull().default(0),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  skuUnique: uniqueIndex('store_product_variants_sku_unique').on(table.sku).where(sql`${table.sku} IS NOT NULL`),
+}))
 
 export const storeActivityEvents = pgTable('store_activity_events', {
   id: bigint('id', { mode: 'number' }).generatedAlwaysAsIdentity().primaryKey(),
