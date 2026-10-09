@@ -6,6 +6,7 @@ The storefront and admin use the same Neon Postgres database through Drizzle. Cl
 
 - `GET /api/products` returns active products, supported public media metadata, and active lens options. It supports `category` and `q` filters and is refreshed by `useProducts`.
 - `GET /api/products/[slug]` returns one active product with its public media and active options.
+- `/products` is the full public catalog index. It loads every active product, supports live category/search navigation, and links each recorded option to its matching product detail selection. It does not manufacture lens options that are absent from the database.
 - Search, category selection, price, availability, and product imagery reflect the database catalog.
 - The bag is in-page state only. It does not write customer or order records. Checkout is intentionally unavailable until an approved payment provider and order-submission flow are configured.
 - Public server actions only expose catalog reads. Customer and order reads/writes are not callable from the public storefront.
@@ -27,7 +28,9 @@ The storefront and admin use the same Neon Postgres database through Drizzle. Cl
 - `GET /api/admin/products`, `/orders`, `/customers`, and `/activity` require an admin session.
 - Product create/edit/archive, stock updates, order status changes, and customer marketing-preference updates are authenticated server actions. Invalid values and invalid order-status transitions are rejected.
 - Product options support SKU, color, prescription power, base curve, diameter, pack size, price, currency, and stock. Parent price and stock are derived from active options; direct price/stock edits are blocked while options are active.
-- `POST /api/admin/products/import` reads the public ISK Lenses WooCommerce Store API in pages of 50. It is admin-protected and source IDs are unique, so reruns skip listings already imported. Source price and source links are retained for review; product descriptions and image files are not copied. Every import is a draft with zero stock, and missing source categories are labeled `Uncategorized`.
+- `POST /api/admin/products/import` reads the public ISK Lenses WooCommerce Store API in pages of 50. Each page is staged and validated; the live product catalog is replaced in one transaction only after the final page succeeds. A failed, empty, oversized, or incomplete import leaves the existing catalog untouched. The staging run is resumable only in sequence and expires after 24 hours.
+- Imported `source_payload` retains the public API's structured factual fields, pricing, category/tag/brand and option metadata, stock/availability flags, source image references, and any video URLs exposed in video-specific API fields. Product-table specifications and package contents embedded in the source description are extracted as factual label/value data. Descriptive/marketing text, HTML, image alt copy, and binary media files are not copied; the source description is fingerprinted for change detection, and operators can open the original listing/media links in Admin.
+- The importer does not download or rehost source photos/videos. Only authorized Vercel Blob uploads are stored as product assets. Each import still creates draft records with zero stock; missing source categories are labeled `Uncategorized`.
 - System-user listing, creation, and activation/deactivation are owner-only. Passwords require at least 16 characters and are stored as salted scrypt hashes.
 - Mutations create `store_activity_events` entries transactionally. Activity payloads do not contain customer names, addresses, email addresses, or other personal fields.
 - Order and customer endpoints return 50 records per page with database counts and server-side customer search. The admin screens paginate through all matching records and expose empty/loading/error states.
@@ -42,7 +45,7 @@ The storefront and admin use the same Neon Postgres database through Drizzle. Cl
 
 ## Lens catalog state
 
-Migration `0003_isk_lens_catalog.sql` is applied to the connected Neon database. It adds source provenance, image/video media typing, product variants, PKR as the product currency default, and updated-at triggers. The initial public-catalog import created 495 draft listings with zero stock. Of these, 89 source records lacked a category and are marked `Uncategorized`. No source description or image files were copied; operators must verify each listing and supply approved lens specifications and media before publishing.
+Migrations `0003_isk_lens_catalog.sql` and `0004_isk_source_snapshot_import.sql` are applied to the connected Neon database. The latest complete import contains 495 distinct source listings; on 2026-10-10 the operator directed that all be published with a configured stock quantity of 5 each. This stock was explicitly entered by the operator, not inferred from source data. Eighty-nine products are `Uncategorized`. The saved snapshot contains 757 source-image links and extracted product-table data for 374 listings; the source API exposed no video links. There are no configured lens-option rows and no product media assets in the database or Vercel Blob. Product images/videos were not downloaded or rehosted, and source descriptions were not copied. The listing facts, stock, specifications, and rights have not been independently verified; checkout remains unavailable.
 
 ## Data flow
 

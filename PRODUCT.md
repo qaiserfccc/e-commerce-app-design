@@ -28,7 +28,7 @@ The public reference site is https://isklenses.com/. Its FAQ says it serves Paki
 - The existing application uses Next.js App Router, React, TypeScript, Tailwind CSS, Neon Postgres through Drizzle and `pg`, and Vercel Blob.
 - Admin sessions are server-verified. The database-backed roles are owner, admin, and staff.
 - The storefront basket is in-memory only. Checkout and order submission are not available until an approved payment and order-submission flow exists.
-- The requested source-catalog import is assumed to create draft records for review, not publish products automatically.
+- Source-catalog imports create drafts for review. A later operator-directed publication changes status and stock, but does not mean the underlying specifications, media rights, or claims have been independently verified.
 - Imported specifications, prices, stock, and regulatory or clinical claims must not be guessed. The store operator must verify them before publication.
 - Audience, market, and source-site ownership are inferred from the user request and the public site because a structured confirmation request did not receive a response.
 
@@ -40,9 +40,9 @@ The public reference site is https://isklenses.com/. Its FAQ says it serves Paki
 ## Evidence on Hand
 
 - Public source site: https://isklenses.com/ (WordPress/WooCommerce; its public Store API exposes product names, categories, current prices, links, and source-image references).
-- At the initial import, the public Store API exposed 495 listings. The connected database contains 495 corresponding drafts with zero stock. Eighty-nine listings lacked a source category; no descriptions or source image files were copied.
+- The public Store API exposed 495 listings. Its product variation arrays were empty; the snapshot contains 757 image references and no video references. The application did not copy image/video files to Vercel Blob. Eighty-nine listings lacked a source category.
 - No owner-provided product specifications, endorsements, or compliance documents have been supplied in this repository.
-- The initial source import created 495 draft product records in the connected database. All have zero stock; 89 source records had no category and are labeled **Uncategorized** for operator review. Source descriptions and images were not copied.
+- On 2026-10-10, the operator directed that all 495 imported records be published with a configured stock count of 5 each. This is operator-entered inventory, not independently verified stock or product validation. All 495 are active, and 89 source records without a category are labeled **Uncategorized**. There are no configured variant rows or stored product assets. Source descriptions and media files were not copied; source image references are retained as links in the database.
 
 ## Product Principles
 

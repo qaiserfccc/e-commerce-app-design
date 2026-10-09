@@ -5,8 +5,14 @@ import type { Product } from '@/lib/hooks/use-storefront-data'
 
 export const dynamic = 'force-dynamic'
 
-export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params
+export default async function ProductPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>
+  searchParams: Promise<{ option?: string }>
+}) {
+  const [{ slug }, { option }] = await Promise.all([params, searchParams])
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) notFound()
   const product = await getProductBySlug(slug)
   if (!product) notFound()
@@ -24,5 +30,5 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     })),
     variants,
   }
-  return <StorefrontProductDetail initialProduct={initialProduct} />
+  return <StorefrontProductDetail initialProduct={initialProduct} initialOptionId={option} />
 }

@@ -1,4 +1,4 @@
-import { bigint, boolean, integer, jsonb, numeric, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
+import { bigint, boolean, integer, jsonb, numeric, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 
 export const storeProducts = pgTable('store_products', {
@@ -15,6 +15,8 @@ export const storeProducts = pgTable('store_products', {
   sourceProductId: integer('source_product_id'),
   sourceUrl: text('source_url'),
   sourceImageUrl: text('source_image_url'),
+  sourcePayload: jsonb('source_payload').$type<Record<string, unknown> | null>(),
+  sourceContentHash: text('source_content_hash'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
@@ -89,6 +91,24 @@ export const storeProductVariants = pgTable('store_product_variants', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   skuUnique: uniqueIndex('store_product_variants_sku_unique').on(table.sku).where(sql`${table.sku} IS NOT NULL`),
+}))
+
+export const storeProductImportRuns = pgTable('store_product_import_runs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  nextPage: integer('next_page').notNull().default(1),
+  importedCount: integer('imported_count').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const storeProductImportItems = pgTable('store_product_import_items', {
+  runId: uuid('run_id').notNull().references(() => storeProductImportRuns.id, { onDelete: 'cascade' }),
+  sourceProductId: integer('source_product_id').notNull(),
+  slug: text('slug').notNull(),
+  payload: jsonb('payload').$type<Record<string, unknown>>().notNull(),
+}, (table) => ({
+  sourceProductPrimary: primaryKey({ columns: [table.runId, table.sourceProductId] }),
+  slugUnique: unique('store_product_import_items_run_slug_unique').on(table.runId, table.slug),
 }))
 
 export const storeActivityEvents = pgTable('store_activity_events', {

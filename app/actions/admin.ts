@@ -1,6 +1,8 @@
 'use server'
 
+import { createHash, randomUUID } from 'node:crypto'
 import { and, asc, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm'
+import { del } from '@vercel/blob'
 import { db } from '@/lib/db'
 import {
   storeActivityEvents,
@@ -8,6 +10,8 @@ import {
   storeOrderItems,
   storeOrders,
   storeProductAssets,
+  storeProductImportItems,
+  storeProductImportRuns,
   storeProducts,
   storeProductVariants,
   storeAdminUsers,
@@ -180,7 +184,42 @@ function boundedLimit(limit: number, fallback: number, maximum: number) {
 
 export async function getAllProducts() {
   await requireAdminSession()
-  return db.select().from(storeProducts).orderBy(desc(storeProducts.updatedAt))
+  return db
+    .select({
+      id: storeProducts.id,
+      name: storeProducts.name,
+      slug: storeProducts.slug,
+      description: storeProducts.description,
+      category: storeProducts.category,
+      price: storeProducts.price,
+      currency: storeProducts.currency,
+      status: storeProducts.status,
+      stockQuantity: storeProducts.stockQuantity,
+      heroImageUrl: storeProducts.heroImageUrl,
+      sourceProductId: storeProducts.sourceProductId,
+      sourceUrl: storeProducts.sourceUrl,
+      sourceImageUrl: storeProducts.sourceImageUrl,
+      createdAt: storeProducts.createdAt,
+      updatedAt: storeProducts.updatedAt,
+    })
+    .from(storeProducts)
+    .orderBy(desc(storeProducts.updatedAt))
+}
+
+export async function getAdminProductSource(productId: string) {
+  await requireAdminSession()
+  validateUuid(productId, 'Product ID')
+  const [product] = await db
+    .select({
+      sourceProductId: storeProducts.sourceProductId,
+      sourceUrl: storeProducts.sourceUrl,
+      sourcePayload: storeProducts.sourcePayload,
+      sourceContentHash: storeProducts.sourceContentHash,
+    })
+    .from(storeProducts)
+    .where(eq(storeProducts.id, productId))
+    .limit(1)
+  return product ?? null
 }
 
 export async function getAdminProduct(productId: string) {
@@ -302,8 +341,126 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+function formatSourcePrice(amount: unknown, minorUnit: number) {
+  if (typeof amount !== 'string' || !/^\d+$/.test(amount)) {
+    throw new Error('The ISK Lenses catalog returned an unsupported price format.')
+  }
+  const paddedAmount = amount.padStart(minorUnit + 1, '0')
+  const price = minorUnit
+    ? `${paddedAmount.slice(0, -minorUnit)}.${paddedAmount.slice(-minorUnit)}`
+    : amount
+  if (!pricePattern.test(price)) throw new Error('The ISK Lenses catalog returned a price outside the supported range.')
+  return price
+}
+
+function decodeSourceText(value: string) {
+  return value
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;|&#160;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#0*39;|&apos;/gi, "'")
+    .replace(/&#(x[0-9a-f]+|\d+);/gi, (_match, entity: string) => {
+      const codePoint = entity[0].toLowerCase() === 'x'
+        ? Number.parseInt(entity.slice(1), 16)
+        : Number.parseInt(entity, 10)
+      return Number.isFinite(codePoint) && codePoint > 0 && codePoint <= 0x10ffff
+        ? String.fromCodePoint(codePoint)
+        : ' '
+    })
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function extractSourceFacts(description: string) {
+  const specificationPairs = [...description.matchAll(
+    /<tr\b[^>]*>\s*<td\b[^>]*>([\s\S]*?)<\/td>\s*<td\b[^>]*>([\s\S]*?)<\/td>\s*<\/tr>/gi,
+  )]
+    .map(([, label, value]) => [decodeSourceText(label), decodeSourceText(value)] as const)
+    .filter(([label, value]) => Boolean(label && value))
+    .slice(0, 100)
+  const packageBlock = description.match(
+    /<div\b[^>]*class=["'][^"']*package-include-items[^"']*["'][^>]*>([\s\S]*?)<\/div>/i,
+  )?.[1] ?? ''
+  const packageContents = [...packageBlock.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)]
+    .map(([, item]) => decodeSourceText(item))
+    .filter(Boolean)
+    .slice(0, 100)
+  return { specifications: specificationPairs, packageContents }
+}
+
+function safeSourceMediaUrl(value: unknown) {
+  if (typeof value !== 'string' || value.length > 2048) return null
+  try {
+    const url = new URL(value)
+    if (url.protocol !== 'https:' || url.username || url.password) return null
+    return url.toString()
+  } catch {
+    return null
+  }
+}
+
+function collectVideoReferences(value: unknown, path: string[] = [], found: string[] = []): string[] {
+  const collectFromVideoField = (candidate: unknown) => {
+    if (typeof candidate === 'string') {
+      const url = safeSourceMediaUrl(candidate)
+      if (url && !found.includes(url)) found.push(url)
+      return
+    }
+    if (Array.isArray(candidate)) {
+      for (const item of candidate.slice(0, 200)) collectFromVideoField(item)
+      return
+    }
+    if (isRecord(candidate)) {
+      for (const [key, item] of Object.entries(candidate)) {
+        if (found.length >= 100) break
+        if (/(url|src|embed|video)/i.test(key)) collectFromVideoField(item)
+      }
+    }
+  }
+  if (Array.isArray(value)) {
+    for (const item of value.slice(0, 200)) collectVideoReferences(item, path, found)
+    return found
+  }
+  if (!isRecord(value)) return found
+  for (const [key, child] of Object.entries(value)) {
+    if (path.length >= 8 || found.length >= 100) break
+    const nextPath = [...path, key]
+    if (/video/i.test(key)) {
+      collectFromVideoField(child)
+    } else if (!['description', 'short_description', 'price_html', 'add_to_cart', 'extensions'].includes(key)) {
+      collectVideoReferences(child, nextPath, found)
+    }
+  }
+  return found
+}
+
+function boundedSourceObject(value: unknown, depth = 0): unknown {
+  if (depth > 8) throw new Error('The ISK Lenses catalog returned excessively nested product data.')
+  if (value === null || typeof value === 'boolean' || typeof value === 'number') return value
+  if (typeof value === 'string') {
+    if (value.length > 20_000) throw new Error('The ISK Lenses catalog returned an oversized product field.')
+    return value
+  }
+  if (Array.isArray(value)) {
+    if (value.length > 200) throw new Error('The ISK Lenses catalog returned too many values in a product field.')
+    return value.map((item) => boundedSourceObject(item, depth + 1))
+  }
+  if (!isRecord(value)) throw new Error('The ISK Lenses catalog returned an unsupported product field.')
+  const output: Record<string, unknown> = {}
+  const excludedFields = new Set(['description', 'short_description', 'price_html', 'add_to_cart', 'extensions', 'alt'])
+  for (const [key, field] of Object.entries(value)) {
+    if (excludedFields.has(key) || /video/i.test(key)) continue
+    output[key] = boundedSourceObject(field, depth + 1)
+  }
+  return output
+}
+
 function boundedIskProduct(value: unknown) {
-  if (!isRecord(value) || typeof value.id !== 'number' || !Number.isSafeInteger(value.id) || value.id < 1) {
+  if (!isRecord(value) || typeof value.id !== 'number' ||
+      !Number.isSafeInteger(value.id) || value.id < 1 || value.id > 2_147_483_647) {
     throw new Error('The ISK Lenses catalog returned an invalid product.')
   }
   const name = requireText(value.name, 'Imported product name', 180)
@@ -316,25 +473,26 @@ function boundedIskProduct(value: unknown) {
   } catch {
     throw new Error('The ISK Lenses catalog returned an invalid product link.')
   }
-  if (sourceUrl.protocol !== 'https:' || sourceUrl.hostname !== 'isklenses.com' || !sourceUrl.pathname.startsWith('/product/')) {
+  if (sourceUrl.protocol !== 'https:' || !['isklenses.com', 'www.isklenses.com'].includes(sourceUrl.hostname) ||
+      !sourceUrl.pathname.startsWith('/product/')) {
     throw new Error('The ISK Lenses catalog returned a link outside its product pages.')
   }
 
   if (!isRecord(value.prices)) throw new Error('The ISK Lenses catalog returned an invalid product price.')
-  const minorAmount = value.prices.price
   const minorUnit = value.prices.currency_minor_unit
   const currency = value.prices.currency_code
-  if (typeof minorAmount !== 'string' || !/^\d+$/.test(minorAmount) ||
-      typeof minorUnit !== 'number' || !Number.isSafeInteger(minorUnit) || minorUnit < 0 || minorUnit > 2 ||
+  if (typeof minorUnit !== 'number' || !Number.isSafeInteger(minorUnit) || minorUnit < 0 || minorUnit > 2 ||
       typeof currency !== 'string' || !/^[A-Z]{3}$/.test(currency)) {
     throw new Error('The ISK Lenses catalog returned an unsupported price format.')
   }
-  const minorDigits = minorUnit
-  const paddedAmount = minorAmount.padStart(minorDigits + 1, '0')
-  const price = minorDigits
-    ? `${paddedAmount.slice(0, -minorDigits)}.${paddedAmount.slice(-minorDigits)}`
-    : minorAmount
-  if (!pricePattern.test(price)) throw new Error('The ISK Lenses catalog returned a price outside the supported range.')
+  const prices = boundedSourceObject(value.prices)
+  const currentPrice = formatSourcePrice(value.prices.price, minorUnit)
+  const regularPrice = typeof value.prices.regular_price === 'string' && /^\d+$/.test(value.prices.regular_price)
+    ? formatSourcePrice(value.prices.regular_price, minorUnit)
+    : null
+  const salePrice = typeof value.prices.sale_price === 'string' && /^\d+$/.test(value.prices.sale_price)
+    ? formatSourcePrice(value.prices.sale_price, minorUnit)
+    : null
 
   const sourceCategory = Array.isArray(value.categories)
     ? value.categories.find((item) =>
@@ -345,72 +503,280 @@ function boundedIskProduct(value: unknown) {
       )
     : undefined
   const category = sourceCategory ? requireText(sourceCategory.name, 'Imported product category', 100) : 'Uncategorized'
-  let sourceImageUrl: string | null = null
-  if (Array.isArray(value.images) && value.images.length > 0 && isRecord(value.images[0]) && typeof value.images[0].src === 'string') {
-    try {
-      const imageUrl = new URL(value.images[0].src)
-      if (imageUrl.protocol === 'https:' && imageUrl.hostname === 'isklenses.com') sourceImageUrl = imageUrl.toString()
-    } catch {
-      sourceImageUrl = null
-    }
+  const images = Array.isArray(value.images)
+    ? value.images.filter(isRecord).slice(0, 100).map((image) => {
+        const source = safeSourceMediaUrl(image.src)
+        if (!source || !['isklenses.com', 'www.isklenses.com'].includes(new URL(source).hostname)) {
+          throw new Error('The ISK Lenses catalog returned an invalid product image reference.')
+        }
+        return {
+          id: typeof image.id === 'number' && Number.isSafeInteger(image.id) ? image.id : null,
+          src: source,
+          thumbnail: safeSourceMediaUrl(image.thumbnail),
+          srcset: typeof image.srcset === 'string' && image.srcset.length <= 20_000 ? image.srcset : null,
+          sizes: typeof image.sizes === 'string' && image.sizes.length <= 2_000 ? image.sizes : null,
+          name: typeof image.name === 'string' && image.name.length <= 500 ? image.name : null,
+        }
+      })
+    : []
+  const mediaReferences = {
+    images,
+    videos: collectVideoReferences(value),
+  }
+  const sourcePayload = {
+    ...(boundedSourceObject(value) as Record<string, unknown>),
+    prices: {
+      ...(isRecord(prices) ? prices : {}),
+      current: currentPrice,
+      regular: regularPrice,
+      sale: salePrice,
+    },
+    images: mediaReferences.images,
+    categories: Array.isArray(value.categories) ? boundedSourceObject(value.categories) : [],
+    tags: Array.isArray(value.tags) ? boundedSourceObject(value.tags) : [],
+    brands: Array.isArray(value.brands) ? boundedSourceObject(value.brands) : [],
+    attributes: Array.isArray(value.attributes) ? boundedSourceObject(value.attributes) : [],
+    variations: Array.isArray(value.variations) ? boundedSourceObject(value.variations) : [],
+    specifications: extractSourceFacts(typeof value.description === 'string' ? value.description : ''),
+    mediaReferences,
+    sourceDescriptionAvailable: Boolean(
+      typeof value.short_description === 'string' && value.short_description.trim() ||
+      typeof value.description === 'string' && value.description.trim(),
+    ),
+    sourceDescriptionHash: createHash('sha256')
+      .update(`${typeof value.short_description === 'string' ? value.short_description : ''}\u0000${typeof value.description === 'string' ? value.description : ''}`)
+      .digest('hex'),
   }
 
   return {
     sourceProductId: value.id,
     sourceUrl: sourceUrl.toString(),
-    sourceImageUrl,
+    sourceImageUrl: mediaReferences.images[0]?.src ?? null,
     name,
     slug,
     category,
-    price,
+    price: currentPrice,
     currency,
+    sourceContentHash: sourcePayload.sourceDescriptionHash,
+    sourcePayload,
   }
 }
 
-export async function importIskCatalogPage(page: number) {
+export async function beginIskCatalogReplacement() {
   await requireAdminSession('admin')
-  if (!Number.isSafeInteger(page) || page < 1 || page > 10) throw new Error('Import page must be between 1 and 10.')
+  const [run] = await db.transaction(async (tx) => {
+    await tx.delete(storeProductImportRuns).where(
+      sql`${storeProductImportRuns.updatedAt} < now() - interval '24 hours'`,
+    )
+    return tx.insert(storeProductImportRuns).values({}).returning()
+  })
+  return { runId: run.id, nextPage: run.nextPage }
+}
+
+async function readLimitedBody(response: Response, maximumBytes: number) {
+  const declaredLength = Number(response.headers.get('content-length') ?? 0)
+  if (declaredLength > maximumBytes) throw new Error('The ISK Lenses catalog page is too large to import safely.')
+  if (!response.body) throw new Error('The ISK Lenses catalog returned an empty response.')
+  const reader = response.body.getReader()
+  const chunks: Uint8Array[] = []
+  let totalBytes = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    totalBytes += value.byteLength
+    if (totalBytes > maximumBytes) {
+      await reader.cancel()
+      throw new Error('The ISK Lenses catalog page is too large to import safely.')
+    }
+    chunks.push(value)
+  }
+  const bytes = new Uint8Array(totalBytes)
+  let offset = 0
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return new TextDecoder().decode(bytes)
+}
+
+function stagedProduct(value: unknown) {
+  if (!isRecord(value) || !isRecord(value.sourcePayload) ||
+      typeof value.sourceProductId !== 'number' || !Number.isSafeInteger(value.sourceProductId) ||
+      typeof value.sourceUrl !== 'string' || typeof value.name !== 'string' ||
+      typeof value.slug !== 'string' || typeof value.category !== 'string' ||
+      typeof value.price !== 'string' || typeof value.currency !== 'string' ||
+      typeof value.sourceContentHash !== 'string') {
+    throw new Error('A staged source product is invalid; the existing catalog was not changed.')
+  }
+  return {
+    sourceProductId: value.sourceProductId,
+    sourceUrl: value.sourceUrl,
+    sourceImageUrl: typeof value.sourceImageUrl === 'string' ? value.sourceImageUrl : null,
+    sourcePayload: value.sourcePayload,
+    sourceContentHash: value.sourceContentHash,
+    name: value.name,
+    slug: value.slug,
+    category: value.category,
+    price: value.price,
+    currency: value.currency,
+    description: null,
+    heroImageUrl: null,
+    stockQuantity: 0,
+    status: 'draft' as const,
+  }
+}
+
+export async function importIskCatalogPage(runId: string, page: number) {
+  await requireAdminSession('admin')
+  validateUuid(runId, 'Import run ID')
+  if (!Number.isSafeInteger(page) || page < 1 || page > 100) {
+    throw new Error('Import page must be between 1 and 100.')
+  }
   const perPage = 50
+  const [run] = await db
+    .select()
+    .from(storeProductImportRuns)
+    .where(eq(storeProductImportRuns.id, runId))
+    .limit(1)
+  if (!run) throw new Error('Catalog replacement run was not found. Start a new import.')
+  if (run.nextPage !== page) throw new Error(`Import page ${run.nextPage} must be processed next.`)
+
   const response = await fetch(
     `https://isklenses.com/wp-json/wc/store/v1/products?per_page=${perPage}&page=${page}`,
-    { cache: 'no-store', signal: AbortSignal.timeout(15_000) },
+    { cache: 'no-store', signal: AbortSignal.timeout(20_000) },
   )
   if (!response.ok) {
     console.error('[admin-import] ISK catalog request failed', { status: response.status })
     throw new Error('The ISK Lenses catalog could not be reached. Try again shortly.')
   }
-  const payload: unknown = await response.json()
+  const responseText = await readLimitedBody(response, 8_000_000)
+  let payload: unknown
+  try {
+    payload = JSON.parse(responseText)
+  } catch {
+    throw new Error('The ISK Lenses catalog returned invalid JSON.')
+  }
   if (!Array.isArray(payload) || payload.length > perPage) throw new Error('The ISK Lenses catalog returned an invalid page.')
   const products = payload.map(boundedIskProduct)
-  if (!products.length) return { page, imported: 0, skipped: 0, hasMore: false }
+  const pageSourceIds = new Set<number>()
+  const pageSlugs = new Set<string>()
+  for (const product of products) {
+    if (pageSourceIds.has(product.sourceProductId) || pageSlugs.has(product.slug)) {
+      throw new Error('The ISK Lenses catalog page contains duplicate product identifiers.')
+    }
+    pageSourceIds.add(product.sourceProductId)
+    pageSlugs.add(product.slug)
+  }
 
-  return db.transaction(async (tx) => {
-    const imported = await tx
-      .insert(storeProducts)
-      .values(products.map((product) => ({
-        ...product,
-        description: null,
-        heroImageUrl: null,
-        stockQuantity: 0,
-        status: 'draft',
-      })))
-      .onConflictDoNothing()
-      .returning({ id: storeProducts.id, sourceProductId: storeProducts.sourceProductId })
-    if (imported.length) {
-      await tx.insert(storeActivityEvents).values(imported.map((product) => ({
-        entityType: 'product',
-        entityId: product.id,
-        eventType: 'imported',
-        payload: { sourceProductId: product.sourceProductId },
+  const hasMore = products.length === perPage
+  if (hasMore && page === 100) {
+    throw new Error('The source catalog exceeds the 5,000-product safety limit; the existing catalog was not changed.')
+  }
+  const result = await db.transaction(async (tx) => {
+    const [lockedRun] = await tx
+      .select()
+      .from(storeProductImportRuns)
+      .where(eq(storeProductImportRuns.id, runId))
+      .limit(1)
+      .for('update')
+    if (!lockedRun || lockedRun.nextPage !== page) {
+      throw new Error('The import run changed while this page was being fetched. Existing products were not changed.')
+    }
+
+    if (products.length) {
+      const alreadyStaged = await tx
+        .select({ sourceProductId: storeProductImportItems.sourceProductId })
+        .from(storeProductImportItems)
+        .where(and(eq(storeProductImportItems.runId, runId), inArray(storeProductImportItems.sourceProductId, products.map((product) => product.sourceProductId))))
+        .limit(products.length)
+      if (alreadyStaged.length) throw new Error('The source catalog repeated a product across pages; replacement was stopped.')
+      await tx.insert(storeProductImportItems).values(products.map((product) => ({
+        runId,
+        sourceProductId: product.sourceProductId,
+        slug: product.slug,
+        payload: product,
       })))
     }
-    return {
-      page,
-      imported: imported.length,
-      skipped: products.length - imported.length,
-      hasMore: products.length === perPage,
+
+    const importedCount = lockedRun.importedCount + products.length
+    if (!hasMore) {
+      const stagedRows = await tx
+        .select({ payload: storeProductImportItems.payload })
+        .from(storeProductImportItems)
+        .where(eq(storeProductImportItems.runId, runId))
+        .orderBy(asc(storeProductImportItems.sourceProductId))
+      if (stagedRows.length !== importedCount || stagedRows.length === 0) {
+        throw new Error('The source catalog was incomplete or empty; the existing product catalog was not changed.')
+      }
+
+      const [orderReferences] = await tx
+        .select({ total: sql<number>`count(*)::int` })
+        .from(storeOrderItems)
+        .innerJoin(storeProducts, eq(storeOrderItems.productId, storeProducts.id))
+      if (Number(orderReferences.total) > 0) {
+        throw new Error('Existing order items reference products. The catalog was not replaced to preserve order history.')
+      }
+
+      const [previousProductCount] = await tx
+        .select({ total: sql<number>`count(*)::int` })
+        .from(storeProducts)
+      const previousAssets = await tx
+        .select({ blobUrl: storeProductAssets.blobUrl })
+        .from(storeProductAssets)
+      await tx.delete(storeProductAssets)
+      await tx.delete(storeProducts)
+      const replacementProducts = stagedRows.map(({ payload }) => stagedProduct(payload))
+      for (let offset = 0; offset < replacementProducts.length; offset += 50) {
+        const batch = replacementProducts.slice(offset, offset + 50)
+        const inserted = await tx.insert(storeProducts).values(batch).returning({
+          id: storeProducts.id,
+          sourceProductId: storeProducts.sourceProductId,
+        })
+        await tx.insert(storeActivityEvents).values(inserted.map((product) => ({
+          entityType: 'product',
+          entityId: product.id,
+          eventType: 'imported',
+          payload: { sourceProductId: product.sourceProductId },
+        })))
+      }
+      await tx.insert(storeActivityEvents).values({
+        entityType: 'catalog',
+        entityId: randomUUID(),
+        eventType: 'replaced',
+        payload: { importedCount: replacementProducts.length, removedCount: Number(previousProductCount.total) },
+      })
+      await tx.delete(storeProductImportRuns).where(eq(storeProductImportRuns.id, runId))
+      return {
+        page,
+        imported: replacementProducts.length,
+        deleted: Number(previousProductCount.total),
+        hasMore: false,
+        previousAssetUrls: previousAssets.flatMap(({ blobUrl }) => blobUrl ? [blobUrl] : []),
+      }
     }
+
+    await tx.update(storeProductImportRuns)
+      .set({ nextPage: page + 1, importedCount, updatedAt: new Date() })
+      .where(eq(storeProductImportRuns.id, runId))
+    return { page, imported: products.length, deleted: 0, hasMore: true, previousAssetUrls: [] as string[] }
   })
+
+  let mediaCleanupFailures = 0
+  for (let offset = 0; offset < result.previousAssetUrls.length; offset += 50) {
+    try {
+      await del(result.previousAssetUrls.slice(offset, offset + 50))
+    } catch (error) {
+      mediaCleanupFailures += result.previousAssetUrls.slice(offset, offset + 50).length
+      console.error('[admin-import] Replaced catalog media cleanup failed', error instanceof Error ? error.name : 'UnknownError')
+    }
+  }
+  return {
+    page: result.page,
+    imported: result.imported,
+    deleted: result.deleted,
+    hasMore: result.hasMore,
+    mediaCleanupFailures,
+  }
 }
 
 export async function updateProduct(

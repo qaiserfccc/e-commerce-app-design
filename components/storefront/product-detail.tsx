@@ -32,11 +32,21 @@ function mediaFor(product: Product): ProductAsset[] {
   }]
 }
 
-export function StorefrontProductDetail({ initialProduct }: { initialProduct: Product }) {
+export function StorefrontProductDetail({
+  initialProduct,
+  initialOptionId,
+}: {
+  initialProduct: Product
+  initialOptionId?: string
+}) {
   const { product: refreshedProduct, isError, error } = useProduct(initialProduct.slug, initialProduct)
   const product = refreshedProduct ?? initialProduct
   const variants = product.variants ?? []
-  const [selectedVariantId, setSelectedVariantId] = useState(variants[0]?.id ?? '')
+  const [selectedVariantId, setSelectedVariantId] = useState(
+    initialOptionId && variants.some((variant) => variant.id === initialOptionId)
+      ? initialOptionId
+      : variants[0]?.id ?? '',
+  )
   const [mediaIndex, setMediaIndex] = useState(0)
   const [bagOpen, setBagOpen] = useState(false)
   const { add, count } = useStorefrontCart()
@@ -55,7 +65,7 @@ export function StorefrontProductDetail({ initialProduct }: { initialProduct: Pr
     <main className="mx-auto min-h-[calc(100vh-72px)] max-w-[1500px] px-5 pb-24 sm:px-8 lg:px-12">
       <div hidden dangerouslySetInnerHTML={{ __html: '<!-- This product page uses the chromatic specimen index: verified product media leads, then actual selectable option, price, and stock fields. Choosing an option opens its published specifications and animates the abstract lens study; the interaction never changes or infers a product claim. -->' }} />
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#152a52]/20 py-4">
-        <Link href="/" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.1em] hover:text-[#16468a] focus-visible:outline-2 focus-visible:outline-[#16468a]">
+        <Link href="/products" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.1em] hover:text-[#16468a] focus-visible:outline-2 focus-visible:outline-[#16468a]">
           <ArrowLeft size={15} aria-hidden="true" /> ISK Lenses / Products
         </Link>
         <button
@@ -140,7 +150,7 @@ export function StorefrontProductDetail({ initialProduct }: { initialProduct: Pr
           )}
 
           {variants.length > 0 && (
-            <div className="mt-8 w-full">
+            <div id="listed-options" className="mt-8 w-full scroll-mt-8">
               <label htmlFor="product-variant" className="mb-2 block font-mono text-[10px] font-bold uppercase tracking-[.15em]">Choose a listed option</label>
               <select
                 id="product-variant"
