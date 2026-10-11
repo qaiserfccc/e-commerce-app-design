@@ -207,7 +207,7 @@ export function StorefrontProductDetail({
           >
             {stockQuantity > 0 ? 'Add selected option to bag' : 'Currently unavailable'}
           </button>
-          <p className="mt-3 w-full text-center text-[10px] font-mono uppercase tracking-[.1em] text-[#314a63]">Checkout unavailable · no order will be created</p>
+          <p className="mt-3 w-full text-center text-[10px] font-mono uppercase tracking-[.1em] text-[#314a63]">Cash on delivery · guest or account checkout</p>
         </section>
       </div>
     </main>

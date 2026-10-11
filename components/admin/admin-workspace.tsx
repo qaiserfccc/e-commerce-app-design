@@ -12,6 +12,7 @@ import {
   deleteProduct,
   deleteProductAsset,
   updateOrderStatus,
+  updateOrderDeliveryFee,
   updateProduct,
   updateProductStock,
   moveProductAsset,
@@ -213,7 +214,7 @@ function AdminOverview({ onNavigate }: { onNavigate: (section: Section) => void 
       </div>
       <section className="mt-6 rounded-2xl border border-[#1c1c1a]/10 bg-white p-5">
         <h2 className="font-medium">Recognized order value</h2>
-        <p className="mt-1 text-xs leading-5 text-[#68675f]">Paid, processing, shipped, and delivered orders, grouped by currency. Pending and cancelled orders are excluded.</p>
+        <p className="mt-1 text-xs leading-5 text-[#68675f]">COD value counts only after payment is marked paid. Other orders follow their recorded paid, processing, shipped, or delivered states.</p>
         {isError ? (
           <p className="mt-4 text-sm text-[#753b2d]">Order value could not be loaded.</p>
         ) : isLoading || !metrics ? (
@@ -748,7 +749,7 @@ function ProductRow({
   )
 }
 
-function OrdersWorkspace() {
+function OrdersWorkspace({ canEdit }: { canEdit: boolean }) {
   const [offset, setOffset] = useState(0)
   const [filter, setFilter] = useState('')
   const [message, setMessage] = useState('')
@@ -774,6 +775,19 @@ function OrdersWorkspace() {
     }
   }
 
+  async function confirmDeliveryFee(orderId: string, fee: string) {
+    setSaving(orderId)
+    setMessage('')
+    try {
+      await updateOrderDeliveryFee(orderId, fee)
+      await Promise.all([mutate(), globalMutate('/api/admin/metrics'), globalMutate('/api/admin/activity')])
+    } catch (feeError) {
+      setMessage(errorMessage(feeError))
+    } finally {
+      setSaving('')
+    }
+  }
+
   return (
     <section className="min-w-0 flex-1">
       <PanelHeading title="Orders" description={`${total ? `Showing ${offset + 1}–${Math.min(offset + orders.length, total)} of ${total}` : 'No orders'} from the shared database. Status changes are validated and audit logged.`} />
@@ -789,7 +803,16 @@ function OrdersWorkspace() {
         <div className="rounded-2xl border border-dashed border-[#1c1c1a]/20 bg-white/60 px-5 py-10 text-center text-sm text-[#68675f]">No matching orders are recorded.</div>
       ) : (
         <div className="space-y-3">
-          {orders.map((order) => <OrderRow key={order.id} order={order} saving={saving === order.id} onStatus={(status) => void changeStatus(order.id, status)} />)}
+          {orders.map((order) => (
+            <OrderRow
+              key={order.id}
+              order={order}
+              saving={saving === order.id}
+              canEdit={canEdit}
+              onStatus={(status) => void changeStatus(order.id, status)}
+              onDeliveryFee={(fee) => void confirmDeliveryFee(order.id, fee)}
+            />
+          ))}
         </div>
       )}
       <PageControls offset={offset} total={total} pageSize={50} onChange={setOffset} />
@@ -797,8 +820,24 @@ function OrdersWorkspace() {
   )
 }
 
-function OrderRow({ order, saving, onStatus }: { order: AdminOrder; saving: boolean; onStatus: (status: string) => void }) {
+function OrderRow({
+  order,
+  saving,
+  canEdit,
+  onStatus,
+  onDeliveryFee,
+}: {
+  order: AdminOrder
+  saving: boolean
+  canEdit: boolean
+  onStatus: (status: string) => void
+  onDeliveryFee: (fee: string) => void
+}) {
   const customerName = [order.customer?.firstName, order.customer?.lastName].filter(Boolean).join(' ')
+  const [deliveryFee, setDeliveryFee] = useState(order.shippingTotal)
+  const codOrder = order.paymentMethod === 'cash_on_delivery'
+  const canConfirmDeliveryFee = codOrder && (order.status === 'pending' || order.status === 'processing')
+  useEffect(() => setDeliveryFee(order.shippingTotal), [order.shippingTotal])
   return (
     <article className="rounded-2xl border border-[#1c1c1a]/10 bg-white p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -809,8 +848,11 @@ function OrderRow({ order, saving, onStatus }: { order: AdminOrder; saving: bool
         </div>
         <div className="text-right">
           <p className="text-sm font-medium">{currencyLabel(order.total, order.currency)}</p>
+          <p className="mt-1 text-xs text-[#68675f]">
+            {codOrder ? `Cash on delivery · ${order.status === 'paid' ? 'paid' : order.status === 'refunded' ? 'refunded' : 'not paid'}` : order.paymentMethod ?? 'Payment method not recorded'}
+          </p>
           <label className="mt-2 block text-left text-xs text-[#68675f]">Order status
-            <select disabled={saving} value={order.status} onChange={(event) => onStatus(event.target.value)} className="mt-1 block rounded-lg border border-[#1c1c1a]/15 bg-white px-2 py-1.5 text-xs capitalize">
+            <select disabled={!canEdit || saving} value={order.status} onChange={(event) => onStatus(event.target.value)} className="mt-1 block rounded-lg border border-[#1c1c1a]/15 bg-white px-2 py-1.5 text-xs capitalize disabled:cursor-not-allowed disabled:opacity-60">
               {['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'].map((status) => <option key={status} value={status}>{status}</option>)}
             </select>
           </label>
@@ -827,6 +869,37 @@ function OrderRow({ order, saving, onStatus }: { order: AdminOrder; saving: bool
             <p key={key}>{String(value)}</p>
           ))}
         </div>
+        {codOrder && (
+          <form
+            onSubmit={(event) => {
+              event.preventDefault()
+              onDeliveryFee(deliveryFee)
+            }}
+            className="mt-4 border-t border-[#1c1c1a]/10 pt-4"
+          >
+            <label className="block text-xs font-medium text-[#55544e]">
+              Delivery fee {order.shippingFeeConfirmed ? '· confirmed' : '· not confirmed'}
+              <span className="mt-1 block text-xs font-normal leading-5 text-[#68675f]">Enter the amount agreed with the customer. Enter 0 to confirm no delivery fee.</span>
+              <span className="mt-2 flex flex-wrap gap-2 sm:max-w-sm">
+                <input
+                  value={deliveryFee}
+                  onChange={(event) => setDeliveryFee(event.target.value)}
+                  inputMode="decimal"
+                  pattern="\d{1,10}(\.\d{1,2})?"
+                  maxLength={16}
+                  required
+                  disabled={!canEdit || !canConfirmDeliveryFee || saving}
+                  aria-label={`Delivery fee for order ${order.orderNumber}`}
+                  className={inputClass}
+                />
+                <button type="submit" disabled={!canEdit || !canConfirmDeliveryFee || saving} className={primaryButton}>
+                  {order.shippingFeeConfirmed ? 'Update fee' : 'Confirm fee'}
+                </button>
+              </span>
+            </label>
+            <p className="mt-2 text-xs leading-5 text-[#68675f]">Current COD total: {currencyLabel(order.total, order.currency)}. Confirm delivery charges with the customer before dispatch; shipping is blocked until this fee is confirmed.</p>
+          </form>
+        )}
       </details>
     </article>
   )
@@ -1201,7 +1274,7 @@ export function AdminWorkspace() {
   const content = {
     overview: <AdminOverview onNavigate={setSection} />,
     products: <ProductWorkspace canEdit={session.role === 'owner' || session.role === 'admin'} />,
-    orders: <OrdersWorkspace />,
+    orders: <OrdersWorkspace canEdit={session.role === 'owner' || session.role === 'admin'} />,
     customers: <CustomersWorkspace />,
     analytics: <AnalyticsWorkspace />,
     'system-users': session.role === 'owner' && session.userId

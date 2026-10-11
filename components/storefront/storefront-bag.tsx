@@ -82,11 +82,16 @@ export function StorefrontBag({ open, onClose }: { open: boolean; onClose: () =>
           </div>
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border border-[#152a52]/20 bg-white/60 px-4 py-3">
             <p className="max-w-xl text-xs leading-5 text-[#314a63]">
-              Checkout is not available. This in-page selection is not submitted as an order.
+              Cash on delivery is available for guest and registered shoppers. No online payment is collected.
             </p>
-            <Link href="/#collection" onClick={onClose} className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.12em] text-[#152a52] hover:text-[#16468a]">
-              Browse catalogue <ArrowUpRight size={14} />
-            </Link>
+            <div className="flex flex-wrap items-center gap-4">
+              <Link href="/products" onClick={onClose} className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.12em] text-[#152a52] hover:text-[#16468a]">
+                Browse catalogue <ArrowUpRight size={14} />
+              </Link>
+              <Link href="/checkout" onClick={onClose} className="inline-flex items-center gap-2 bg-[#152a52] px-4 py-3 text-xs font-bold uppercase tracking-[.1em] text-[#d3ff48] hover:bg-[#16468a] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16468a]">
+                Checkout <ArrowUpRight size={14} />
+              </Link>
+            </div>
           </div>
         </>
       )}

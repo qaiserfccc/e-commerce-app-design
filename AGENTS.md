@@ -5,7 +5,7 @@ These instructions describe the application that exists in this repository. Keep
 ## Product and existing application
 
 - This is a web storefront and admin workspace for **ISK Lenses**, a contact-lens catalog and store operations interface.
-- Treat imported source listings as unverified drafts. Do not invent lens specifications, clinical claims, stock, or other product details; keep checkout unavailable until its payment and order flow is approved.
+- Treat imported source listings as unverified drafts. Do not invent lens specifications, clinical claims, stock, or other product details. Checkout currently accepts cash-on-delivery orders only; do not imply that online payment is available or that an unconfirmed delivery fee is included.
 - Preserve the existing storefront/admin experience and visual language unless a request explicitly calls for a redesign.
 
 ## Architecture and implementation
@@ -19,9 +19,9 @@ These instructions describe the application that exists in this repository. Keep
 
 ## Security and data handling
 
-- Admin access currently uses one environment-configured operator account and an HTTP-only signed session (`lib/auth/admin.ts`). Every admin server action and admin API route must verify the session on the server. Keep customer/order data and business-critical writes behind those checks; do not describe this as multi-user role-based authentication or SSO.
-- Admin access requires `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `ADMIN_SESSION_SECRET` in the target environment. The app fails closed if they are absent or invalid. The per-process login throttle is not distributed; use edge-level rate limiting before production exposure.
-- The storefront basket is in-memory UI state only. Do not create customer/order records or claim checkout is available until a payment provider and the approved order-submission flow are implemented.
+- Admin access uses database-backed owner/admin/staff accounts and HTTP-only signed sessions (`lib/auth/admin.ts`). Every admin server action and admin API route must verify the session on the server. Admin customer/order reads and operational writes stay protected; public COD order submission is the explicit guest route and must reprice, validate, rate-limit, and write transactionally. Customer accounts use a separate signed shopper session; account email is not verified and password recovery is not implemented.
+- Admin access requires `ADMIN_SESSION_SECRET` in the target environment; initial account bootstrap variables are not used for ongoing sign-in. The app fails closed if session signing is absent or invalid. Login throttles are per-process, not distributed; use edge-level rate limiting before production exposure.
+- The storefront basket is in-memory UI state only. COD checkout writes orders, customers, and inventory reservations to the shared database; it does not charge online. Delivery fees must be confirmed with the shopper before dispatch, and checkout remains unavailable until migration `0005_cod_checkout_and_customer_accounts.sql` is applied in the target database.
 - Never hardcode credentials, tokens, or connection strings. Read or change environment values only through the configured environment/integration workflow; keep names and sources documented without recording values.
 - Validate and constrain all server-side inputs, enforce allowed status values, use transactions where related writes must succeed together, and report failures rather than returning success-shaped fallbacks.
 - Do not log personal data or secrets. Scope user-owned data to the authenticated user once authentication exists.

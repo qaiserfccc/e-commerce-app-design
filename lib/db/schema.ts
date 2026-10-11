@@ -1,4 +1,4 @@
-import { bigint, boolean, integer, jsonb, numeric, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
+import { bigint, boolean, index, integer, jsonb, numeric, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 
 export const storeProducts = pgTable('store_products', {
@@ -31,31 +31,44 @@ export const storeCustomers = pgTable('store_customers', {
   firstName: text('first_name'),
   lastName: text('last_name'),
   phone: text('phone'),
+  passwordHash: text('password_hash'),
+  sessionVersion: integer('session_version').notNull().default(1),
   marketingOptIn: boolean('marketing_opt_in').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-})
+}, (table) => ({
+  normalizedEmailUnique: uniqueIndex('store_customers_lower_email_unique').on(sql`lower(${table.email})`),
+}))
 
 export const storeOrders = pgTable('store_orders', {
   id: uuid('id').defaultRandom().primaryKey(),
   orderNumber: bigint('order_number', { mode: 'number' }).generatedAlwaysAsIdentity().unique(),
   customerId: uuid('customer_id').notNull(),
   status: text('status').notNull().default('pending'),
+  paymentMethod: text('payment_method'),
+  shippingFeeConfirmed: boolean('shipping_fee_confirmed').notNull().default(false),
   subtotal: numeric('subtotal', { precision: 12, scale: 2 }).notNull(),
   shippingTotal: numeric('shipping_total', { precision: 12, scale: 2 }).notNull().default('0'),
   taxTotal: numeric('tax_total', { precision: 12, scale: 2 }).notNull().default('0'),
   total: numeric('total', { precision: 12, scale: 2 }).notNull(),
   currency: text('currency').notNull().default('USD'),
-  shippingAddress: jsonb('shipping_address').notNull().default({}),
+  shippingAddress: jsonb('shipping_address').$type<Record<string, string>>().notNull().default({}),
+  accountId: uuid('account_id'),
+  checkoutKey: uuid('checkout_key'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-})
+}, (table) => ({
+  checkoutKeyUnique: uniqueIndex('store_orders_checkout_key_unique').on(table.checkoutKey),
+  accountCreatedIdx: index('store_orders_account_created_at_idx').on(table.accountId, table.createdAt),
+}))
 
 export const storeOrderItems = pgTable('store_order_items', {
   id: uuid('id').defaultRandom().primaryKey(),
   orderId: uuid('order_id').notNull(),
   productId: uuid('product_id').notNull(),
   productName: text('product_name').notNull(),
+  variantId: uuid('variant_id'),
+  inventoryReserved: boolean('inventory_reserved').notNull().default(false),
   unitPrice: numeric('unit_price', { precision: 12, scale: 2 }).notNull(),
   quantity: integer('quantity').notNull(),
   lineTotal: numeric('line_total', { precision: 12, scale: 2 }).notNull(),

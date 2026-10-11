@@ -1,7 +1,6 @@
 import {
   Activity,
   CircleCheck,
-  CreditCard,
   Database,
   FileUp,
   GitBranch,
@@ -25,12 +24,12 @@ const columns = [
         files: 'Admin → Products · source records and media links',
       },
       {
-        title: 'Approve checkout and payment processing',
-        area: 'Storefront',
-        icon: CreditCard,
+        title: 'Configure distributed rate limits before production checkout',
+        area: 'Operations',
+        icon: Database,
         description:
-          'The in-page bag is browse-only and does not create orders. Choose a payment provider and approve order, delivery, tax, and customer-data handling before enabling checkout.',
-        files: 'components/storefront/ · payment integration',
+          'The connected Neon database has the COD checkout schema. Public endpoint throttles are per-process only; configure a distributed edge-level rate limit before exposing checkout to production traffic.',
+        files: 'Vercel project configuration · /api/orders · /api/storefront/session',
       },
       {
         title: 'Review repository collaborator access',
@@ -60,8 +59,16 @@ const columns = [
         area: 'Storefront',
         icon: CircleCheck,
         description:
-          'The storefront is an ISK Lenses contact-lens catalog with factual listing copy, responsive product browsing, search, categories, and a clear checkout-unavailable state.',
+          'The storefront is an ISK Lenses contact-lens catalog with factual listing copy, responsive product browsing, search, categories, and a COD-only checkout for guests and account holders.',
         files: 'app/layout.tsx · components/storefront/storefront-panel.tsx',
+      },
+      {
+        title: 'Guest and account cash-on-delivery checkout',
+        area: 'Storefront / Orders',
+        icon: CircleCheck,
+        description:
+          'Checkout reprices active catalog items, reserves inventory and creates an idempotent pending COD order in one database transaction. Shoppers receive a signed short-lived receipt; admins confirm delivery charges before shipping and mark payment received after delivery. Migration 0005 is applied to the connected Neon database; apply it to other targets before enabling checkout there.',
+        files: 'app/checkout/ · app/api/orders/ · app/actions/checkout.ts · migration 0005',
       },
       {
         title: 'Database-backed catalog and product details',

@@ -8,8 +8,11 @@ The storefront and admin use the same Neon Postgres database through Drizzle. Cl
 - `GET /api/products/[slug]` returns one active product with its public media and active options.
 - `/products` is the full public catalog index. It loads every active product, supports live category/search navigation, and links each recorded option to its matching product detail selection. It does not manufacture lens options that are absent from the database.
 - Search, category selection, price, availability, and product imagery reflect the database catalog. Uploaded hero/gallery images take precedence; otherwise, validated source images under `https://isklenses.com/wp-content/uploads/` (or its `www` hostname) are rendered directly on product cards and as a product-detail gallery. Failed images fall through to the next image or the no-photo state. Source images are not copied to Blob.
-- The bag is in-page state only. It does not write customer or order records. Checkout is intentionally unavailable until an approved payment provider and order-submission flow are configured.
-- Public server actions only expose catalog reads. Customer and order reads/writes are not callable from the public storefront.
+- The bag is in-page state only. `/checkout` supports cash-on-delivery order submission for guests and registered shoppers; no online payment is collected.
+- `POST /api/orders` reprices and validates current published products/options, serializes stock reservations in a transaction, uses an idempotency key, and writes the COD order, order lines, shopper, and audit event together. Cancelled reservations are returned to available stock.
+- The recorded total initially equals the product subtotal. A store operator must confirm any delivery fee with the shopper before dispatch; the Admin order workflow records the fee and blocks shipping until confirmation. No tax calculation or payment-provider integration is present.
+- Shopper accounts use scrypt password hashes and signed HTTP-only sessions. The account email is not verified, password reset is not implemented, and an existing customer record cannot be claimed by self-registration; those shoppers may use guest checkout. The receipt is shown only with a short-lived signed browser cookie; customer order history is not implemented.
+- Public order and account endpoints require same-origin JSON requests, bound request-body sizes, and apply best-effort per-process rate limits. Configure distributed edge-level rate limiting before production exposure.
 
 ## Admin authorization
 
@@ -24,16 +27,16 @@ The storefront and admin use the same Neon Postgres database through Drizzle. Cl
 
 ## Admin routes and mutations
 
-- `GET /api/admin/metrics` returns order counts, pending orders, counts by status, and recognized order value grouped by currency. Revenue includes paid, processing, shipped, and delivered orders; it excludes pending, cancelled, and refunded orders.
+- `GET /api/admin/metrics` returns order counts, pending orders, counts by status, and recognized order value grouped by currency. COD revenue is recognized only after payment is marked paid; other payment-method orders retain the existing paid/processing/shipped/delivered recognition rule. Pending, cancelled, and refunded orders are excluded.
 - `GET /api/admin/products`, `/orders`, `/customers`, and `/activity` require an admin session.
-- Product create/edit/archive, stock updates, order status changes, and customer marketing-preference updates are authenticated server actions. Invalid values and invalid order-status transitions are rejected.
+- Product create/edit/archive, stock updates, order status changes, delivery-fee confirmation, and customer marketing-preference updates are authenticated server actions. Invalid values and invalid order-status transitions are rejected. COD orders can be marked paid only after delivery; they cannot be shipped until delivery fees are confirmed.
 - Product options support SKU, color, prescription power, base curve, diameter, pack size, price, currency, and stock. Parent price and stock are derived from active options; direct price/stock edits are blocked while options are active.
 - `POST /api/admin/products/import` reads the public ISK Lenses WooCommerce Store API in pages of 50. Each page is staged and validated; the live product catalog is replaced in one transaction only after the final page succeeds. A failed, empty, oversized, or incomplete import leaves the existing catalog untouched. The staging run is resumable only in sequence and expires after 24 hours.
 - Imported `source_payload` retains the public API's structured factual fields, pricing, category/tag/brand and option metadata, stock/availability flags, source image references, and any video URLs exposed in video-specific API fields. Product-table specifications and package contents embedded in the source description are extracted as factual label/value data. Descriptive/marketing text, HTML, image alt copy, and binary media files are not copied; the source description is fingerprinted for change detection, and operators can open the original listing/media links in Admin.
 - The importer does not download or rehost source photos/videos. Only authorized Vercel Blob uploads are stored as product assets. Each import still creates draft records with zero stock; missing source categories are labeled `Uncategorized`.
 - System-user listing, creation, and activation/deactivation are owner-only. Passwords require at least 16 characters and are stored as salted scrypt hashes.
 - Mutations create `store_activity_events` entries transactionally. Activity payloads do not contain customer names, addresses, email addresses, or other personal fields.
-- Order and customer endpoints return 50 records per page with database counts and server-side customer search. The admin screens paginate through all matching records and expose empty/loading/error states.
+- Order and customer endpoints return 50 records per page with database counts and server-side customer search. Customer password hashes and checkout idempotency/account internals are not returned to admin clients. COD revenue is counted only after an order is marked paid. The admin screens paginate through all matching records and expose empty/loading/error states.
 - Admin writes refresh the relevant SWR keys immediately. Storefront catalog reads revalidate periodically and after product changes.
 
 ## Product media storage
@@ -45,12 +48,14 @@ The storefront and admin use the same Neon Postgres database through Drizzle. Cl
 
 ## Lens catalog state
 
-Migrations `0003_isk_lens_catalog.sql` and `0004_isk_source_snapshot_import.sql` are applied to the connected Neon database. The latest complete import contains 495 distinct source listings; on 2026-10-10 the operator directed that all be published with a configured stock quantity of 5 each. This stock was explicitly entered by the operator, not inferred from source data. Eighty-nine products are `Uncategorized`. The saved snapshot contains 757 source-image links across 406 listings, and 374 listings have extracted product-table data; the source API exposed no video links. There are no configured lens-option rows and no product media assets in the database or Vercel Blob. The storefront displays validated source image URLs directly on catalog cards and in each product's source-image gallery; source photos/videos are not downloaded or rehosted, and source descriptions were not copied. The listing facts, stock, specifications, and image rights have not been independently verified; checkout remains unavailable.
+Migrations `0003_isk_lens_catalog.sql`, `0004_isk_source_snapshot_import.sql`, and `0005_cod_checkout_and_customer_accounts.sql` are applied to the connected Neon database; schema validation passes. Migration `0005` adds shopper credentials/session versions, COD and delivery-fee fields, order idempotency, and stock-reservation metadata. Apply it to each other target database before enabling checkout there. The latest complete import contains 495 distinct source listings; on 2026-10-10 the operator directed that all be published with a configured stock quantity of 5 each. This stock was explicitly entered by the operator, not inferred from source data. Eighty-nine products are `Uncategorized`. The saved snapshot contains 757 source-image links across 406 listings, and 374 listings have extracted product-table data; the source API exposed no video links. There are no configured lens-option rows and no product media assets in the database or Vercel Blob. The storefront displays validated source image URLs directly on catalog cards and in each product's source-image gallery; source photos/videos are not downloaded or rehosted, and source descriptions were not copied. The listing facts, stock, specifications, and image rights have not been independently verified.
 
 ## Data flow
 
 ```text
 Storefront SWR ──> /api/products ──> public catalog reads ──> Neon
+Checkout ────────> /api/orders ────> reprice + reserve stock ──> Neon transaction + audit
+Shopper account ─> /api/storefront/session ──> signed session + shopper auth ──> Neon
 Admin SWR ───────> /api/admin/* ──> session-checked reads ──> Neon
 Admin forms ─────> server actions ─> session + validation ──> Neon transaction + audit event
 Media upload ────> authenticated route ──> Vercel Blob + asset metadata in Neon

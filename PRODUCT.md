@@ -27,7 +27,8 @@ The public reference site is https://isklenses.com/. Its FAQ says it serves Paki
 
 - The existing application uses Next.js App Router, React, TypeScript, Tailwind CSS, Neon Postgres through Drizzle and `pg`, and Vercel Blob.
 - Admin sessions are server-verified. The database-backed roles are owner, admin, and staff.
-- The storefront basket is in-memory only. Checkout and order submission are not available until an approved payment and order-submission flow exists.
+- The storefront basket is in-memory only. Checkout supports cash-on-delivery orders for guests and registered shoppers; it does not collect online payments. Product subtotal is initially recorded without a delivery fee, which the store must confirm with the shopper before dispatch.
+- Shopper accounts use email and password without email verification or password recovery. Existing customer records without an account must use guest checkout unless the shopper can sign in.
 - Source-catalog imports create drafts for review. A later operator-directed publication changes status and stock, but does not mean the underlying specifications, media rights, or claims have been independently verified.
 - Imported specifications, prices, stock, and regulatory or clinical claims must not be guessed. The store operator must verify them before publication.
 - Audience, market, and source-site ownership are inferred from the user request and the public site because a structured confirmation request did not receive a response.
@@ -49,4 +50,4 @@ The public reference site is https://isklenses.com/. Its FAQ says it serves Paki
 - Keep product specifications and commercial terms traceable to a source and operator-reviewed before publication.
 - Treat lens parameters as structured product data rather than descriptive copy.
 - Distinguish verified catalog facts from imported, draft, or unknown information.
-- Keep checkout unavailable until payment and order-handling behavior is approved and implemented.
+- Keep online payment unavailable. Do not claim a final payable total until the store confirms delivery charges with the shopper.

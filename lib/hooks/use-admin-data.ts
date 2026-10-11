@@ -30,6 +30,8 @@ export interface AdminOrder {
   orderNumber: number
   customerId: string
   status: string
+  paymentMethod: string | null
+  shippingFeeConfirmed: boolean
   subtotal: string
   shippingTotal: string
   taxTotal: string
