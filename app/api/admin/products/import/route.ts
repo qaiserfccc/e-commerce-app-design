@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { importIskCatalogPage } from '@/app/actions/admin'
+import {
+  beginIskCatalogReplacement,
+  importIskCatalogPage,
+} from '@/app/actions/admin'
 import { adminApiError } from '@/lib/auth/admin-api'
 import { requireAdminSession } from '@/lib/auth/admin'
 
@@ -21,19 +24,29 @@ export async function POST(request: NextRequest) {
     try {
       payload = await request.json()
     } catch {
-      return NextResponse.json({ error: 'Import request must contain a valid JSON page number.' }, { status: 400 })
+      return NextResponse.json({ error: 'Import request must contain valid JSON.' }, { status: 400 })
+    }
+    if (typeof payload !== 'object' || payload === null || Array.isArray(payload) || !('action' in payload)) {
+      return NextResponse.json({ error: 'Import action is invalid.' }, { status: 400 })
+    }
+
+    if (payload.action === 'begin') {
+      return NextResponse.json(
+        { data: await beginIskCatalogReplacement() },
+        { headers: { 'Cache-Control': 'no-store' } },
+      )
     }
     if (
-      typeof payload !== 'object' ||
-      payload === null ||
-      Array.isArray(payload) ||
-      !('page' in payload) ||
-      typeof payload.page !== 'number'
+      payload.action !== 'page' ||
+      !('runId' in payload) || typeof payload.runId !== 'string' ||
+      !('page' in payload) || typeof payload.page !== 'number'
     ) {
-      return NextResponse.json({ error: 'Import page is invalid.' }, { status: 400 })
+      return NextResponse.json({ error: 'Import page details are invalid.' }, { status: 400 })
     }
-    const result = await importIskCatalogPage(payload.page)
-    return NextResponse.json({ data: result }, { headers: { 'Cache-Control': 'no-store' } })
+    return NextResponse.json(
+      { data: await importIskCatalogPage(payload.runId, payload.page) },
+      { headers: { 'Cache-Control': 'no-store' } },
+    )
   } catch (error) {
     return adminApiError(error)
   }

@@ -92,8 +92,8 @@ const columns = [
         area: 'Catalog',
         icon: Database,
         description:
-          'The authenticated, duplicate-safe importer pages through the public ISK Lenses catalog. Imported prices and source links are retained for review; descriptions and images are not copied, and drafts start with zero stock.',
-        files: 'app/api/admin/products/import/ · source_product_id',
+          'The authenticated importer stages every page from the public Store API and atomically replaces the catalog only after all records validate. It retains structured prices, categories, tags, availability, specifications, and image/video source links; descriptions and media files are not copied.',
+        files: 'app/api/admin/products/import/ · source_payload · import staging',
       },
       {
         title: 'Database-backed admin workspace',

@@ -1,6 +1,6 @@
 # Next Agent Handoff
 
-_Last updated: 2026-10-08_
+_Last updated: 2026-10-10_
 
 This document is the operational handoff for continuing the ecommerce storefront + admin CRM project. It intentionally records environment-variable **names and sources**, never secret values.
 
@@ -21,9 +21,9 @@ This document is the operational handoff for continuing the ecommerce storefront
 - Sync notes: `docs/DATABASE_SYNC.md`.
 - GitHub Actions: no workflow files are currently tracked in `.github/workflows/`.
 - GitHub operation identity: project agents must verify and use `@qaiserfccc` for GitHub mutations; see `AGENTS.md`.
-- The ISK Lenses storefront and admin screens use the shared Neon database. Product variants, published product details, image/video galleries, and a protected public-catalog draft importer are implemented.
+- The ISK Lenses storefront and admin screens use the shared Neon database. Product variants, published product details, image/video galleries, a protected public-catalog draft importer, and a full `/products` index are implemented.
 - Admin access now uses database-backed owner/admin/staff accounts, scrypt password hashes, and revocable signed sessions. Migration `0002_store_admin_users.sql` is applied to the connected Neon main branch, and an initial owner exists.
-- Migration `0003_isk_lens_catalog.sql` is applied and schema validation passes. The initial source import created 495 draft products with zero stock; 89 listings without a source category are labeled `Uncategorized`. Product descriptions and image files were not copied.
+- Migrations `0003_isk_lens_catalog.sql` and `0004_isk_source_snapshot_import.sql` are applied and schema validation passes. The full replacement import was verified on 2026-10-10: 495 distinct products, 757 source-image links, 374 records with extracted table specifications, and no source video links. On the same date, the operator directed that all 495 products be published at a configured stock of 5 each. All are active; this operator-entered quantity is not verified physical stock. There are zero configured variants and zero product assets in Neon or Vercel Blob. Source image references remain links only; descriptions and media files were not copied. Existing orders, order items, customers, and the one admin account were preserved.
 
 ## Connected integrations
 
@@ -93,7 +93,7 @@ The active Neon project identifier observed during schema work is `polished-dust
 5. Update `lib/db/schema.ts` to exactly mirror the live schema.
 6. Run the repository validation script after schema changes.
 
-The current schema includes products, product assets, product variants, customers, orders, order items, activity events, and admin users. Migration `0003_isk_lens_catalog.sql` adds source provenance, image/video media typing, product variants, the PKR product-currency default, and updated-at triggers.
+The current schema includes products, product assets, product variants, staged source-import runs/items, customers, orders, order items, activity events, and admin users. Migration `0003_isk_lens_catalog.sql` adds source provenance, image/video media typing, product variants, the PKR product-currency default, and updated-at triggers. Migration `0004_isk_source_snapshot_import.sql` adds structured source snapshots and bounded import staging.
 
 ## Data synchronization contract
 
@@ -102,7 +102,7 @@ The current schema includes products, product assets, product variants, customer
 - Every admin server action checks the signed session independently. Mutations validate inputs and write audit events transactionally.
 - Product image/video upload, reorder, and delete use authenticated Next.js route handlers and Vercel Blob; only Blob URLs and metadata are persisted.
 - Public catalog/detail responses include active lens options and supported media. Import provenance is admin-only.
-- The public WooCommerce Store API importer is authenticated, pages through 50 records at a time, and deduplicates by source product ID. Imported source prices and links are for review only; each listing remains a draft with zero stock. Verify the source link, price, category, lens parameters, imagery, and claims before publishing.
+- The public WooCommerce Store API importer is authenticated and stages all pages of 50 records before atomically replacing the product catalog. It retains structured fields, extracted table specifications, pricing, categories, availability, and image/video URL references; it excludes descriptive copy and does not download/rehost media. Each new import creates drafts with zero stock. The current catalog was separately published at the operator's direction; verify listing details and source media rights before relying on or adding claims.
 - After a successful admin mutation, call the relevant SWR `mutate()`/refresh function for immediate UI consistency.
 - Current UI synchronization is polling/revalidation, not database WebSockets. Treat “realtime” as sync-ready periodic refresh unless a future agent adds an approved realtime transport.
 - Admin access is a database-backed owner/admin/staff system with scrypt-hashed passwords and revocable signed sessions; it is not SSO.
@@ -147,11 +147,11 @@ Also inspect:
 
 ## Repository snapshot and agent memory
 
-_Verified in the repository on 2026-10-08._
+_Verified in the repository on 2026-10-10._
 
 - The implementation is Next.js App Router with React 19, TypeScript, Tailwind CSS 4, and `pnpm`; data routes and server actions run inside Next.js. There is no Express service in this codebase. Preserve this architecture unless a framework migration is explicitly approved.
 - The approved customer-facing brand is **ISK Lenses**, replacing the previous lifestyle-goods direction. Keep product statements factual and do not invent medical or performance claims.
-- The authenticated GitHub CLI identity was verified as `qaiserfccc`. GitHub Actions are enabled in repository settings, but there are no checked-in workflows or recorded workflow runs. The repository allows all actions. One other collaborator, `qaiserfcc`, currently has write access. Repository instructions require agents to operate only as `@qaiserfccc`, but that does not enforce account exclusivity for other repository users; enforce it through GitHub access controls if repository-wide exclusivity is required. Attempts to lower the collaborator's role via the collaborator permission API were rejected, and access was not otherwise changed.
+- The current GitHub-operation policy is to verify `gh api user --jq .login` and operate only as `qaiserfccc`. A check on 2026-10-10 returned `qaiserfcc`, so no GitHub operations were performed in that session; do not switch identities to work around the mismatch. GitHub Actions are enabled in repository settings, but there are no checked-in workflows or recorded workflow runs. The repository allows all actions. One other collaborator, `qaiserfcc`, was previously observed with write access. Repository instructions do not enforce account exclusivity for other repository users; enforce it through GitHub access controls if repository-wide exclusivity is required. Attempts to lower the collaborator's role via the collaborator permission API were rejected, and access was not otherwise changed.
 - The storefront reads active products through `app/api/products/route.ts` and `lib/hooks/use-storefront-data.ts`. The admin overview reads metrics through `app/api/admin/metrics/route.ts` and `lib/hooks/use-admin-data.ts`.
 - Admin sign-in uses database-backed identities and a signed HTTP-only cookie. Product/order/customer reads, admin mutations, and image endpoints verify the session on the server.
 - Admin sign-in uses database-backed owner/admin/staff accounts and signed HTTP-only cookies; owner-only user management is available in the workspace. The migration and initial owner have been provisioned in Neon.
@@ -162,7 +162,7 @@ _Verified in the repository on 2026-10-08._
 ## Next recommended work
 
 1. Replace the provisional owner credentials in **System users** before normal team use; apply edge-level sign-in rate limiting before production exposure.
-2. Review the imported draft listings and verify lens specifications, prices, imagery, stock, and claims before publishing.
+2. Review the published listings and verify lens specifications, prices, imagery, claims, and configured stock; the operator-entered quantity of 5 does not attest to physical inventory. No source media files were copied into Blob.
 3. Choose a payment provider and approve checkout, order-creation, shipping, tax, and customer-data handling before accepting orders.
 4. Manage repository collaborator access in GitHub settings if repository-wide operator exclusivity is required.
 5. If GitHub Actions workflows are introduced, gate every job to `github.actor == 'qaiserfccc' && github.triggering_actor == 'qaiserfccc'`.

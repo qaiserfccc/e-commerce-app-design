@@ -24,6 +24,8 @@ const REQUIRED_TABLES = [
   'store_order_items',
   'store_product_assets',
   'store_product_variants',
+  'store_product_import_runs',
+  'store_product_import_items',
   'store_activity_events',
   'store_admin_users',
 ]
@@ -43,6 +45,8 @@ const TABLE_SCHEMAS = {
     'source_product_id',
     'source_url',
     'source_image_url',
+    'source_payload',
+    'source_content_hash',
     'created_at',
     'updated_at',
   ],
@@ -89,6 +93,8 @@ const TABLE_SCHEMAS = {
     'created_at',
     'updated_at',
   ],
+  store_product_import_runs: ['id', 'next_page', 'imported_count', 'created_at', 'updated_at'],
+  store_product_import_items: ['run_id', 'source_product_id', 'slug', 'payload'],
   store_activity_events: ['id', 'entity_type', 'entity_id', 'event_type', 'payload', 'created_at'],
   store_admin_users: [
     'id',

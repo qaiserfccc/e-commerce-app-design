@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import {
-  getActiveProductVariants,
+  getActiveProductVariantsForProducts,
   getActiveProducts,
-  getProductAssets,
+  getProductAssetsForProducts,
   getProductsByCategory,
   searchProducts,
 } from '@/app/actions/storefront'
@@ -21,14 +21,28 @@ export async function GET(request: NextRequest) {
     let products = query ? await searchProducts(query) : category ? await getProductsByCategory(category) : await getActiveProducts()
     if (query && category) products = products.filter((product) => product.category === category)
 
-    // Enrich products with assets
-    const enrichedProducts = await Promise.all(
-      products.map(async (product) => ({
-        ...product,
-        assets: await getProductAssets(product.id),
-        variants: await getActiveProductVariants(product.id),
-      })),
-    )
+    const productIds = products.map((product) => product.id)
+    const [assets, variants] = await Promise.all([
+      getProductAssetsForProducts(productIds),
+      getActiveProductVariantsForProducts(productIds),
+    ])
+    const assetsByProduct = new Map<string, typeof assets>()
+    const variantsByProduct = new Map<string, typeof variants>()
+    for (const asset of assets) {
+      const productAssets = assetsByProduct.get(asset.productId) ?? []
+      productAssets.push(asset)
+      assetsByProduct.set(asset.productId, productAssets)
+    }
+    for (const variant of variants) {
+      const productVariants = variantsByProduct.get(variant.productId) ?? []
+      productVariants.push(variant)
+      variantsByProduct.set(variant.productId, productVariants)
+    }
+    const enrichedProducts = products.map((product) => ({
+      ...product,
+      assets: assetsByProduct.get(product.id) ?? [],
+      variants: variantsByProduct.get(product.id) ?? [],
+    }))
 
     return NextResponse.json(
       {

@@ -28,7 +28,7 @@ These instructions describe the application that exists in this repository. Keep
 
 ## GitHub operations and Actions
 
-- Perform GitHub-side operations only while authenticated as **`@qaiserfccc`**. Before any GitHub mutation, verify the active identity with `gh api user --jq .login`; stop if it is not `qaiserfccc`. Do not switch accounts or use another user's credentials to get around a permission problem.
+- Perform all GitHub and Git operations—including commit, fetch, pull, push, branch, pull-request, issue, and workflow actions—only as **`@qaiserfccc`**. Before any such action, verify the active identity with `gh api user --jq .login`; proceed only when the result is exactly `qaiserfccc`. If it differs or cannot be verified, stop these operations and report the blocker. Do not switch accounts or use another user's credentials to get around a permission problem.
 - Do not delegate GitHub mutations to another account or agent. Report permission or authentication blockers instead of bypassing them.
 - There are currently no checked-in GitHub Actions workflows. If workflows are added, every job must be gated with `if: github.actor == 'qaiserfccc' && github.triggering_actor == 'qaiserfccc'` so workflow jobs do not run for other actors, including a different user rerunning a workflow. Apply the gate to every job, including reusable-workflow callers; do not rely on a separate guard job that other jobs can bypass.
 - Workflow actor gates are repository code policy, not a substitute for GitHub repository access controls. Do not claim repository-wide exclusivity unless collaborator and organization permissions have also been verified.

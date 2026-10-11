@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db'
 import { storeProducts, storeProductAssets, storeProductVariants } from '@/lib/db/schema'
-import { eq, desc, asc, ilike, and, or } from 'drizzle-orm'
+import { eq, desc, asc, ilike, and, or, inArray } from 'drizzle-orm'
 
 /**
  * Storefront data access layer - READ operations
@@ -154,6 +154,32 @@ export async function getProductAssets(productId: string) {
   }
 }
 
+export async function getProductAssetsForProducts(productIds: string[]) {
+  if (!Array.isArray(productIds) || productIds.length > 5000 ||
+      productIds.some((productId) => typeof productId !== 'string' ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(productId))) {
+    throw new Error('Product IDs are invalid.')
+  }
+  if (!productIds.length) return []
+  try {
+    const assets = await db
+      .select()
+      .from(storeProductAssets)
+      .where(inArray(storeProductAssets.productId, productIds))
+      .orderBy(asc(storeProductAssets.sortOrder), asc(storeProductAssets.createdAt))
+    return assets.map((asset) => {
+      if (asset.mediaType !== 'image' && asset.mediaType !== 'video') {
+        throw new Error('Stored product media has an unsupported type.')
+      }
+      const mediaType: 'image' | 'video' = asset.mediaType
+      return { ...asset, mediaType }
+    })
+  } catch (error) {
+    console.error('[storefront] Product gallery query failed', error instanceof Error ? error.name : 'UnknownError')
+    throw new Error('Failed to fetch product assets')
+  }
+}
+
 export async function getActiveProductVariants(productId: string) {
   if (typeof productId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(productId)) {
     throw new Error('Product ID is invalid.')
@@ -179,6 +205,38 @@ export async function getActiveProductVariants(productId: string) {
       .orderBy(asc(storeProductVariants.name))
   } catch (error) {
     console.error('[storefront] Product variant query failed', error instanceof Error ? error.name : 'UnknownError')
+    throw new Error('Failed to fetch product options')
+  }
+}
+
+export async function getActiveProductVariantsForProducts(productIds: string[]) {
+  if (!Array.isArray(productIds) || productIds.length > 5000 ||
+      productIds.some((productId) => typeof productId !== 'string' ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(productId))) {
+    throw new Error('Product IDs are invalid.')
+  }
+  if (!productIds.length) return []
+  try {
+    return await db
+      .select({
+        id: storeProductVariants.id,
+        productId: storeProductVariants.productId,
+        name: storeProductVariants.name,
+        color: storeProductVariants.color,
+        powerDiopters: storeProductVariants.powerDiopters,
+        baseCurve: storeProductVariants.baseCurve,
+        diameterMm: storeProductVariants.diameterMm,
+        packSize: storeProductVariants.packSize,
+        price: storeProductVariants.price,
+        currency: storeProductVariants.currency,
+        stockQuantity: storeProductVariants.stockQuantity,
+        sku: storeProductVariants.sku,
+      })
+      .from(storeProductVariants)
+      .where(and(inArray(storeProductVariants.productId, productIds), eq(storeProductVariants.isActive, true)))
+      .orderBy(asc(storeProductVariants.name))
+  } catch (error) {
+    console.error('[storefront] Product options query failed', error instanceof Error ? error.name : 'UnknownError')
     throw new Error('Failed to fetch product options')
   }
 }

@@ -107,8 +107,8 @@ export function StorefrontPanel() {
       <div hidden dangerouslySetInnerHTML={{ __html: '<!-- THESIS: An eye-color contact-lens catalogue reads as an index of published products, not a generic beauty hero. OWN-WORLD: Ink-blue fields, electric chartreuse indexing, cool leaf-white stock; compressed display type, tabular mono labels, unboxed product plates. STORY: Shoppers browse the live catalog by category and open listings to compare the options and product facts actually published; no clinical claim or checkout is implied. FIRST VIEWPORT: A split ink-blue field puts the product proposition and catalogue action at left and a large abstract lens study at right; the live-product count anchors the lower edge. FORM: Grounded direction 7, the chromatic specimen index, adapted to the product-option bellows staging; seed 0d4d3b24.' }} />
       <nav aria-label="Store navigation" className="flex min-h-[66px] items-center justify-between gap-4 border-b border-[#152a52]/20 py-3">
         <div className="flex flex-wrap items-center gap-x-7 gap-y-2 text-xs font-bold uppercase tracking-[.12em]">
-          <a href="#collection" className="hover:text-[#16468a] focus-visible:outline-2 focus-visible:outline-[#16468a]">Products</a>
-          <a href="#collection" className="hidden text-[#314a63] hover:text-[#16468a] sm:inline">Color index</a>
+          <Link href="/products" className="hover:text-[#16468a] focus-visible:outline-2 focus-visible:outline-[#16468a]">Products</Link>
+          <Link href="/products#collection" className="hidden text-[#314a63] hover:text-[#16468a] sm:inline">Color index</Link>
           <a href="#catalogue-notes" className="hidden text-[#314a63] hover:text-[#16468a] sm:inline">How to read listings</a>
         </div>
         <div className="flex items-center gap-2">
@@ -147,9 +147,9 @@ export function StorefrontPanel() {
             <p className="mt-8 max-w-[430px] text-sm leading-6 text-[#e0eae6] sm:text-base sm:leading-7">
               Browse contact lenses by collection. Compare the options, prices, and availability published for each product.
             </p>
-            <a href="#collection" className="mt-8 inline-flex items-center gap-4 bg-[#d3ff48] px-5 py-4 text-xs font-black uppercase tracking-[.13em] text-[#152a52] hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
+            <Link href="/products" className="mt-8 inline-flex items-center gap-4 bg-[#d3ff48] px-5 py-4 text-xs font-black uppercase tracking-[.13em] text-[#152a52] hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
               Explore products <ArrowDown size={16} aria-hidden="true" />
-            </a>
+            </Link>
           </div>
           <p className="font-mono text-[10px] uppercase tracking-[.13em] text-[#dbe7e1]">
             Published products <span className="ml-2 text-[#d3ff48]">{isLoading ? '…' : allProducts.length}</span>
