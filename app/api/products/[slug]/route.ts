@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getActiveProductVariants, getProductAssets, getProductBySlug } from '@/app/actions/storefront'
+import {
+  getActiveProductVariants,
+  getProductAssets,
+  getProductBySlug,
+  getProductSourceImageUrlsForProducts,
+} from '@/app/actions/storefront'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,12 +19,13 @@ export async function GET(
     }
     const product = await getProductBySlug(slug)
     if (!product) return NextResponse.json({ error: 'Product not found.' }, { status: 404 })
-    const [assets, variants] = await Promise.all([
+    const [assets, variants, sourceImages] = await Promise.all([
       getProductAssets(product.id),
       getActiveProductVariants(product.id),
+      getProductSourceImageUrlsForProducts([product.id]),
     ])
     return NextResponse.json(
-      { data: { ...product, assets, variants }, timestamp: new Date().toISOString() },
+      { data: { ...product, assets, variants, sourceImageUrls: sourceImages[0]?.sourceImageUrls ?? [] }, timestamp: new Date().toISOString() },
       { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' } },
     )
   } catch (error) {

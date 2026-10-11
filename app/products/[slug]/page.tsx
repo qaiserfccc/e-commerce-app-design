@@ -1,5 +1,10 @@
 import { notFound } from 'next/navigation'
-import { getActiveProductVariants, getProductAssets, getProductBySlug } from '@/app/actions/storefront'
+import {
+  getActiveProductVariants,
+  getProductAssets,
+  getProductBySlug,
+  getProductSourceImageUrlsForProducts,
+} from '@/app/actions/storefront'
 import { StorefrontProductDetail } from '@/components/storefront/product-detail'
 import type { Product } from '@/lib/hooks/use-storefront-data'
 
@@ -16,9 +21,10 @@ export default async function ProductPage({
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) notFound()
   const product = await getProductBySlug(slug)
   if (!product) notFound()
-  const [assets, variants] = await Promise.all([
+  const [assets, variants, sourceImages] = await Promise.all([
     getProductAssets(product.id),
     getActiveProductVariants(product.id),
+    getProductSourceImageUrlsForProducts([product.id]),
   ])
   const initialProduct: Product = {
     ...product,
@@ -29,6 +35,7 @@ export default async function ProductPage({
       createdAt: asset.createdAt.toISOString(),
     })),
     variants,
+    sourceImageUrls: sourceImages[0]?.sourceImageUrls ?? [],
   }
   return <StorefrontProductDetail initialProduct={initialProduct} initialOptionId={option} />
 }

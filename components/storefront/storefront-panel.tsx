@@ -6,6 +6,7 @@ import { ArrowDown, ArrowRight, Search, ShoppingBag } from 'lucide-react'
 import { StorefrontBag } from '@/components/storefront/storefront-bag'
 import { useStorefrontCart } from '@/lib/hooks/use-storefront-cart'
 import { useProducts, type Product } from '@/lib/hooks/use-storefront-data'
+import { getProductImageSources, StorefrontProductImage } from '@/components/storefront/product-image'
 
 function priceLabel(value: string, currency: string) {
   const amount = Number(value)
@@ -17,14 +18,8 @@ function priceLabel(value: string, currency: string) {
   }
 }
 
-function productImage(product: Product) {
-  return product.heroImageUrl ??
-    product.assets?.find((asset) => asset.mediaType === 'image' && asset.blobUrl)?.blobUrl ??
-    null
-}
-
 function ProductCard({ product, addToBag }: { product: Product; addToBag: (product: Product) => void }) {
-  const image = productImage(product)
+  const imageSources = getProductImageSources(product)
   const options = product.variants?.length ?? 0
   const unavailable = options
     ? !product.variants?.some((variant) => variant.stockQuantity > 0)
@@ -44,19 +39,24 @@ function ProductCard({ product, addToBag }: { product: Product; addToBag: (produ
         aria-label={`View ${product.name}`}
         className="block focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#16468a]"
       >
-        <div className="relative aspect-[.94] overflow-hidden bg-[#dbe7e1]">
-          {image ? (
-            <img src={image} alt={product.name} loading="lazy" className="size-full object-cover transition-transform duration-700 group-hover:scale-[1.035]" />
-          ) : (
-            <div aria-hidden="true" className="product-placeholder size-full" />
+        <StorefrontProductImage
+          sources={imageSources}
+          alt={product.name}
+          className="relative aspect-[.94] overflow-hidden bg-[#dbe7e1]"
+          imageClassName="size-full object-cover transition-transform duration-700 group-hover:scale-[1.035]"
+          fallback={(
+            <div role="img" aria-label={`No product image is available for ${product.name}`} className="product-placeholder grid size-full place-items-center">
+              <span className="bg-[#edf4ef] px-3 py-2 font-mono text-[10px] uppercase tracking-[.12em] text-[#152a52]">No product photo</span>
+            </div>
           )}
+        >
           <span className="absolute left-3 top-3 max-w-[75%] truncate bg-[#edf4ef] px-3 py-2 font-mono text-[10px] uppercase tracking-[.14em] text-[#152a52]">
             {product.category}
           </span>
           <span className="absolute bottom-3 right-3 grid size-11 place-items-center rounded-full bg-[#d3ff48] text-[#152a52] transition-transform group-hover:rotate-45">
             <ArrowRight size={18} aria-hidden="true" />
           </span>
-        </div>
+        </StorefrontProductImage>
       </Link>
       <div className="flex items-start justify-between gap-3 border-b border-[#152a52]/25 py-4">
         <div className="min-w-0">
