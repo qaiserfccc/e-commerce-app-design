@@ -17,12 +17,12 @@ const columns = [
     accent: 'bg-[#d9a78c]',
     tasks: [
       {
-        title: 'Review imported listings before publishing',
+        title: 'Review published listings before relying on their details',
         area: 'Catalog',
         icon: ScanEye,
         description:
-          '495 source listings are drafts with zero stock. 89 have no source category and are labeled Uncategorized. Verify product details, lens parameters, prices, images, and claims before publishing.',
-        files: 'Admin → Products · source references on each draft',
+          'The operator published 495 imported listings with a configured stock of 5 each; this is not a physical-stock verification. 89 remain Uncategorized. 406 listings have source image links; review lens details, prices, image rights, and claims before relying on them.',
+        files: 'Admin → Products · source records and media links',
       },
       {
         title: 'Approve checkout and payment processing',
@@ -84,7 +84,7 @@ const columns = [
         area: 'Storage',
         icon: FileUp,
         description:
-          'Admin uploads validate image/video file contents and size, store media in Vercel Blob, and persist metadata. Operators can preview, reorder, and delete media.',
+          'Admin uploads validate image/video file contents and size, store media in Vercel Blob, and persist metadata. Source catalog image URLs are also shown directly as fallbacks; they are not copied into Blob.',
         files: 'app/api/admin/products/ · store_product_assets',
       },
       {

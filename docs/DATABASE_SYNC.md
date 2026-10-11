@@ -7,7 +7,7 @@ The storefront and admin use the same Neon Postgres database through Drizzle. Cl
 - `GET /api/products` returns active products, supported public media metadata, and active lens options. It supports `category` and `q` filters and is refreshed by `useProducts`.
 - `GET /api/products/[slug]` returns one active product with its public media and active options.
 - `/products` is the full public catalog index. It loads every active product, supports live category/search navigation, and links each recorded option to its matching product detail selection. It does not manufacture lens options that are absent from the database.
-- Search, category selection, price, availability, and product imagery reflect the database catalog.
+- Search, category selection, price, availability, and product imagery reflect the database catalog. Uploaded hero/gallery images take precedence; otherwise, validated source images under `https://isklenses.com/wp-content/uploads/` (or its `www` hostname) are rendered directly on product cards and as a product-detail gallery. Failed images fall through to the next image or the no-photo state. Source images are not copied to Blob.
 - The bag is in-page state only. It does not write customer or order records. Checkout is intentionally unavailable until an approved payment provider and order-submission flow are configured.
 - Public server actions only expose catalog reads. Customer and order reads/writes are not callable from the public storefront.
 
@@ -45,7 +45,7 @@ The storefront and admin use the same Neon Postgres database through Drizzle. Cl
 
 ## Lens catalog state
 
-Migrations `0003_isk_lens_catalog.sql` and `0004_isk_source_snapshot_import.sql` are applied to the connected Neon database. The latest complete import contains 495 distinct source listings; on 2026-10-10 the operator directed that all be published with a configured stock quantity of 5 each. This stock was explicitly entered by the operator, not inferred from source data. Eighty-nine products are `Uncategorized`. The saved snapshot contains 757 source-image links and extracted product-table data for 374 listings; the source API exposed no video links. There are no configured lens-option rows and no product media assets in the database or Vercel Blob. Product images/videos were not downloaded or rehosted, and source descriptions were not copied. The listing facts, stock, specifications, and rights have not been independently verified; checkout remains unavailable.
+Migrations `0003_isk_lens_catalog.sql` and `0004_isk_source_snapshot_import.sql` are applied to the connected Neon database. The latest complete import contains 495 distinct source listings; on 2026-10-10 the operator directed that all be published with a configured stock quantity of 5 each. This stock was explicitly entered by the operator, not inferred from source data. Eighty-nine products are `Uncategorized`. The saved snapshot contains 757 source-image links across 406 listings, and 374 listings have extracted product-table data; the source API exposed no video links. There are no configured lens-option rows and no product media assets in the database or Vercel Blob. The storefront displays validated source image URLs directly on catalog cards and in each product's source-image gallery; source photos/videos are not downloaded or rehosted, and source descriptions were not copied. The listing facts, stock, specifications, and image rights have not been independently verified; checkout remains unavailable.
 
 ## Data flow
 

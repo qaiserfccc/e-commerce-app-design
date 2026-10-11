@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { ArrowRight, Search } from 'lucide-react'
 import { useProducts, type Product } from '@/lib/hooks/use-storefront-data'
+import { getProductImageSources, StorefrontProductImage } from '@/components/storefront/product-image'
 
 function formatPrice(value: string, currency: string) {
   const amount = Number(value)
@@ -22,8 +23,7 @@ function ProductEntry({ product }: { product: Product }) {
   undefined)
   const price = firstVariant?.price ?? product.price
   const currency = firstVariant?.currency ?? product.currency
-  const image = product.heroImageUrl ??
-    product.assets?.find((asset) => asset.mediaType === 'image' && asset.blobUrl)?.blobUrl
+  const imageSources = getProductImageSources(product)
 
   return (
     <article className="min-w-0 border-b border-[#152a52]/25 pb-5">
@@ -32,18 +32,21 @@ function ProductEntry({ product }: { product: Product }) {
         aria-label={`View ${product.name}`}
         className="group block focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#16468a]"
       >
-        <div className="relative aspect-[.94] overflow-hidden bg-[#dbe7e1]">
-          {image ? (
-            <img src={image} alt={product.name} loading="lazy" className="size-full object-cover transition-transform duration-500 group-hover:scale-[1.025]" />
-          ) : (
-            <div role="img" aria-label={`No product media uploaded for ${product.name}`} className="product-placeholder grid size-full place-items-center">
+        <StorefrontProductImage
+          sources={imageSources}
+          alt={product.name}
+          className="relative aspect-[.94] overflow-hidden bg-[#dbe7e1]"
+          imageClassName="size-full object-cover transition-transform duration-500 group-hover:scale-[1.025]"
+          fallback={(
+            <div role="img" aria-label={`No product image is available for ${product.name}`} className="product-placeholder grid size-full place-items-center">
               <span className="bg-[#edf4ef] px-3 py-2 font-mono text-[10px] uppercase tracking-[.12em] text-[#152a52]">No product photo</span>
             </div>
           )}
+        >
           <span className="absolute left-3 top-3 max-w-[80%] truncate bg-[#152a52] px-3 py-2 font-mono text-[10px] uppercase tracking-[.12em] text-[#d3ff48]">
             {product.category}
           </span>
-        </div>
+        </StorefrontProductImage>
         <div className="flex items-start justify-between gap-3 pt-4">
           <div className="min-w-0">
             <h2 className="truncate text-base font-semibold leading-5 group-hover:underline">{product.name}</h2>

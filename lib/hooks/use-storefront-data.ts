@@ -20,6 +20,8 @@ export interface Product {
   status: string
   stockQuantity: number
   heroImageUrl: string | null
+  sourceImageUrl: string | null
+  sourceImageUrls?: string[]
   createdAt: string
   updatedAt: string
   assets?: ProductAsset[]
