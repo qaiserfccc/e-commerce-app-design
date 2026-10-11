@@ -199,7 +199,7 @@ export function StorefrontProductIndex() {
 
       <footer className="mt-20 flex flex-wrap justify-between gap-4 border-t border-[#152a52]/25 pt-5 font-mono text-[10px] uppercase tracking-[.13em] text-[#314a63]">
         <Link href="/" className="underline underline-offset-4 hover:text-[#16468a] focus-visible:outline-2 focus-visible:outline-[#16468a]">ISK Lenses · Return to home</Link>
-        <span>Browse only · Checkout unavailable</span>
+        <span>Cash on delivery · Guest and account checkout</span>
       </footer>
     </main>
   )

@@ -248,7 +248,7 @@ export function StorefrontPanel() {
 
       <footer className="flex flex-wrap items-center justify-between gap-4 pt-8 text-[10px] font-mono uppercase tracking-[.15em] text-[#314a63]">
         <span>ISK Lenses · Product catalogue</span>
-        <span>Browse only · Checkout unavailable</span>
+        <span>Cash on delivery · Guest and account checkout</span>
       </footer>
     </div>
   )

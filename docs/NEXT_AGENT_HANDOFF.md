@@ -22,8 +22,10 @@ This document is the operational handoff for continuing the ecommerce storefront
 - GitHub Actions: no workflow files are currently tracked in `.github/workflows/`.
 - GitHub operation identity: project agents must verify and use `@qaiserfccc` for GitHub mutations; see `AGENTS.md`.
 - The ISK Lenses storefront and admin screens use the shared Neon database. Product variants, published product details, image/video galleries, a protected public-catalog draft importer, and a full `/products` index are implemented. Product cards prefer uploaded Blob media, then display validated imported images from `isklenses.com`; product detail pages also show all recorded source-image links as a gallery without copying them to Blob.
+- COD checkout and shopper sign-in/registration are implemented in the application: guests and account holders can submit inventory-checked orders, with no online payment. Order totals initially include product subtotal only; an admin must confirm delivery fees before dispatch. Shopper accounts do not verify email, provide password reset, or expose order history.
 - Admin access now uses database-backed owner/admin/staff accounts, scrypt password hashes, and revocable signed sessions. Migration `0002_store_admin_users.sql` is applied to the connected Neon main branch, and an initial owner exists.
 - Migrations `0003_isk_lens_catalog.sql` and `0004_isk_source_snapshot_import.sql` are applied and schema validation passes. The full replacement import was verified on 2026-10-10: 495 distinct products, 757 source-image links across 406 listings, 374 records with extracted table specifications, and no source video links. On the same date, the operator directed that all 495 products be published at a configured stock of 5 each. All are active; this operator-entered quantity is not verified physical stock. There are zero configured variants and zero product assets in Neon or Vercel Blob. The storefront displays validated source images on listing cards and all recorded source-image links in product galleries, falling back if an image fails; source files are not copied to Blob. Descriptions were not copied. Existing orders, order items, customers, and the one admin account were preserved.
+- Migration `0005_cod_checkout_and_customer_accounts.sql` adds shopper credentials/session versions, COD and delivery-fee fields, order idempotency, and stock-reservation metadata. It is applied to the connected Neon database and schema validation passes; apply it separately to other target environments before enabling checkout there.
 
 ## Connected integrations
 
@@ -46,8 +48,9 @@ The variables are managed by the Vercel/v0 project environment and mirrored into
 | `DATABASE_URL` | Neon | Primary pooled Postgres connection used by `lib/db/index.ts`. |
 | `BLOB_READ_WRITE_TOKEN` | Vercel Blob | Server-side Blob uploads/deletes/list operations. |
 | `ADMIN_SESSION_SECRET` | Project environment | HMAC key for signed admin session cookies; set a cryptographically random value of at least 32 characters in each environment. |
+| `CUSTOMER_SESSION_SECRET` | Project environment (optional) | Separate shopper-session HMAC source; if unset, the app derives a domain-separated shopper key from `ADMIN_SESSION_SECRET`. |
 
-Admin access fails closed until `ADMIN_SESSION_SECRET` is configured and the database migration has been applied. Credentials and roles are stored in `store_admin_users`; passwords are salted scrypt hashes. `ADMIN_EMAIL` and `ADMIN_PASSWORD` are used only by the one-time local bootstrap script and are not read by the deployed application. Staff accounts are read-only; admins can change store data; owners can manage accounts. The owner-only System users panel can create admin/staff accounts and revoke their sessions. The in-process login throttle is defense in depth, not a distributed rate limiter; configure edge-level rate limiting before production exposure.
+Admin access and shopper account/order signing fail closed until the required session secret and database migrations are configured. Credentials and roles are stored in `store_admin_users`; passwords are salted scrypt hashes. `ADMIN_EMAIL` and `ADMIN_PASSWORD` are used only by the one-time local bootstrap script and are not read by the deployed application. Staff accounts are read-only; admins can change store data; owners can manage accounts. The owner-only System users panel can create admin/staff accounts and revoke their sessions. Public checkout/account throttles and the in-process admin login throttle are defense in depth, not distributed rate limits; configure edge-level rate limiting before production exposure.
 
 The initial owner currently uses the provisional address `owner@localhost.invalid`; its generated password is stored in the ignored, mode-`600` `.env.local`. Sign in and update the owner email/password in **System users** before normal team use. Set local-only `ADMIN_LOGIN_PREFILL=true` in `.env.local` to prefill credentials and show a one-click **Quick sign in** button when using localhost in development; the production/preview sign-in never returns or displays the password. `ADMIN_SESSION_SECRET` is configured separately for local, Development, Preview, and Production.
 
@@ -154,16 +157,16 @@ _Verified in the repository on 2026-10-10._
 - The current GitHub-operation policy is to verify `gh api user --jq .login` and operate only as `qaiserfccc`. A check on 2026-10-10 returned `qaiserfcc`, so no GitHub operations were performed in that session; do not switch identities to work around the mismatch. GitHub Actions are enabled in repository settings, but there are no checked-in workflows or recorded workflow runs. The repository allows all actions. One other collaborator, `qaiserfcc`, was previously observed with write access. Repository instructions do not enforce account exclusivity for other repository users; enforce it through GitHub access controls if repository-wide exclusivity is required. Attempts to lower the collaborator's role via the collaborator permission API were rejected, and access was not otherwise changed.
 - The storefront reads active products through `app/api/products/route.ts` and `lib/hooks/use-storefront-data.ts`. The admin overview reads metrics through `app/api/admin/metrics/route.ts` and `lib/hooks/use-admin-data.ts`.
 - Admin sign-in uses database-backed identities and a signed HTTP-only cookie. Product/order/customer reads, admin mutations, and image endpoints verify the session on the server.
-- Admin sign-in uses database-backed owner/admin/staff accounts and signed HTTP-only cookies; owner-only user management is available in the workspace. The migration and initial owner have been provisioned in Neon.
+- Admin sign-in uses database-backed owner/admin/staff accounts and signed HTTP-only cookies; owner-only user management is available in the workspace. The admin migration and initial owner have been provisioned in Neon.
 - Product, order, customer, and analytics screens are connected to authenticated database routes; mutations validate inputs and log metadata-only audit events.
-- Product image/video upload, preview, reorder, and deletion are wired to Vercel Blob and `store_product_assets`. Lens-option management is database-backed. Checkout is deliberately unavailable: the storefront does not create orders without a configured payment provider.
+- Product image/video upload, preview, reorder, and deletion are wired to Vercel Blob and `store_product_assets`. Lens-option management is database-backed. COD order creation uses an idempotency key and transactional stock reservation; cancellation restores reserved inventory. Admins confirm delivery fees before shipping and mark payment received after delivery. There is no online payment, email verification, password reset, customer order history, configured tax calculation, or automatic delivery-fee notification.
 - `components/admin/project-kanban.tsx` is a read-only snapshot of requirements versus repository status. Its task definitions are code-level project context, not order/customer records or persistent task data. It deliberately does not mutate business data.
 
 ## Next recommended work
 
 1. Replace the provisional owner credentials in **System users** before normal team use; apply edge-level sign-in rate limiting before production exposure.
 2. Review the published listings and verify lens specifications, prices, imagery, claims, and configured stock; the operator-entered quantity of 5 does not attest to physical inventory. No source media files were copied into Blob.
-3. Choose a payment provider and approve checkout, order-creation, shipping, tax, and customer-data handling before accepting orders.
+3. Apply migration `0005_cod_checkout_and_customer_accounts.sql` to any target database other than the connected Neon database and validate its schema. Confirm the delivery-fee/customer-contact procedure and configure edge-level rate limiting before production exposure.
 4. Manage repository collaborator access in GitHub settings if repository-wide operator exclusivity is required.
 5. If GitHub Actions workflows are introduced, gate every job to `github.actor == 'qaiserfccc' && github.triggering_actor == 'qaiserfccc'`.
 6. Keep this file updated whenever integrations, environment variables, deployment settings, migrations, or verified project status change.
@@ -172,12 +175,16 @@ _Verified in the repository on 2026-10-10._
 
 ```text
 db/migrations/0001_storefront_workspace.sql
+db/migrations/0005_cod_checkout_and_customer_accounts.sql
 lib/db/schema.ts
 lib/db/index.ts
 app/actions/storefront.ts
+app/actions/checkout.ts
 app/actions/admin.ts
+app/api/orders/route.ts
 app/api/products/route.ts
 app/api/admin/
+app/checkout/
 lib/hooks/use-storefront-data.ts
 lib/hooks/use-admin-data.ts
 docs/DATABASE_SYNC.md

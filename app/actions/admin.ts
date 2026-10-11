@@ -23,6 +23,7 @@ const orderStatuses = ['pending', 'paid', 'processing', 'shipped', 'delivered', 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const pricePattern = /^\d{1,10}(?:\.\d{1,2})?$/
+const maxMoneyCents = 999_999_999_999
 
 type ProductInput = {
   name: string
@@ -180,6 +181,18 @@ async function refreshProductVariantSummary(tx: Parameters<Parameters<typeof db.
 function boundedLimit(limit: number, fallback: number, maximum: number) {
   if (!Number.isInteger(limit) || limit < 1) return fallback
   return Math.min(limit, maximum)
+}
+
+function moneyToCents(value: string, field: string) {
+  const match = /^(\d{1,10})(?:\.(\d{1,2}))?$/.exec(value)
+  if (!match) throw new Error(`${field} must be a non-negative amount with up to two decimal places.`)
+  const cents = Number(match[1]) * 100 + Number((match[2] ?? '').padEnd(2, '0'))
+  if (!Number.isSafeInteger(cents) || cents > maxMoneyCents) throw new Error(`${field} is outside the supported range.`)
+  return cents
+}
+
+function centsToMoney(cents: number) {
+  return `${Math.floor(cents / 100)}.${String(cents % 100).padStart(2, '0')}`
 }
 
 export async function getAllProducts() {
@@ -1045,21 +1058,38 @@ export async function getAllOrders(limit = 50, offset = 0, status = '') {
   ])
   const ids = rows.map(({ order }) => order.id)
   const items = ids.length
-    ? await db.select().from(storeOrderItems).where(inArray(storeOrderItems.orderId, ids))
+    ? await db
+        .select({
+          id: storeOrderItems.id,
+          orderId: storeOrderItems.orderId,
+          productName: storeOrderItems.productName,
+          unitPrice: storeOrderItems.unitPrice,
+          quantity: storeOrderItems.quantity,
+          lineTotal: storeOrderItems.lineTotal,
+        })
+        .from(storeOrderItems)
+        .where(inArray(storeOrderItems.orderId, ids))
     : []
 
   return {
-    items: rows.map(({ order, customer }) => ({
-      ...order,
-      customer: customer
-        ? {
-            email: customer.email,
-            firstName: customer.firstName,
-            lastName: customer.lastName,
-          }
-        : null,
-      items: items.filter((item) => item.orderId === order.id),
-    })),
+    items: rows.map(({ order, customer }) => {
+      const {
+        accountId: _accountId,
+        checkoutKey: _checkoutKey,
+        ...publicOrder
+      } = order
+      return {
+        ...publicOrder,
+        customer: customer
+          ? {
+              email: customer.email,
+              firstName: customer.firstName,
+              lastName: customer.lastName,
+            }
+          : null,
+        items: items.filter((item) => item.orderId === order.id),
+      }
+    }),
     total: Number(countRows[0]?.total ?? 0),
   }
 }
@@ -1080,7 +1110,13 @@ export async function getOrderStats() {
         avgOrderValue: sql<string>`coalesce(avg(${storeOrders.total}), 0)::text`,
       })
       .from(storeOrders)
-      .where(sql`${storeOrders.status} in ('paid', 'processing', 'shipped', 'delivered')`)
+      .where(sql`(
+        (${storeOrders.paymentMethod} = 'cash_on_delivery' AND ${storeOrders.status} = 'paid')
+        OR (
+          ${storeOrders.paymentMethod} IS DISTINCT FROM 'cash_on_delivery'
+          AND ${storeOrders.status} IN ('paid', 'processing', 'shipped', 'delivered')
+        )
+      )`)
       .groupBy(storeOrders.currency)
       .orderBy(storeOrders.currency),
     db
@@ -1106,9 +1142,9 @@ export async function updateOrderStatus(orderId: string, status: string) {
   return db.transaction(async (tx) => {
     const [current] = await tx.select().from(storeOrders).where(eq(storeOrders.id, orderId)).limit(1).for('update')
     if (!current) throw new Error('Order not found.')
-    if (current.status === status) return current
+    if (current.status === status) return { success: true, status: current.status }
 
-    const transitions: Record<string, readonly string[]> = {
+    const standardTransitions: Record<string, readonly string[]> = {
       pending: ['paid', 'processing', 'cancelled'],
       paid: ['processing', 'cancelled', 'refunded'],
       processing: ['shipped', 'cancelled', 'refunded'],
@@ -1117,8 +1153,74 @@ export async function updateOrderStatus(orderId: string, status: string) {
       cancelled: [],
       refunded: [],
     }
+    const codTransitions: Record<string, readonly string[]> = {
+      pending: ['processing', 'cancelled'],
+      paid: ['refunded'],
+      processing: ['shipped', 'cancelled'],
+      shipped: ['delivered'],
+      delivered: ['paid', 'refunded'],
+      cancelled: [],
+      refunded: [],
+    }
+    const transitions = current.paymentMethod === 'cash_on_delivery' ? codTransitions : standardTransitions
     if (!transitions[current.status]?.includes(status)) {
       throw new Error(`An order cannot move from ${current.status} to ${status}.`)
+    }
+    if (current.paymentMethod === 'cash_on_delivery' && status === 'shipped' && !current.shippingFeeConfirmed) {
+      throw new Error('Confirm the delivery charge with the customer before dispatch.')
+    }
+
+    if (status === 'cancelled') {
+      const reservedItems = await tx
+        .select()
+        .from(storeOrderItems)
+        .where(and(eq(storeOrderItems.orderId, orderId), eq(storeOrderItems.inventoryReserved, true)))
+        .for('update')
+      for (const item of reservedItems) {
+        if (item.variantId) {
+          const [variant] = await tx
+            .select()
+            .from(storeProductVariants)
+            .where(eq(storeProductVariants.id, item.variantId))
+            .limit(1)
+            .for('update')
+          if (variant) {
+            const stockQuantity = variant.stockQuantity + item.quantity
+            if (!Number.isSafeInteger(stockQuantity) || stockQuantity > 2_147_483_647) {
+              throw new Error('Cancelled order inventory exceeds the supported stock range.')
+            }
+            await tx.update(storeProductVariants).set({ stockQuantity, updatedAt: new Date() }).where(eq(storeProductVariants.id, variant.id))
+            await refreshProductVariantSummary(tx, variant.productId)
+          }
+        } else {
+          const [product] = await tx
+            .select()
+            .from(storeProducts)
+            .where(eq(storeProducts.id, item.productId))
+            .limit(1)
+            .for('update')
+          if (product) {
+            const [activeVariant] = await tx
+              .select({ id: storeProductVariants.id })
+              .from(storeProductVariants)
+              .where(and(eq(storeProductVariants.productId, product.id), eq(storeProductVariants.isActive, true)))
+              .limit(1)
+            if (!activeVariant) {
+              const stockQuantity = product.stockQuantity + item.quantity
+              if (!Number.isSafeInteger(stockQuantity) || stockQuantity > 2_147_483_647) {
+                throw new Error('Cancelled order inventory exceeds the supported stock range.')
+              }
+              await tx.update(storeProducts).set({ stockQuantity, updatedAt: new Date() }).where(eq(storeProducts.id, product.id))
+            }
+          }
+        }
+      }
+      if (reservedItems.length) {
+        await tx
+          .update(storeOrderItems)
+          .set({ inventoryReserved: false })
+          .where(and(eq(storeOrderItems.orderId, orderId), eq(storeOrderItems.inventoryReserved, true)))
+      }
     }
 
     const [updated] = await tx
@@ -1126,13 +1228,58 @@ export async function updateOrderStatus(orderId: string, status: string) {
       .set({ status, updatedAt: new Date() })
       .where(eq(storeOrders.id, orderId))
       .returning()
+    if (!updated) throw new Error('Order status was not updated.')
     await tx.insert(storeActivityEvents).values({
       entityType: 'order',
       entityId: orderId,
       eventType: 'status_updated',
-      payload: { newStatus: status },
+      payload: { newStatus: status, inventoryReleased: status === 'cancelled' },
     })
-    return updated
+    return { success: true, status: updated.status }
+  })
+}
+
+export async function updateOrderDeliveryFee(orderId: string, value: string) {
+  await requireAdminSession('admin')
+  validateUuid(orderId, 'Order ID')
+  const amount = requireText(value, 'Delivery fee', 16)
+  const shippingCents = moneyToCents(amount, 'Delivery fee')
+
+  return db.transaction(async (tx) => {
+    const [order] = await tx
+      .select()
+      .from(storeOrders)
+      .where(eq(storeOrders.id, orderId))
+      .limit(1)
+      .for('update')
+    if (!order) throw new Error('Order not found.')
+    if (order.paymentMethod !== 'cash_on_delivery') throw new Error('Delivery charges can only be changed for cash-on-delivery orders.')
+    if (order.status !== 'pending' && order.status !== 'processing') {
+      throw new Error('Confirm delivery charges before an order is dispatched.')
+    }
+    const subtotalCents = moneyToCents(order.subtotal, 'Order subtotal')
+    const taxCents = moneyToCents(order.taxTotal, 'Order tax')
+    if (subtotalCents > maxMoneyCents - shippingCents || subtotalCents + shippingCents > maxMoneyCents - taxCents) {
+      throw new Error('The confirmed order total is outside the supported range.')
+    }
+    const [updated] = await tx
+      .update(storeOrders)
+      .set({
+        shippingTotal: centsToMoney(shippingCents),
+        shippingFeeConfirmed: true,
+        total: centsToMoney(subtotalCents + shippingCents + taxCents),
+        updatedAt: new Date(),
+      })
+      .where(eq(storeOrders.id, orderId))
+      .returning()
+    if (!updated) throw new Error('Delivery fee was not updated.')
+    await tx.insert(storeActivityEvents).values({
+      entityType: 'order',
+      entityId: orderId,
+      eventType: 'delivery_fee_confirmed',
+      payload: { shippingFeeConfirmed: true },
+    })
+    return { success: true, total: updated.total, shippingTotal: updated.shippingTotal }
   })
 }
 
@@ -1150,7 +1297,27 @@ export async function getAllCustomers(limit = 50, offset = 0, query = '') {
       )
     : undefined
   const [items, countRows] = await Promise.all([
-    (conditions ? db.select().from(storeCustomers).where(conditions) : db.select().from(storeCustomers))
+    (conditions
+      ? db.select({
+          id: storeCustomers.id,
+          email: storeCustomers.email,
+          firstName: storeCustomers.firstName,
+          lastName: storeCustomers.lastName,
+          phone: storeCustomers.phone,
+          marketingOptIn: storeCustomers.marketingOptIn,
+          createdAt: storeCustomers.createdAt,
+          updatedAt: storeCustomers.updatedAt,
+        }).from(storeCustomers).where(conditions)
+      : db.select({
+          id: storeCustomers.id,
+          email: storeCustomers.email,
+          firstName: storeCustomers.firstName,
+          lastName: storeCustomers.lastName,
+          phone: storeCustomers.phone,
+          marketingOptIn: storeCustomers.marketingOptIn,
+          createdAt: storeCustomers.createdAt,
+          updatedAt: storeCustomers.updatedAt,
+        }).from(storeCustomers))
       .orderBy(desc(storeCustomers.createdAt))
       .limit(pageSize)
       .offset(offset),
@@ -1196,7 +1363,16 @@ export async function updateCustomer(
       .update(storeCustomers)
       .set({ ...changes, updatedAt: new Date() })
       .where(eq(storeCustomers.id, customerId))
-      .returning()
+      .returning({
+        id: storeCustomers.id,
+        email: storeCustomers.email,
+        firstName: storeCustomers.firstName,
+        lastName: storeCustomers.lastName,
+        phone: storeCustomers.phone,
+        marketingOptIn: storeCustomers.marketingOptIn,
+        createdAt: storeCustomers.createdAt,
+        updatedAt: storeCustomers.updatedAt,
+      })
     if (!customer) throw new Error('Customer not found.')
     await tx.insert(storeActivityEvents).values({
       entityType: 'customer',

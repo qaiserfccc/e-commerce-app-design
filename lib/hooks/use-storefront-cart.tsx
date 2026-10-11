@@ -14,6 +14,7 @@ type StorefrontCartValue = {
   count: number
   add: (product: Product, variant?: ProductVariant | null) => void
   setQuantity: (key: string, quantity: number) => void
+  clear: () => void
   syncProducts: (products: Product[]) => void
   keyFor: (product: Product, variant?: ProductVariant | null) => string
 }
@@ -72,6 +73,7 @@ export function StorefrontCartProvider({ children }: { children: ReactNode }) {
       return changed ? next : current
     })
   }, [])
+  const clear = useCallback(() => setItems({}), [])
 
   const value = useMemo(() => {
     const lines = Object.entries(items).map(([key, line]) => ({ ...line, key }))
@@ -80,10 +82,11 @@ export function StorefrontCartProvider({ children }: { children: ReactNode }) {
       count: lines.reduce((total, line) => total + line.quantity, 0),
       add,
       setQuantity,
+      clear,
       syncProducts,
       keyFor,
     }
-  }, [items, add, setQuantity, syncProducts, keyFor])
+  }, [items, add, setQuantity, clear, syncProducts, keyFor])
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>
 }
