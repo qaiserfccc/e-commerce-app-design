@@ -15,7 +15,7 @@ export default function Page() {
   }
 
   return (
-    <main className="min-h-screen bg-[#edf4ef] text-[#152a52]">
+    <main className={`min-h-screen bg-[#edf4ef] text-[#152a52] ${view === 'storefront' ? 'storefront-sky' : ''}`}>
       <header className="sticky top-0 z-30 border-b border-[#152a52]/15 bg-[#edf4ef]">
         <div className="mx-auto flex h-[72px] max-w-[1440px] items-center justify-between px-5 sm:px-8 lg:px-12">
           <div className="flex items-center gap-3">

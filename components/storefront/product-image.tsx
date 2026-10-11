@@ -3,14 +3,14 @@
 import { useState, type ReactNode } from 'react'
 import type { Product } from '@/lib/hooks/use-storefront-data'
 
-function trustedSourceImageUrl(sourceImage: string | null | undefined) {
-  if (!sourceImage) return null
+function trustedBlobUrl(blobUrl: string | null | undefined) {
+  if (!blobUrl) return null
   try {
-    const url = new URL(sourceImage)
+    const url = new URL(blobUrl)
     if (
       url.protocol === 'https:' &&
-      ['isklenses.com', 'www.isklenses.com'].includes(url.hostname) &&
-      url.pathname.startsWith('/wp-content/uploads/')
+      (url.hostname.endsWith('.public.blob.vercel-storage.com') ||
+        url.hostname.endsWith('.blob.vercel-storage.com'))
     ) {
       return url.toString()
     }
@@ -20,14 +20,12 @@ function trustedSourceImageUrl(sourceImage: string | null | undefined) {
   return null
 }
 
-export function getProductImageSources(product: Pick<Product, 'heroImageUrl' | 'sourceImageUrl' | 'sourceImageUrls' | 'assets'>) {
+export function getProductImageSources(product: Pick<Product, 'heroImageUrl' | 'assets'>) {
   return [...new Set([
-    product.heroImageUrl,
+    trustedBlobUrl(product.heroImageUrl),
     ...(product.assets ?? [])
       .filter((asset) => asset.mediaType === 'image')
-      .map((asset) => asset.blobUrl),
-    trustedSourceImageUrl(product.sourceImageUrl),
-    ...(product.sourceImageUrls ?? []).map(trustedSourceImageUrl),
+      .map((asset) => trustedBlobUrl(asset.blobUrl)),
   ].filter((source): source is string => Boolean(source)))]
 }
 

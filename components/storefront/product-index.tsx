@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { ArrowRight, Search } from 'lucide-react'
 import { useProducts, type Product } from '@/lib/hooks/use-storefront-data'
 import { getProductImageSources, StorefrontProductImage } from '@/components/storefront/product-image'
+import { StorefrontCategoryNavigation, categoryBranchIds, productsInCategory } from '@/components/storefront/category-navigation'
+import { useStorefrontCategories } from '@/lib/hooks/use-storefront-categories'
 
 function formatPrice(value: string, currency: string) {
   const amount = Number(value)
@@ -90,21 +92,21 @@ function ProductEntry({ product }: { product: Product }) {
 }
 
 export function StorefrontProductIndex() {
-  const [category, setCategory] = useState('')
+  const [categoryId, setCategoryId] = useState<number | null>(null)
   const [search, setSearch] = useState('')
   const { products, isLoading, isError, error } = useProducts()
-  const categories = useMemo(() => [...new Set(products.map((product) => product.category))].sort(), [products])
+  const { categories } = useStorefrontCategories()
+  const categoryIds = useMemo(() => categoryBranchIds(categories, categoryId), [categories, categoryId])
   const filteredProducts = useMemo(() => {
     const needle = search.trim().toLocaleLowerCase()
     return products.filter((product) =>
-      (!category || product.category === category) &&
+      productsInCategory(product, categoryId, categoryIds) &&
       (!needle || `${product.name} ${product.category} ${product.slug}`.toLocaleLowerCase().includes(needle)),
     )
-  }, [category, products, search])
+  }, [categoryId, categoryIds, products, search])
 
   return (
-    <main className="mx-auto min-h-screen max-w-[1500px] bg-[#edf4ef] px-5 pb-24 text-[#152a52] sm:px-8 lg:px-12">
-      <div hidden dangerouslySetInnerHTML={{ __html: '<!-- THESIS: The full ISK catalog is a navigable index, not a short featured-product carousel. OWN-WORLD: Ink-blue category rail, chartreuse selection, leaf-paper ground, compressed display type, open specimen entries. STORY: Shoppers scan every published product, filter by its stored category, and jump directly to a real listed option when one exists. FIRST VIEWPORT: A split index masthead places the catalog title and live count opposite a concise search field; collection navigation follows immediately. FORM: A browsable catalog index extends the established Chromatic Specimen Index; category and option links stay factual and work on narrow screens. No source media is represented as a product photo.' }} />
+    <main className="storefront-sky mx-auto min-h-screen max-w-[1500px] bg-[#edf4ef] px-5 pb-24 text-[#152a52] sm:px-8 lg:px-12">
       <header className="flex flex-wrap items-center justify-between gap-4 border-b border-[#152a52]/20 py-4">
         <Link href="/" className="font-black uppercase tracking-[-.04em] focus-visible:outline-2 focus-visible:outline-[#16468a]">
           ISK Lenses <span className="font-mono text-[10px] font-bold tracking-[.14em]">/ Product index</span>
@@ -124,7 +126,7 @@ export function StorefrontProductIndex() {
             Browse the published catalog by collection. Product options appear only when they are recorded for that listing.
           </p>
           <p className="mt-6 font-mono text-[10px] uppercase tracking-[.15em] text-[#d3ff48]" aria-live="polite">
-            {isLoading ? 'Loading catalog…' : `${products.length} published ${products.length === 1 ? 'listing' : 'listings'} · ${categories.length} categories`}
+            {isLoading ? 'Loading catalog…' : `${products.length} published ${products.length === 1 ? 'listing' : 'listings'} · ${categories.length} source categories`}
           </p>
         </div>
         <label className="flex min-w-0 items-center border border-[#edf4ef]/50 bg-[#edf4ef] px-3 py-3 text-[#152a52] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[#d3ff48] sm:min-w-72">
@@ -149,30 +151,7 @@ export function StorefrontProductIndex() {
         </div>
 
         {!isError && !isLoading && products.length > 0 && (
-          <nav aria-label="Filter products by category" className="flex snap-x gap-2 overflow-x-auto border-b border-[#152a52]/20 py-4">
-            <button
-              type="button"
-              onClick={() => setCategory('')}
-              aria-pressed={!category}
-              className={`shrink-0 px-3 py-2 text-[10px] font-bold uppercase tracking-[.1em] focus-visible:outline-2 focus-visible:outline-[#16468a] ${!category ? 'bg-[#152a52] text-[#d3ff48]' : 'border border-[#152a52]/25 hover:bg-[#dbe7e1]'}`}
-            >
-              All products · {products.length}
-            </button>
-            {categories.map((item) => {
-              const count = products.filter((product) => product.category === item).length
-              return (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => setCategory(item)}
-                  aria-pressed={category === item}
-                  className={`max-w-64 shrink-0 truncate px-3 py-2 text-[10px] font-bold uppercase tracking-[.1em] focus-visible:outline-2 focus-visible:outline-[#16468a] ${category === item ? 'bg-[#152a52] text-[#d3ff48]' : 'border border-[#152a52]/25 hover:bg-[#dbe7e1]'}`}
-                >
-                  {item} · {count}
-                </button>
-              )
-            })}
-          </nav>
+          <StorefrontCategoryNavigation products={products} selectedCategoryId={categoryId} onSelect={setCategoryId} />
         )}
 
         {isError ? (

@@ -23,6 +23,7 @@ const REQUIRED_TABLES = [
   'store_orders',
   'store_order_items',
   'store_product_assets',
+  'store_product_categories',
   'store_product_variants',
   'store_product_import_runs',
   'store_product_import_items',
@@ -93,6 +94,15 @@ const TABLE_SCHEMAS = {
     'created_at',
   ],
   store_product_assets: ['id', 'product_id', 'blob_pathname', 'blob_url', 'alt_text', 'media_type', 'sort_order', 'created_at'],
+  store_product_categories: [
+    'source_category_id',
+    'name',
+    'slug',
+    'parent_source_category_id',
+    'source_product_count',
+    'is_active',
+    'updated_at',
+  ],
   store_product_variants: [
     'id',
     'product_id',

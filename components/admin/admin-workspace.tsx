@@ -3,7 +3,7 @@
 import { useDeferredValue, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import {
   Activity, ArrowDown, ArrowUp, BarChart3, ClipboardList, Download, LayoutDashboard, LoaderCircle,
-  LogOut, Package, Plus, Search, ShoppingBag, ShieldCheck, Users, X,
+  LogOut, Package, Plus, Search, ShoppingBag, ShieldCheck, Tags, Users, X,
 } from 'lucide-react'
 import { useSWRConfig } from 'swr'
 import {
@@ -33,6 +33,7 @@ import {
 } from '@/lib/hooks/use-admin-data'
 import { ProjectKanban } from '@/components/admin/project-kanban'
 import { ProductVariantManager } from '@/components/admin/product-variant-manager'
+import { getProductImageSources } from '@/components/storefront/product-image'
 
 type Section = 'overview' | 'products' | 'orders' | 'customers' | 'analytics' | 'system-users' | 'project-plan'
 
@@ -368,6 +369,7 @@ function ProductWorkspace({ canEdit }: { canEdit: boolean }) {
   const [messageTone, setMessageTone] = useState<'error' | 'info'>('error')
   const [busyId, setBusyId] = useState('')
   const [importPage, setImportPage] = useState(0)
+  const [syncingCategories, setSyncingCategories] = useState(false)
 
   const filtered = useMemo(() => products.filter((product) => `${product.name} ${product.category} ${product.slug}`.toLowerCase().includes(query.toLowerCase())), [products, query])
   const visibleProducts = filtered.slice(offset, offset + 20)
@@ -474,12 +476,37 @@ function ProductWorkspace({ canEdit }: { canEdit: boolean }) {
     }
   }
 
+  async function syncCategories() {
+    setSyncingCategories(true)
+    setMessage('')
+    try {
+      const response = await fetch('/api/admin/product-categories/sync', { method: 'POST' })
+      const body: unknown = await response.json()
+      if (response.status === 401) window.dispatchEvent(new Event('admin-session-expired'))
+      if (!response.ok || !isRecord(body) || !isRecord(body.data) || typeof body.data.synchronized !== 'number') {
+        throw new Error(isRecord(body) && typeof body.error === 'string' ? body.error : 'Source categories could not be synchronized.')
+      }
+      await globalMutate('/api/product-categories')
+      setMessageTone('info')
+      setMessage(`Synchronized ${body.data.synchronized} categories from ISK Lenses, including their parent relationships.`)
+    } catch (syncError) {
+      setMessageTone('error')
+      setMessage(errorMessage(syncError))
+    } finally {
+      setSyncingCategories(false)
+    }
+  }
+
   return (
     <section className="min-w-0 flex-1">
       <PanelHeading
         title="Products"
         description="Manage published listings, review ISK Lenses source imports, and maintain the shared catalog."
         action={<div className="flex flex-wrap gap-2">
+          {canEdit && <button type="button" disabled={syncingCategories || Boolean(importPage)} onClick={() => void syncCategories()} className={secondaryButton}>
+            {syncingCategories ? <LoaderCircle size={15} className="animate-spin" /> : <Tags size={15} />}
+            {syncingCategories ? 'Syncing categories…' : 'Sync source categories'}
+          </button>}
           {canEdit && <button type="button" disabled={Boolean(importPage) || isLoading || isError} onClick={() => void importCatalog()} className={secondaryButton}>
             {importPage ? <LoaderCircle size={15} className="animate-spin" /> : <Download size={15} />}
             {importPage ? `Importing page ${importPage}…` : 'Replace with ISK catalogue'}
@@ -636,6 +663,7 @@ function ProductRow({
   }
 
   const activeVariants = product.variants.some((variant) => variant.isActive !== false)
+  const previewImage = getProductImageSources(product)[0]
   const sourceMedia = sourceData?.sourcePayload?.mediaReferences
   const sourceImages = isRecord(sourceMedia) && Array.isArray(sourceMedia.images)
     ? sourceMedia.images.filter((item): item is Record<string, unknown> & { src: string } =>
@@ -650,7 +678,7 @@ function ProductRow({
     <article className="rounded-2xl border border-[#1c1c1a]/10 bg-white p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-3">
-          {product.heroImageUrl || product.sourceImageUrl ? <img src={product.heroImageUrl ?? product.sourceImageUrl ?? undefined} alt="" className="size-14 shrink-0 rounded-lg object-cover" /> : <div aria-hidden="true" className="grid size-14 shrink-0 place-items-center rounded-lg bg-[#f2f1ed]"><Package size={18} /></div>}
+          {previewImage ? <img src={previewImage} alt="" className="size-14 shrink-0 rounded-lg object-cover" /> : <div aria-hidden="true" className="grid size-14 shrink-0 place-items-center rounded-lg bg-[#f2f1ed]"><Package size={18} /></div>}
           <div className="min-w-0">
             <h2 className="truncate text-sm font-medium">{product.name}</h2>
             <p className="mt-1 text-xs text-[#68675f]">{product.category} · {product.slug}</p>

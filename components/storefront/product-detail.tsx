@@ -19,19 +19,7 @@ function formatPrice(value: string, currency: string) {
 }
 
 function mediaFor(product: Product): ProductAsset[] {
-  const assets = product.assets?.filter((asset) => asset.blobUrl) ?? []
-  if (assets.length) return assets
-  const sourceImages = getProductImageSources(product)
-  return sourceImages.map((blobUrl, index) => ({
-    id: `source-${product.id}-${index}`,
-    productId: product.id,
-    blobPathname: '',
-    blobUrl,
-    altText: product.name,
-    mediaType: 'image' as const,
-    sortOrder: index,
-    createdAt: product.createdAt,
-  }))
+  return product.assets?.filter((asset) => asset.blobUrl) ?? []
 }
 
 export function StorefrontProductDetail({
@@ -67,8 +55,7 @@ export function StorefrontProductDetail({
   }
 
   return (
-    <main className="mx-auto min-h-[calc(100vh-72px)] max-w-[1500px] bg-[#edf4ef] px-5 pb-24 text-[#152a52] sm:px-8 lg:px-12">
-      <div hidden dangerouslySetInnerHTML={{ __html: '<!-- This product page uses the chromatic specimen index: verified product media leads, then actual selectable option, price, and stock fields. Choosing an option opens its published specifications and animates the abstract lens study; the interaction never changes or infers a product claim. -->' }} />
+    <main className="storefront-sky mx-auto min-h-[calc(100vh-72px)] max-w-[1500px] bg-[#edf4ef] px-5 pb-24 text-[#152a52] sm:px-8 lg:px-12">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#152a52]/20 py-4">
         <Link href="/products" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.1em] hover:text-[#16468a] focus-visible:outline-2 focus-visible:outline-[#16468a]">
           <ArrowLeft size={15} aria-hidden="true" /> ISK Lenses / Products

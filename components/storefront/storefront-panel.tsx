@@ -4,8 +4,10 @@ import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { ArrowDown, ArrowRight, Search, ShoppingBag } from 'lucide-react'
 import { StorefrontBag } from '@/components/storefront/storefront-bag'
+import { StorefrontCategoryNavigation, categoryBranchIds, productsInCategory } from '@/components/storefront/category-navigation'
 import { useStorefrontCart } from '@/lib/hooks/use-storefront-cart'
 import { useProducts, type Product } from '@/lib/hooks/use-storefront-data'
+import { useStorefrontCategories } from '@/lib/hooks/use-storefront-categories'
 import { getProductImageSources, StorefrontProductImage } from '@/components/storefront/product-image'
 
 function priceLabel(value: string, currency: string) {
@@ -86,25 +88,28 @@ function ProductCard({ product, addToBag }: { product: Product; addToBag: (produ
 }
 
 export function StorefrontPanel() {
-  const [category, setCategory] = useState('')
+  const [categoryId, setCategoryId] = useState<number | null>(null)
   const [search, setSearch] = useState('')
   const [bagOpen, setBagOpen] = useState(false)
   const deferredSearch = useDeferredValue(search)
   const { products: allProducts, isLoading, isError: allProductsError, error } = useProducts()
-  const { products, isLoading: filteredLoading, isError: filteredError, error: filteredRequestError } = useProducts(
-    category || undefined,
-    deferredSearch || undefined,
-  )
   const { add, count, syncProducts } = useStorefrontCart()
-  const categories = useMemo(() => [...new Set(allProducts.map((product) => product.category))].sort(), [allProducts])
+  const { categories } = useStorefrontCategories()
+  const categoryIds = useMemo(() => categoryBranchIds(categories, categoryId), [categories, categoryId])
+  const products = useMemo(() => {
+    const searchTerm = deferredSearch.trim().toLocaleLowerCase()
+    return allProducts.filter((product) =>
+      productsInCategory(product, categoryId, categoryIds) &&
+      (!searchTerm || `${product.name} ${product.category} ${product.slug}`.toLocaleLowerCase().includes(searchTerm)),
+    )
+  }, [allProducts, categoryId, categoryIds, deferredSearch])
 
   useEffect(() => {
     if (!isLoading && !allProductsError) syncProducts(allProducts)
   }, [allProducts, allProductsError, isLoading, syncProducts])
 
   return (
-    <div className="mx-auto max-w-[1500px] px-5 pb-24 sm:px-8 lg:px-12">
-      <div hidden dangerouslySetInnerHTML={{ __html: '<!-- THESIS: An eye-color contact-lens catalogue reads as an index of published products, not a generic beauty hero. OWN-WORLD: Ink-blue fields, electric chartreuse indexing, cool leaf-white stock; compressed display type, tabular mono labels, unboxed product plates. STORY: Shoppers browse the live catalog by category and open listings to compare the options and product facts actually published; no clinical claim or checkout is implied. FIRST VIEWPORT: A split ink-blue field puts the product proposition and catalogue action at left and a large abstract lens study at right; the live-product count anchors the lower edge. FORM: Grounded direction 7, the chromatic specimen index, adapted to the product-option bellows staging; seed 0d4d3b24.' }} />
+    <div className="storefront-sky mx-auto max-w-[1500px] px-5 pb-24 sm:px-8 lg:px-12">
       <nav aria-label="Store navigation" className="flex min-h-[66px] items-center justify-between gap-4 border-b border-[#152a52]/20 py-3">
         <div className="flex flex-wrap items-center gap-x-7 gap-y-2 text-xs font-bold uppercase tracking-[.12em]">
           <Link href="/products" className="hover:text-[#16468a] focus-visible:outline-2 focus-visible:outline-[#16468a]">Products</Link>
@@ -158,7 +163,7 @@ export function StorefrontPanel() {
         <div
           aria-label="Abstract optical study illustrating a contact-lens catalogue"
           role="img"
-          data-selected={Boolean(category)}
+          data-selected={Boolean(categoryId)}
           className="lens-study relative grid min-h-[300px] place-items-center overflow-hidden border-t border-[#d3ff48]/30 sm:min-h-[390px] lg:min-h-full lg:border-l lg:border-t-0"
         >
           <div className="absolute left-5 top-5 font-mono text-[10px] uppercase tracking-[.18em] text-[#d3ff48] sm:left-8 sm:top-8">Colour / option / availability</div>
@@ -177,36 +182,16 @@ export function StorefrontPanel() {
             <p className="mt-3 max-w-xl text-sm leading-6 text-[#314a63]">Listings and availability are loaded from the store database. Open a product to see its published options.</p>
           </div>
           <p className="font-mono text-[10px] uppercase tracking-[.14em] text-[#314a63]">
-            {isLoading || filteredLoading ? 'Updating index' : `${products.length} ${products.length === 1 ? 'listing' : 'listings'}`}
+            {isLoading ? 'Updating index' : `${products.length} ${products.length === 1 ? 'listing' : 'listings'}`}
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 border-b border-[#152a52]/20 py-4" aria-label="Filter by product category">
-          <button
-            type="button"
-            onClick={() => setCategory('')}
-            aria-pressed={!category}
-            className={`px-3 py-2 text-[10px] font-bold uppercase tracking-[.1em] focus-visible:outline-2 focus-visible:outline-[#16468a] ${!category ? 'bg-[#152a52] text-[#d3ff48]' : 'border border-[#152a52]/25 bg-transparent hover:bg-[#dbe7e1]'}`}
-          >
-            All products
-          </button>
-          {categories.map((item) => (
-            <button
-              key={item}
-              type="button"
-              onClick={() => setCategory(item)}
-              aria-pressed={category === item}
-              className={`max-w-full truncate px-3 py-2 text-[10px] font-bold uppercase tracking-[.1em] focus-visible:outline-2 focus-visible:outline-[#16468a] ${category === item ? 'bg-[#152a52] text-[#d3ff48]' : 'border border-[#152a52]/25 bg-transparent hover:bg-[#dbe7e1]'}`}
-            >
-              {item}
-            </button>
-          ))}
-        </div>
+        <StorefrontCategoryNavigation products={allProducts} selectedCategoryId={categoryId} onSelect={setCategoryId} />
 
-        {allProductsError || filteredError ? (
+        {allProductsError ? (
           <div role="alert" className="mt-6 border border-[#a52d3c]/35 bg-[#fff4f2] px-5 py-4 text-sm text-[#782b36]">
-            {(filteredError ? filteredRequestError : error) instanceof Error
-              ? (filteredError ? filteredRequestError : error)?.message
+            {error instanceof Error
+              ? error.message
               : 'The catalogue could not be loaded. Refresh the page to try again.'}
           </div>
         ) : isLoading ? (

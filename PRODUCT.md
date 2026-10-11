@@ -41,9 +41,9 @@ The public reference site is https://isklenses.com/. Its FAQ says it serves Paki
 ## Evidence on Hand
 
 - Public source site: https://isklenses.com/ (WordPress/WooCommerce; its public Store API exposes product names, categories, current prices, links, and source-image references).
-- The public Store API exposed 495 listings. Its product variation arrays were empty; the snapshot contains 757 image references and no video references. The application did not copy image/video files to Vercel Blob. Eighty-nine listings lacked a source category.
+- The public Store API exposed 495 listings. Its product variation arrays were empty; the snapshot contains 757 image references and no video references. All 757 source-image references have been copied to Vercel Blob and are associated with 406 listings; no non-Blob image URLs remain in product image/hero fields. Thirty-three observed source categories and their hierarchy are stored in Neon. Eighty-nine listings lacked a source category.
 - No owner-provided product specifications, endorsements, or compliance documents have been supplied in this repository.
-- On 2026-10-10, the operator directed that all 495 imported records be published with a configured stock count of 5 each. This is operator-entered inventory, not independently verified stock or product validation. All 495 are active, and 89 source records without a category are labeled **Uncategorized**. There are no configured variant rows or stored product assets. Source descriptions and media files were not copied; source image references are retained as links in the database.
+- On 2026-10-10, the operator directed that all 495 imported records be published with a configured stock count of 5 each. This is operator-entered inventory, not independently verified stock or product validation. All 495 are active, and 89 source records without a category are labeled **Uncategorized**. There are no configured variant rows. Source descriptions and video files were not copied; all available product photos are stored in Vercel Blob and served to the storefront only through Blob URLs. Product-photo rights still require operator confirmation.
 
 ## Product Principles
 

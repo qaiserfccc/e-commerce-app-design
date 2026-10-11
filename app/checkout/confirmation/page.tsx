@@ -17,8 +17,7 @@ function formatPrice(value: string, currency: string) {
 export default async function CheckoutConfirmationPage() {
   const order = await getOrderConfirmation()
   return (
-    <main className="mx-auto min-h-[calc(100vh-72px)] max-w-[1000px] bg-[#edf4ef] px-5 pb-24 text-[#152a52] sm:px-8 lg:px-12">
-      <div hidden dangerouslySetInnerHTML={{ __html: '<!-- THESIS: A COD receipt confirms an order without implying payment or dispatch. OWN-WORLD: Leaf-paper ground, ink-blue rules, chartreuse confirmation mark, specimen typography, square ruled sections. STORY: The shopper verifies the recorded order and understands that the store still needs to confirm delivery charges before dispatch. FIRST VIEWPORT: The order reference and pending state lead; items and amount follow in an open receipt ledger; product navigation closes the page. FORM: Order receipt companion to grounded checkout direction 7, staged as a printed confirmation docket; seed d1104b7a.' }} />
+    <main className="storefront-sky mx-auto min-h-[calc(100vh-72px)] max-w-[1000px] bg-[#edf4ef] px-5 pb-24 text-[#152a52] sm:px-8 lg:px-12">
       <header className="flex flex-wrap items-center justify-between gap-4 border-b border-[#152a52]/20 py-4">
         <Link href="/products" className="text-xs font-bold uppercase tracking-[.1em] hover:text-[#16468a] focus-visible:outline-2 focus-visible:outline-[#16468a]">ISK Lenses / Products</Link>
         <span className="font-mono text-[10px] uppercase tracking-[.15em] text-[#314a63]">Cash on delivery</span>

@@ -10,6 +10,7 @@ import {
   storeOrderItems,
   storeOrders,
   storeProductAssets,
+  storeProductCategories,
   storeProductImportItems,
   storeProductImportRuns,
   storeProducts,
@@ -584,6 +585,92 @@ export async function beginIskCatalogReplacement() {
     return tx.insert(storeProductImportRuns).values({}).returning()
   })
   return { runId: run.id, nextPage: run.nextPage }
+}
+
+export async function syncIskProductCategories() {
+  await requireAdminSession('admin')
+  const perPage = 100
+  const categories: Array<{
+    sourceCategoryId: number
+    name: string
+    slug: string
+    parentSourceCategoryId: number
+    sourceProductCount: number
+  }> = []
+  let totalPages = 1
+
+  for (let page = 1; page <= totalPages; page += 1) {
+    const response = await fetch(
+      `https://isklenses.com/wp-json/wc/store/v1/products/categories?per_page=${perPage}&page=${page}`,
+      { cache: 'no-store', signal: AbortSignal.timeout(20_000) },
+    )
+    if (!response.ok) {
+      console.error('[admin-categories] Source category request failed', { status: response.status })
+      throw new Error('The ISK Lenses categories could not be reached. Try again shortly.')
+    }
+    const headerPages = Number(response.headers.get('x-wp-totalpages') ?? 1)
+    if (!Number.isSafeInteger(headerPages) || headerPages < 1 || headerPages > 10) {
+      throw new Error('The ISK Lenses category list exceeds the import safety limit.')
+    }
+    totalPages = headerPages
+    let payload: unknown
+    try {
+      payload = await response.json()
+    } catch {
+      throw new Error('The ISK Lenses category list was not valid JSON.')
+    }
+    if (!Array.isArray(payload) || payload.length > perPage) {
+      throw new Error('The ISK Lenses category list has an invalid page.')
+    }
+    for (const item of payload) {
+      if (!isRecord(item) ||
+          typeof item.id !== 'number' || !Number.isSafeInteger(item.id) || item.id < 1 ||
+          typeof item.parent !== 'number' || !Number.isSafeInteger(item.parent) || item.parent < 0 ||
+          typeof item.name !== 'string' || !item.name.trim() || item.name.length > 100 ||
+          typeof item.slug !== 'string' || !slugPattern.test(item.slug) ||
+          typeof item.count !== 'number' || !Number.isSafeInteger(item.count) || item.count < 0) {
+        throw new Error('The ISK Lenses category list contains invalid category data.')
+      }
+      categories.push({
+        sourceCategoryId: item.id,
+        name: item.name.trim(),
+        slug: item.slug,
+        parentSourceCategoryId: item.parent,
+        sourceProductCount: item.count,
+      })
+    }
+  }
+
+  if (!categories.length || categories.length > 500 ||
+      new Set(categories.map((category) => category.sourceCategoryId)).size !== categories.length) {
+    throw new Error('The ISK Lenses category list is incomplete or contains duplicate IDs.')
+  }
+  const categoryIds = new Set(categories.map((category) => category.sourceCategoryId))
+  if (categories.some((category) => category.parentSourceCategoryId !== 0 &&
+      !categoryIds.has(category.parentSourceCategoryId))) {
+    throw new Error('The ISK Lenses category hierarchy references a missing parent.')
+  }
+
+  await db.transaction(async (tx) => {
+    await tx.update(storeProductCategories).set({ isActive: false, updatedAt: new Date() })
+    for (let offset = 0; offset < categories.length; offset += 100) {
+      await tx.insert(storeProductCategories)
+        .values(categories.slice(offset, offset + 100).map((category) => ({ ...category, isActive: true })))
+        .onConflictDoUpdate({
+          target: storeProductCategories.sourceCategoryId,
+          set: {
+            name: sql`excluded.name`,
+            slug: sql`excluded.slug`,
+            parentSourceCategoryId: sql`excluded.parent_source_category_id`,
+            sourceProductCount: sql`excluded.source_product_count`,
+            isActive: true,
+            updatedAt: new Date(),
+          },
+        })
+    }
+  })
+
+  return { synchronized: categories.length }
 }
 
 async function readLimitedBody(response: Response, maximumBytes: number) {
