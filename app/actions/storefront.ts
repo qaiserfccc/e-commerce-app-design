@@ -1,7 +1,7 @@
 'use server'
 
 import { db } from '@/lib/db'
-import { storeProducts, storeProductAssets, storeProductVariants } from '@/lib/db/schema'
+import { storeProducts, storeProductAssets, storeProductCategories, storeProductVariants } from '@/lib/db/schema'
 import { eq, desc, asc, ilike, and, or, inArray, sql } from 'drizzle-orm'
 
 /**
@@ -23,7 +23,6 @@ export async function getActiveProducts() {
         status: storeProducts.status,
         stockQuantity: storeProducts.stockQuantity,
         heroImageUrl: storeProducts.heroImageUrl,
-        sourceImageUrl: storeProducts.sourceImageUrl,
         createdAt: storeProducts.createdAt,
         updatedAt: storeProducts.updatedAt,
       })
@@ -51,7 +50,6 @@ export async function getProductBySlug(slug: string) {
         status: storeProducts.status,
         stockQuantity: storeProducts.stockQuantity,
         heroImageUrl: storeProducts.heroImageUrl,
-        sourceImageUrl: storeProducts.sourceImageUrl,
         createdAt: storeProducts.createdAt,
         updatedAt: storeProducts.updatedAt,
       })
@@ -81,7 +79,6 @@ export async function getProductsByCategory(category: string) {
         status: storeProducts.status,
         stockQuantity: storeProducts.stockQuantity,
         heroImageUrl: storeProducts.heroImageUrl,
-        sourceImageUrl: storeProducts.sourceImageUrl,
         createdAt: storeProducts.createdAt,
         updatedAt: storeProducts.updatedAt,
       })
@@ -112,7 +109,6 @@ export async function searchProducts(query: string) {
         status: storeProducts.status,
         stockQuantity: storeProducts.stockQuantity,
         heroImageUrl: storeProducts.heroImageUrl,
-        sourceImageUrl: storeProducts.sourceImageUrl,
         createdAt: storeProducts.createdAt,
         updatedAt: storeProducts.updatedAt,
       })
@@ -184,24 +180,26 @@ export async function getProductAssetsForProducts(productIds: string[]) {
   }
 }
 
-function trustedSourceImageUrl(value: unknown) {
-  if (typeof value !== 'string' || value.length > 2048) return null
+export async function getActiveProductCategories() {
   try {
-    const url = new URL(value)
-    if (
-      url.protocol === 'https:' &&
-      ['isklenses.com', 'www.isklenses.com'].includes(url.hostname) &&
-      url.pathname.startsWith('/wp-content/uploads/')
-    ) {
-      return url.toString()
-    }
-  } catch {
-    return null
+    return await db
+      .select({
+        sourceCategoryId: storeProductCategories.sourceCategoryId,
+        name: storeProductCategories.name,
+        slug: storeProductCategories.slug,
+        parentSourceCategoryId: storeProductCategories.parentSourceCategoryId,
+        sourceProductCount: storeProductCategories.sourceProductCount,
+      })
+      .from(storeProductCategories)
+      .where(eq(storeProductCategories.isActive, true))
+      .orderBy(asc(storeProductCategories.name))
+  } catch (error) {
+    console.error('[storefront] Category taxonomy query failed', error instanceof Error ? error.name : 'UnknownError')
+    throw new Error('Failed to fetch product categories')
   }
-  return null
 }
 
-export async function getProductSourceImageUrlsForProducts(productIds: string[]) {
+export async function getProductCategoryIdsForProducts(productIds: string[]) {
   if (!Array.isArray(productIds) || productIds.length > 5000 ||
       productIds.some((productId) => typeof productId !== 'string' ||
         !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(productId))) {
@@ -212,31 +210,26 @@ export async function getProductSourceImageUrlsForProducts(productIds: string[])
     const products = await db
       .select({
         id: storeProducts.id,
-        sourceImageUrl: storeProducts.sourceImageUrl,
-        sourceImages: sql<unknown>`CASE
-          WHEN jsonb_typeof(${storeProducts.sourcePayload}->'images') = 'array'
-          THEN ${storeProducts.sourcePayload}->'images'
-          ELSE '[]'::jsonb
-        END`,
+        categories: sql<unknown>`${storeProducts.sourcePayload}->'categories'`,
       })
       .from(storeProducts)
       .where(inArray(storeProducts.id, productIds))
 
     return products.map((product) => {
-      const sourceImages = Array.isArray(product.sourceImages)
-        ? product.sourceImages
-            .filter((image): image is Record<string, unknown> =>
-              typeof image === 'object' && image !== null && !Array.isArray(image),
-            )
-            .map((image) => trustedSourceImageUrl(image.src))
+      const categories = Array.isArray(product.categories)
+        ? product.categories
         : []
-      const urls = [trustedSourceImageUrl(product.sourceImageUrl), ...sourceImages]
-        .filter((url): url is string => url !== null)
-      return { productId: product.id, sourceImageUrls: [...new Set(urls)] }
+      const sourceCategoryIds = categories.flatMap((category) =>
+        typeof category === 'object' && category !== null && !Array.isArray(category) &&
+        typeof category.id === 'number' && Number.isSafeInteger(category.id) && category.id > 0
+          ? [category.id]
+          : [],
+      )
+      return { productId: product.id, sourceCategoryIds: [...new Set(sourceCategoryIds)] }
     })
   } catch (error) {
-    console.error('[storefront] Source product image query failed', error instanceof Error ? error.name : 'UnknownError')
-    throw new Error('Failed to fetch product images')
+    console.error('[storefront] Product category assignments query failed', error instanceof Error ? error.name : 'UnknownError')
+    throw new Error('Failed to fetch product categories')
   }
 }
 

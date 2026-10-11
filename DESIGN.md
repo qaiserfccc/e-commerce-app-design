@@ -2,13 +2,13 @@
 name: ISK Lenses
 description: A chromatic specimen index for browsing verified contact-lens listings.
 colors:
-  ink-blue: "#152a52"
-  optic-blue: "#16468a"
-  signal-chartreuse: "#d3ff48"
-  leaf-paper: "#edf4ef"
-  mist-green: "#dbe7e1"
-  blue-gray: "#314a63"
-  sage-line: "#b9c9c6"
+  ink-blue: "#0c3556"
+  optic-blue: "#087daf"
+  signal-sky: "#71d3f6"
+  ice-paper: "#f1faff"
+  mist-blue: "#d8efff"
+  blue-gray: "#244f6c"
+  sky-line: "#9bc5df"
   alert-red: "#a52d3c"
   white: "#ffffff"
 typography:
@@ -42,11 +42,11 @@ spacing:
 components:
   button-primary:
     backgroundColor: "{colors.ink-blue}"
-    textColor: "{colors.signal-chartreuse}"
+    textColor: "{colors.signal-sky}"
     rounded: "{rounded.square}"
     padding: "16px 20px"
   button-secondary:
-    backgroundColor: "{colors.leaf-paper}"
+    backgroundColor: "{colors.ice-paper}"
     textColor: "{colors.ink-blue}"
     rounded: "{rounded.square}"
     padding: "12px 16px"
@@ -57,7 +57,7 @@ components:
     padding: "10px 12px"
   filter-selected:
     backgroundColor: "{colors.ink-blue}"
-    textColor: "{colors.signal-chartreuse}"
+    textColor: "{colors.signal-sky}"
     rounded: "{rounded.square}"
     padding: "8px 12px"
   admin-panel:
@@ -71,9 +71,9 @@ components:
 
 ## Overview
 
-**Creative North Star: "The Chromatic Specimen Index"**
+**Creative North Star: "The Skyglass Specimen Index"**
 
-The storefront treats each published listing as a specimen with inspectable facts, not a beauty promise. A cool, botanical paper field supports deep optical blue and a precise chartreuse signal; compressed display lettering and measurement-like labels make the catalog feel indexed. The admin workspace stays quieter and task-first, using white work surfaces, restrained borders, and familiar controls.
+The storefront treats each published listing as a specimen with inspectable facts, not a beauty promise. Sky-blue navigation and ice-blue fields echo the cool product imagery while deep optical navy keeps labels, prices, and controls legible. Compressed display lettering, a nested source-category tree, and measurement-like labels make the catalog feel indexed. The admin workspace stays quieter and task-first, using white work surfaces, restrained borders, and familiar controls.
 
 The abstract lens study is a graphic device, never product evidence. Real product media, prices, availability, and lens parameters appear only when operators add and verify them. The same truth-first rule governs empty states, option selectors, and the browse-only bag.
 
@@ -85,24 +85,24 @@ The abstract lens study is a graphic device, never product evidence. Real produc
 
 ## Colors
 
-The storefront uses a full palette: optical blue grounds the page, chartreuse indexes actions, and cool greens keep product imagery legible.
+The storefront uses a full blue palette: optical navy grounds the page, sky blue indexes actions and selected states, and ice-blue fields keep product imagery legible without competing with it.
 
 ### Primary
 - **Ink Blue**: The main navigation, hero field, and primary actions.
 - **Optic Blue**: Focus rings, links, and selected media states.
-- **Signal Chartreuse**: Action text and selected catalog controls against dark blue.
+- **Signal Sky**: Action text and selected catalog controls against dark blue.
 
 ### Secondary
-- **Mist Green**: Low-contrast product plates and neutral interactive states.
+- **Mist Blue**: Low-contrast product plates and neutral interactive states.
 
 ### Neutral
-- **Leaf Paper**: The primary page and product-detail background.
+- **Ice Paper**: The primary page and product-detail background.
 - **Blue Gray**: Secondary copy and data labels on light surfaces.
-- **Sage Line**: Dividers and quiet boundaries.
+- **Sky Line**: Dividers and quiet boundaries.
 - **White**: Search fields, admin panels, and media thumbnails.
 - **Alert Red**: Error and destructive states only.
 
-**The Chromatic Field Rule.** Let large regions carry the palette; do not reduce chartreuse to a handful of unrelated badges.
+**The Blueglass Field Rule.** Let large regions carry the palette; do not reduce sky blue to a handful of unrelated badges.
 
 ## Typography
 
@@ -140,14 +140,14 @@ Storefront controls, filters, product plates, and editorial rules are square-edg
 
 ### Buttons
 - **Character:** Direct, high-contrast controls with an unmistakable action.
-- **Primary:** Ink-blue field with chartreuse text; square corners and generous vertical padding.
+- **Primary:** Ink-blue field with sky-blue text; square corners and generous vertical padding.
 - **Secondary:** Quiet paper or outlined treatment for supporting actions.
 - **Hover / Focus:** Blue shifts for hover; a visible optic-blue focus outline remains keyboard-accessible.
 - **Disabled:** Reduce contrast and indicate unavailability without hiding the control.
 
 ### Chips
 - **Style:** Compact uppercase category filters, square-edged and easy to scan.
-- **State:** The selected filter reverses to the primary dark field with chartreuse text; unselected filters remain paper-toned or outlined.
+- **State:** The selected filter reverses to the primary dark field with sky-blue text; unselected filters remain ice-toned or outlined.
 
 ### Cards / Containers
 - **Storefront:** Product plates remain unboxed; image, category, title, availability, and price align through open spacing and rules.
@@ -177,4 +177,4 @@ Storefront controls, filters, product plates, and editorial rules are square-edg
 - **Don't** use unverified source details as published product claims.
 - **Don't** imply the in-page bag can submit an order.
 - **Don't** use the optical study as evidence of a real product color or specification.
-- **Don't** use chartreuse as body text on light surfaces.
+- **Don't** use sky-blue as body text on light surfaces.

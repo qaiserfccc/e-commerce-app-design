@@ -197,7 +197,7 @@ export function Checkout() {
 
   if (!lines.length) {
     return (
-      <main className="mx-auto min-h-[calc(100vh-72px)] max-w-[1200px] bg-[#edf4ef] px-5 pb-24 text-[#152a52] sm:px-8 lg:px-12">
+      <main className="storefront-sky mx-auto min-h-[calc(100vh-72px)] max-w-[1200px] bg-[#edf4ef] px-5 pb-24 text-[#152a52] sm:px-8 lg:px-12">
         <div className="border-b border-[#152a52]/20 py-4">
           <Link href="/products" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.1em] hover:text-[#16468a] focus-visible:outline-2 focus-visible:outline-[#16468a]">
             <ArrowLeft size={15} /> Products
@@ -216,8 +216,7 @@ export function Checkout() {
   }
 
   return (
-    <main className="mx-auto min-h-[calc(100vh-72px)] max-w-[1400px] bg-[#edf4ef] px-5 pb-24 text-[#152a52] sm:px-8 lg:px-12">
-      <div hidden dangerouslySetInnerHTML={{ __html: '<!-- THESIS: Checkout is an order docket, not a payment funnel; it refuses to imply that unknown delivery charges are settled. OWN-WORLD: Ink-blue rules and headers, leaf-paper ground, chartreuse action, compressed specimen headings, precise mono labels, square controls. STORY: Guest and registered shoppers verify their details, inspect the current server-backed item prices, choose cash on delivery, and submit one inventory-checked order. FIRST VIEWPORT: A ruled checkout masthead leads into a broad address form on the left and a narrow, itemized ledger on the right; the COD total and primary order action close the ledger. FORM: Grounded direction 7, the departure docket, staged as a single readable form with a persistent item ledger; seed d1104b7a.' }} />
+    <main className="storefront-sky mx-auto min-h-[calc(100vh-72px)] max-w-[1400px] bg-[#edf4ef] px-5 pb-24 text-[#152a52] sm:px-8 lg:px-12">
       <nav aria-label="Checkout navigation" className="flex min-h-[64px] items-center justify-between gap-4 border-b border-[#152a52]/20 py-3">
         <Link href="/products" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.1em] hover:text-[#16468a] focus-visible:outline-2 focus-visible:outline-[#16468a]">
           <ArrowLeft size={15} aria-hidden="true" /> ISK Lenses / Products

@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import {
   getActiveProductVariantsForProducts,
   getActiveProducts,
+  getProductCategoryIdsForProducts,
   getProductAssetsForProducts,
-  getProductSourceImageUrlsForProducts,
   getProductsByCategory,
   searchProducts,
 } from '@/app/actions/storefront'
@@ -23,14 +23,14 @@ export async function GET(request: NextRequest) {
     if (query && category) products = products.filter((product) => product.category === category)
 
     const productIds = products.map((product) => product.id)
-    const [assets, variants, sourceImages] = await Promise.all([
+    const [assets, variants, categoryAssignments] = await Promise.all([
       getProductAssetsForProducts(productIds),
       getActiveProductVariantsForProducts(productIds),
-      getProductSourceImageUrlsForProducts(productIds),
+      getProductCategoryIdsForProducts(productIds),
     ])
     const assetsByProduct = new Map<string, typeof assets>()
     const variantsByProduct = new Map<string, typeof variants>()
-    const sourceImagesByProduct = new Map(sourceImages.map(({ productId, sourceImageUrls }) => [productId, sourceImageUrls]))
+    const categoryIdsByProduct = new Map(categoryAssignments.map(({ productId, sourceCategoryIds }) => [productId, sourceCategoryIds]))
     for (const asset of assets) {
       const productAssets = assetsByProduct.get(asset.productId) ?? []
       productAssets.push(asset)
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
       ...product,
       assets: assetsByProduct.get(product.id) ?? [],
       variants: variantsByProduct.get(product.id) ?? [],
-      sourceImageUrls: sourceImagesByProduct.get(product.id) ?? [],
+      sourceCategoryIds: categoryIdsByProduct.get(product.id) ?? [],
     }))
 
     return NextResponse.json(

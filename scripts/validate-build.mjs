@@ -18,12 +18,14 @@ const FILES_TO_CHECK = [
   'db/migrations/0003_isk_lens_catalog.sql',
   'db/migrations/0004_isk_source_snapshot_import.sql',
   'db/migrations/0005_cod_checkout_and_customer_accounts.sql',
+  'db/migrations/0006_store_product_categories.sql',
   'scripts/bootstrap-admin.mjs',
   'app/actions/storefront.ts',
   'app/actions/checkout.ts',
   'app/actions/admin.ts',
   'app/api/products/route.ts',
   'app/api/products/[slug]/route.ts',
+  'app/api/product-categories/route.ts',
   'app/api/orders/route.ts',
   'app/api/storefront/session/route.ts',
   'app/products/page.tsx',
@@ -48,6 +50,10 @@ const FILES_TO_CHECK = [
   'lib/hooks/use-storefront-data.ts',
   'lib/hooks/use-admin-data.ts',
   'app/api/admin/products/import/route.ts',
+  'app/api/admin/product-categories/sync/route.ts',
+  'components/storefront/category-navigation.tsx',
+  'lib/hooks/use-storefront-categories.ts',
+  'scripts/rehost-source-product-images.mjs',
 ]
 
 const REQUIRED_PACKAGES = ['drizzle-orm', 'pg', 'swr', 'next', '@vercel/blob']
@@ -93,6 +99,7 @@ try {
     'storeOrders',
     'storeOrderItems',
     'storeProductAssets',
+    'storeProductCategories',
     'storeProductVariants',
     'storeProductImportRuns',
     'storeProductImportItems',

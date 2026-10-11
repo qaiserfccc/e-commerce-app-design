@@ -84,6 +84,19 @@ export const storeProductAssets = pgTable('store_product_assets', {
   mediaType: text('media_type').notNull().default('image'),
   sortOrder: integer('sort_order').notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  pathnamePerProductUnique: uniqueIndex('store_product_assets_product_pathname_unique')
+    .on(table.productId, table.blobPathname),
+}))
+
+export const storeProductCategories = pgTable('store_product_categories', {
+  sourceCategoryId: integer('source_category_id').primaryKey(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull().unique(),
+  parentSourceCategoryId: integer('parent_source_category_id').notNull().default(0),
+  sourceProductCount: integer('source_product_count').notNull().default(0),
+  isActive: boolean('is_active').notNull().default(true),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
 export const storeProductVariants = pgTable('store_product_variants', {

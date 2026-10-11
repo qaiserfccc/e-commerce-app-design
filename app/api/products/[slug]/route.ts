@@ -3,7 +3,7 @@ import {
   getActiveProductVariants,
   getProductAssets,
   getProductBySlug,
-  getProductSourceImageUrlsForProducts,
+  getProductCategoryIdsForProducts,
 } from '@/app/actions/storefront'
 
 export const dynamic = 'force-dynamic'
@@ -19,13 +19,13 @@ export async function GET(
     }
     const product = await getProductBySlug(slug)
     if (!product) return NextResponse.json({ error: 'Product not found.' }, { status: 404 })
-    const [assets, variants, sourceImages] = await Promise.all([
+    const [assets, variants, categoryAssignments] = await Promise.all([
       getProductAssets(product.id),
       getActiveProductVariants(product.id),
-      getProductSourceImageUrlsForProducts([product.id]),
+      getProductCategoryIdsForProducts([product.id]),
     ])
     return NextResponse.json(
-      { data: { ...product, assets, variants, sourceImageUrls: sourceImages[0]?.sourceImageUrls ?? [] }, timestamp: new Date().toISOString() },
+      { data: { ...product, assets, variants, sourceCategoryIds: categoryAssignments[0]?.sourceCategoryIds ?? [] }, timestamp: new Date().toISOString() },
       { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' } },
     )
   } catch (error) {
