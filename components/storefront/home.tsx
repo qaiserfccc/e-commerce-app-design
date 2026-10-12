@@ -115,6 +115,19 @@ export function Home() {
         </ul>
       </section>
 
+      <section className="mx-auto max-w-[1320px] px-4 pt-16 sm:px-6">
+        <h2 className="text-2xl font-bold tracking-tight text-[#033473] sm:text-3xl">Shop by disposability</h2>
+        <ul className="mt-6 grid gap-3 sm:grid-cols-3">
+          {['Daily', 'Monthly', 'Yearly'].map((term) => (
+            <li key={term}>
+              <Link href={`/shop?q=${encodeURIComponent(term)}`} className="flex items-center justify-between rounded-2xl bg-[#eef3fa] px-6 py-5 font-bold uppercase tracking-wide text-[#033473] transition hover:bg-[#033473] hover:text-white">
+                {term} lenses <ArrowRight size={16} aria-hidden="true" />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+
       <section className="mx-auto mt-16 grid max-w-[1320px] gap-8 px-4 sm:px-6 md:grid-cols-2">
         <div className="rounded-3xl bg-[#eef3fa] p-8 sm:p-10">
           <h2 className="text-2xl font-bold tracking-tight text-[#033473]">About {`ISK Lenses`}</h2>
