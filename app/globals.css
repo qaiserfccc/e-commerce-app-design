@@ -156,14 +156,14 @@
 /* ISK Lenses colour system stays light for consistent product-color reproduction. */
 :root {
   color-scheme: light;
-  --background: #edf4ef;
-  --foreground: #152a52;
+  --background: #ffffff;
+  --foreground: #0a0a0a;
   --card: #fff;
   --card-foreground: #152a52;
   --popover: #fff;
   --popover-foreground: #152a52;
-  --primary: #152a52;
-  --primary-foreground: #d3ff48;
+  --primary: #033473;
+  --primary-foreground: #ffffff;
   --secondary: #dbe7e1;
   --secondary-foreground: #152a52;
   --muted: #e2ece7;
@@ -173,7 +173,7 @@
   --destructive: #a52d3c;
   --border: #b9c9c6;
   --input: #b9c9c6;
-  --ring: #16468a;
+  --ring: #033473;
   --chart-1: #16468a;
   --chart-2: #a52d3c;
   --chart-3: #d3ff48;
@@ -199,13 +199,13 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
   }
 }
 
 .display-type {
-  font-family: Impact, 'Arial Narrow', sans-serif;
-  font-stretch: condensed;
+  font-family: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
 }
 
 .lens-study {
@@ -249,21 +249,21 @@
 }
 
 .product-placeholder {
-  background-color: #d8efff;
-  background-image: radial-gradient(circle at center, #71d3f6 0 13%, transparent 13.5% 21%, #087daf 21.5% 22%, transparent 22.5% 37%, #0c3556 37.5% 38%, transparent 38.5%);
+  background-color: #eef3fa;
+  background-image: radial-gradient(circle at center, #dce8f8 0 13%, transparent 13.5% 21%, #033473 21.5% 22%, transparent 22.5% 37%, #033473 37.5% 38%, transparent 38.5%);
 }
 
 .storefront-sky {
   color-scheme: light;
-  color: #0c3556;
-  background-color: #f1faff !important;
-  --isk-sky-ink: #0c3556;
-  --isk-sky: #087daf;
-  --isk-sky-bright: #71d3f6;
-  --isk-sky-paper: #f1faff;
-  --isk-sky-mist: #d8efff;
-  --isk-sky-muted: #244f6c;
-  --isk-sky-line: #9bc5df;
+  color: #0a0a0a;
+  background-color: #ffffff !important;
+  --isk-sky-ink: #033473;
+  --isk-sky: #033473;
+  --isk-sky-bright: #dce8f8;
+  --isk-sky-paper: #ffffff;
+  --isk-sky-mist: #eef3fa;
+  --isk-sky-muted: #4a5568;
+  --isk-sky-line: #b8c7dc;
 }
 
 .storefront-sky [class~="bg-[#edf4ef]"] { background-color: var(--isk-sky-paper) !important; }
@@ -296,6 +296,32 @@
 .storefront-sky [class~="decoration-[#16468a]/50"] { text-decoration-color: color-mix(in srgb, var(--isk-sky) 50%, transparent) !important; }
 .storefront-sky [class~="placeholder:text-[#314a63]"]::placeholder { color: var(--isk-sky-muted) !important; }
 .storefront-sky [class~="accent-[#152a52]"] { accent-color: var(--isk-sky-ink) !important; }
+
+/* Admin workspace palette */
+.admin-theme { background-color: #f4f7fb; color: #0a0a0a; }
+.admin-theme [class~="text-[#68675f]"],
+.admin-theme [class~="text-[#55544e]"],
+.admin-theme [class~="text-[#77756e]"],
+.admin-theme [class~="text-[#66645e]"],
+.admin-theme [class~="text-[#65645e]"],
+.admin-theme [class~="text-[#5f5d57]"],
+.admin-theme [class~="text-[#41403a]"] { color: #4a5568 !important; }
+.admin-theme [class~="text-[#1c1c1a]"] { color: #033473 !important; }
+.admin-theme [class~="bg-[#1c1c1a]"] { background-color: #033473 !important; }
+.admin-theme [class~="hover:bg-[#353531]"]:hover { background-color: #0a4fa3 !important; }
+.admin-theme [class~="bg-[#f2f1ed]"],
+.admin-theme [class~="bg-[#eeede8]"],
+.admin-theme [class~="bg-[#f8f8f5]"],
+.admin-theme [class~="bg-[#e8e6e0]"],
+.admin-theme [class~="bg-[#e2e7df]"],
+.admin-theme [class~="hover:bg-[#f2f1ed]"]:hover,
+.admin-theme [class~="hover:bg-[#eeede8]"]:hover { background-color: #e6eef9 !important; }
+.admin-theme [class~="text-[#52624f]"],
+.admin-theme [class~="text-[#465342]"] { color: #033473 !important; }
+.admin-theme [class~="focus-visible:outline-[#1c1c1a]"]:focus-visible { outline-color: #033473 !important; }
+.admin-theme [class~="accent-[#52624f]"] { accent-color: #033473 !important; }
+.admin-theme [class~="border-[#1c1c1a]/10"],
+.admin-theme [class~="border-[#1c1c1a]/15"] { border-color: #c9d6e8 !important; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }

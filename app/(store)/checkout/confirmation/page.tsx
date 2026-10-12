@@ -19,7 +19,7 @@ export default async function CheckoutConfirmationPage() {
   return (
     <main className="storefront-sky mx-auto min-h-[calc(100vh-72px)] max-w-[1000px] bg-[#edf4ef] px-5 pb-24 text-[#152a52] sm:px-8 lg:px-12">
       <header className="flex flex-wrap items-center justify-between gap-4 border-b border-[#152a52]/20 py-4">
-        <Link href="/products" className="text-xs font-bold uppercase tracking-[.1em] hover:text-[#16468a] focus-visible:outline-2 focus-visible:outline-[#16468a]">ISK Lenses / Products</Link>
+        <Link href="/shop" className="text-xs font-bold uppercase tracking-[.1em] hover:text-[#16468a] focus-visible:outline-2 focus-visible:outline-[#16468a]">ISK Lenses / Products</Link>
         <span className="font-mono text-[10px] uppercase tracking-[.15em] text-[#314a63]">Cash on delivery</span>
       </header>
       {order ? (
@@ -59,7 +59,7 @@ export default async function CheckoutConfirmationPage() {
             <p>{order.shippingAddress.city}, {order.shippingAddress.province}, {order.shippingAddress.country}</p>
             {order.shippingAddress.postalCode && <p>{order.shippingAddress.postalCode}</p>}
           </div>
-          <Link href="/products" className="mt-7 inline-flex items-center gap-3 bg-[#152a52] px-5 py-4 text-xs font-black uppercase tracking-[.12em] text-[#d3ff48] hover:bg-[#16468a] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16468a]">
+          <Link href="/shop" className="mt-7 inline-flex items-center gap-3 bg-[#152a52] px-5 py-4 text-xs font-black uppercase tracking-[.12em] text-[#d3ff48] hover:bg-[#16468a] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16468a]">
             Continue browsing <ArrowRight size={15} aria-hidden="true" />
           </Link>
         </article>
@@ -67,7 +67,7 @@ export default async function CheckoutConfirmationPage() {
         <section className="mx-auto max-w-xl py-20 text-center">
           <h1 className="display-type text-4xl uppercase leading-none">Receipt unavailable.</h1>
           <p className="mt-4 text-sm leading-6 text-[#314a63]">This browser has no active order receipt. Check your recent order confirmation or return to the catalogue.</p>
-          <Link href="/products" className="mt-6 inline-flex items-center gap-2 bg-[#152a52] px-5 py-4 text-xs font-black uppercase tracking-[.12em] text-[#d3ff48] hover:bg-[#16468a]">Browse products <ArrowRight size={15} /></Link>
+          <Link href="/shop" className="mt-6 inline-flex items-center gap-2 bg-[#152a52] px-5 py-4 text-xs font-black uppercase tracking-[.12em] text-[#d3ff48] hover:bg-[#16468a]">Browse products <ArrowRight size={15} /></Link>
         </section>
       )}
     </main>
