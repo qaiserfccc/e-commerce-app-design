@@ -1,144 +1,153 @@
-'use client'
-
-import { useMemo } from 'react'
 import Link from 'next/link'
-import { ArrowRight, Headphones, ShieldCheck, Truck, Wallet } from 'lucide-react'
-import { ProductCard, ProductGridSkeleton } from '@/components/storefront/product-card'
-import { useProducts } from '@/lib/hooks/use-storefront-data'
-import { useStorefrontCategories } from '@/lib/hooks/use-storefront-categories'
-import { categoryHref, categoryTree, isAvailable, titleCase } from '@/lib/store-config'
-import { getProductImageSources } from '@/components/storefront/product-image'
+import { ArrowRight } from 'lucide-react'
+import { Slider } from '@/components/storefront/home/slider'
+import {
+  dummyBanners, dummyBrandLogos, dummyCategories, dummyFeatures, dummyNewArrivals, dummyPromoTiles,
+  dummyReviews, dummySeo, dummyService, dummyTrending, dummyWhyChoose, type DummyProduct,
+} from '@/lib/dummy/eyelenses-home'
+import { formatPrice } from '@/lib/store-config'
 
-const trust = [
-  { icon: Truck, title: 'Delivery across Pakistan', body: 'Charge confirmed before dispatch.' },
-  { icon: Wallet, title: 'Cash on delivery', body: 'Pay the courier when it arrives.' },
-  { icon: ShieldCheck, title: 'Clear product details', body: 'Only listed options are shown.' },
-  { icon: Headphones, title: 'Support', body: 'Reach the store about any order.' },
-]
+function Img({ src, alt, className }: { src: string; alt: string; className?: string }) {
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src} alt={alt} loading="lazy" decoding="async" className={className} />
+}
 
-const colors = [
-  ['Blue', '#3b7dd8'], ['Brown', '#7a4a2a'], ['Gray', '#8a929c'], ['Green', '#3f8a5a'],
-  ['Hazel', '#a9783a'], ['Honey', '#d49a3a'], ['Purple', '#7a4ea8'], ['Black', '#1a1a1a'],
-]
+function DummyProductCard({ product }: { product: DummyProduct }) {
+  const off = Math.round((1 - product.salePrice / product.price) * 100)
+  return (
+    <article className="group relative text-center">
+      <span className="absolute left-2 top-2 z-10 rounded-full bg-[#b20000] px-2.5 py-1 text-xs font-bold text-white">-{off}%</span>
+      <Link href={`/product/${product.slug}`} className="block overflow-hidden rounded-xl bg-[#eef3fa]">
+        <Img src={product.image} alt={product.name} className="aspect-[5/6] w-full object-cover transition duration-300 group-hover:scale-105" />
+      </Link>
+      <h3 className="mt-3 text-sm font-semibold leading-5"><Link href={`/product/${product.slug}`} className="hover:text-[#033473]">{product.name}</Link></h3>
+      <p className="mt-1 text-xs text-[#4a5568]">Dia: {product.dia}, Modality: {product.modality}</p>
+      <p className="mt-1.5 text-sm">
+        <del className="mr-2 text-[#4a5568]">{formatPrice(product.price, 'PKR')}</del>
+        <strong className="text-[#033473]">{formatPrice(product.salePrice, 'PKR')}</strong>
+      </p>
+      <Link href={`/product/${product.slug}`} className="mt-3 inline-block rounded-full border border-[#033473] px-5 py-2 text-xs font-bold uppercase tracking-wide text-[#033473] hover:bg-[#033473] hover:text-white">Select options</Link>
+    </article>
+  )
+}
 
 export function Home() {
-  const { products, isLoading, isError } = useProducts()
-  const { categories } = useStorefrontCategories()
-  const tree = useMemo(() => categoryTree(categories), [categories])
-  const roots = (tree.get(0) ?? []).filter((category) => category.sourceProductCount > 0)
-  const trending = useMemo(
-    () => products.filter((product) => isAvailable(product) && getProductImageSources(product).length).slice(0, 8),
-    [products],
-  )
-
   return (
-    <main>
-      <section className="bg-gradient-to-br from-[#033473] via-[#0a4fa3] to-[#1a6fd0] text-white">
-        <div className="mx-auto grid max-w-[1320px] items-center gap-10 px-4 py-14 sm:px-6 md:grid-cols-[1.1fr_.9fr] md:py-20">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-widest text-white/80">Contact lenses in Pakistan</p>
-            <h1 className="mt-4 text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">Experience the ultimate eye comfort</h1>
-            <p className="mt-5 max-w-lg text-base leading-7 text-white/85">Browse clear and colored lenses from a range of brands and collections, and order with cash on delivery anywhere in Pakistan.</p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/shop" className="inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-bold text-[#033473] hover:bg-[#dce8f8]">Shop now <ArrowRight size={16} aria-hidden="true" /></Link>
-              <Link href="/product-category/new-arrival-contact-lenses-pakistan" className="rounded-full border border-white/70 px-7 py-3.5 text-sm font-semibold hover:bg-white/10">New arrivals</Link>
-            </div>
-          </div>
-          <div aria-hidden="true" className="relative mx-auto aspect-square w-full max-w-sm">
-            <div className="absolute inset-0 rounded-full border border-white/30" />
-            <div className="absolute inset-[10%] rounded-full border border-white/40" />
-            <div className="absolute inset-[22%] rounded-full bg-white/10 shadow-[inset_0_0_40px_rgba(255,255,255,.35)]" />
-            <div className="absolute inset-[36%] rounded-full bg-[#033473] ring-[10px] ring-white/80" />
-            <div className="absolute inset-[44%] rounded-full bg-black" />
-          </div>
+    <>
+      <section aria-label="Promotions" className="bg-[#eef3fa]">
+        <Slider label="Promotional banners" autoPlayMs={6000} dots>
+          {dummyBanners.map((banner) => (
+            <Link key={banner.src} href={banner.href} className="block"><Img src={banner.src} alt={banner.alt} className="mx-auto w-full max-w-[1920px]" /></Link>
+          ))}
+        </Slider>
+      </section>
+
+      <section className="mx-auto grid max-w-[1320px] gap-4 px-4 pt-8 sm:grid-cols-2 sm:px-6">
+        {dummyPromoTiles.map((tile) => (
+          <Link key={tile.src} href={tile.href} className="block overflow-hidden rounded-2xl"><Img src={tile.src} alt={tile.alt} className="w-full transition duration-300 hover:scale-[1.02]" /></Link>
+        ))}
+      </section>
+
+      <section className="mx-auto max-w-[1320px] px-4 pt-14 sm:px-6">
+        <div className="flex items-end justify-between gap-3">
+          <h2 className="text-2xl font-bold tracking-tight text-[#033473] sm:text-3xl">Top Trending</h2>
+          <Link href="/product-category/colored-lenses" className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#033473] hover:underline">View all <ArrowRight size={15} aria-hidden="true" /></Link>
+        </div>
+        <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-9 md:grid-cols-4">
+          {dummyTrending.map((product) => <DummyProductCard key={product.slug} product={product} />)}
         </div>
       </section>
 
-      <section aria-label="Store highlights" className="border-b border-[#033473]/10">
-        <ul className="mx-auto grid max-w-[1320px] gap-x-6 gap-y-5 px-4 py-6 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
-          {trust.map(({ icon: Icon, title, body }) => (
-            <li key={title} className="flex items-center gap-3">
-              <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[#eef3fa] text-[#033473]"><Icon size={20} aria-hidden="true" /></span>
-              <span><strong className="block text-sm">{title}</strong><span className="text-xs text-[#4a5568]">{body}</span></span>
-            </li>
+      <section aria-label="Brands" className="mx-auto max-w-[1320px] px-4 pt-14 sm:px-6">
+        <Slider label="Brands" autoPlayMs={3000} arrows={false} perView="basis-1/2 sm:basis-1/3 lg:basis-1/6">
+          {dummyBrandLogos.map((brand) => (
+            <Link key={brand.name} href={brand.href} className="mx-2 block rounded-xl border border-[#033473]/15 bg-white p-4 hover:border-[#033473]"><Img src={brand.src} alt={brand.name} className="mx-auto h-20 w-auto object-contain" /></Link>
           ))}
-        </ul>
+        </Slider>
       </section>
 
-      {roots.length > 0 && (
-        <section className="mx-auto max-w-[1320px] px-4 pt-14 sm:px-6">
-          <h2 className="text-2xl font-bold tracking-tight text-[#033473] sm:text-3xl">Shop by category</h2>
-          <ul className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {roots.map((category) => (
-              <li key={category.sourceCategoryId}>
-                <Link href={categoryHref(category)} className="flex h-full min-h-24 flex-col justify-between rounded-2xl bg-[#eef3fa] p-5 transition hover:bg-[#033473] hover:text-white">
-                  <span className="font-bold uppercase tracking-wide">{titleCase(category.name)}</span>
-                  <span className="mt-3 text-xs opacity-80">{category.sourceProductCount} products</span>
-                </Link>
+      <section className="mt-16 bg-[#eef3fa] py-14">
+        <div className="mx-auto max-w-[1320px] px-4 text-center sm:px-6">
+          <p className="text-sm font-bold uppercase tracking-widest text-[#0a4fa3]">{dummyWhyChoose.eyebrow}</p>
+          <h2 className="mx-auto mt-3 max-w-3xl text-3xl font-extrabold tracking-tight text-[#033473] sm:text-4xl">{dummyWhyChoose.heading}</h2>
+          {dummyWhyChoose.lines.map((line) => <p key={line} className="mt-2 text-[#4a5568]">{line}</p>)}
+          <ul className="mt-10 grid grid-cols-2 gap-6 lg:grid-cols-4">
+            {dummyWhyChoose.items.map((item) => (
+              <li key={item.title} className="rounded-2xl bg-white p-6 shadow-sm">
+                <Img src={item.src} alt="" className="mx-auto size-20 object-contain" />
+                <h3 className="mt-4 text-sm font-bold text-[#033473] sm:text-base">{item.title}</h3>
               </li>
             ))}
           </ul>
-        </section>
-      )}
+        </div>
+      </section>
 
-      <section className="mx-auto max-w-[1320px] px-4 pt-16 sm:px-6">
-        <div className="flex flex-wrap items-end justify-between gap-3">
+      <section className="mx-auto max-w-[1320px] px-4 pt-16 text-center sm:px-6">
+        <h2 className="text-2xl font-bold tracking-tight text-[#033473] sm:text-3xl">{dummyCategories.heading}</h2>
+        <p className="mt-2 text-[#4a5568]">{dummyCategories.intro}</p>
+        <ul className="mt-8 grid gap-4 md:grid-cols-3">
+          {dummyCategories.items.map((item) => (
+            <li key={item.alt}><Link href={item.href} className="block overflow-hidden rounded-2xl"><Img src={item.src} alt={item.alt} className="w-full transition duration-300 hover:scale-105" /></Link></li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="mx-auto mt-16 max-w-[1320px] px-4 sm:px-6">
+        <div className="grid items-center gap-8 rounded-3xl bg-[#033473] p-8 text-white sm:p-12 md:grid-cols-[1fr_1.2fr]">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight text-[#033473] sm:text-3xl">Top trending</h2>
-            <p className="mt-1 text-sm text-[#4a5568]">Lenses currently in stock.</p>
+            <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{dummyService.title}</h2>
+            <p className="mt-4 leading-7 text-white/85">{dummyService.body}</p>
+            <Link href="/shop" className="mt-6 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-bold text-[#033473] hover:bg-[#dce8f8]">Shop now <ArrowRight size={16} aria-hidden="true" /></Link>
           </div>
-          <Link href="/shop" className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#033473] hover:underline">View all <ArrowRight size={15} aria-hidden="true" /></Link>
-        </div>
-        <div className="mt-6">
-          {isLoading ? <ProductGridSkeleton /> : isError ? (
-            <p role="alert" className="rounded-xl bg-[#fff4f2] px-5 py-4 text-sm text-[#7a1c1c]">Products could not be loaded. Refresh the page to try again.</p>
-          ) : trending.length ? (
-            <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-4">
-              {trending.map((product) => <ProductCard key={product.id} product={product} />)}
-            </div>
-          ) : (
-            <p className="rounded-xl bg-[#eef3fa] px-5 py-8 text-center text-sm text-[#4a5568]">No products are available right now.</p>
-          )}
+          <div className="grid grid-cols-3 gap-3">
+            {dummyService.images.map((src) => <Img key={src} src={src} alt="" className="aspect-square w-full rounded-xl object-contain" />)}
+          </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1320px] px-4 pt-16 sm:px-6">
-        <h2 className="text-2xl font-bold tracking-tight text-[#033473] sm:text-3xl">Shop by color</h2>
-        <ul className="mt-6 flex flex-wrap gap-3">
-          {colors.map(([name, swatch]) => (
-            <li key={name}>
-              <Link href={`/shop?q=${encodeURIComponent(name)}`} className="inline-flex items-center gap-2.5 rounded-full border border-[#033473]/20 py-2 pl-2 pr-5 text-sm font-semibold hover:border-[#033473] hover:bg-[#eef3fa]">
-                <span className="size-7 rounded-full ring-2 ring-white" style={{ backgroundColor: swatch }} aria-hidden="true" /> {name}
-              </Link>
+      <section className="mx-auto max-w-[1320px] px-4 pt-16 text-center sm:px-6">
+        <h2 className="text-2xl font-bold tracking-tight text-[#033473] sm:text-3xl">{dummyReviews.heading}</h2>
+        <p className="mt-2 text-[#4a5568]">{dummyReviews.intro}</p>
+        <div className="mt-8">
+          <Slider label="Customer reviews" autoPlayMs={6000} dots arrows={false} perView="basis-full md:basis-1/3">
+            {dummyReviews.items.map((review) => (
+              <figure key={review.name} className="mx-2 mb-10 h-[calc(100%-2.5rem)] rounded-2xl border border-[#033473]/15 bg-white p-6 text-left">
+                <blockquote className="leading-7 text-[#4a5568]">“{review.text}”</blockquote>
+                <figcaption className="mt-4 font-bold text-[#033473]">{review.name}</figcaption>
+              </figure>
+            ))}
+          </Slider>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-[1000px] px-4 pt-16 sm:px-6">
+        <h2 className="text-center text-2xl font-extrabold tracking-tight text-[#033473] sm:text-3xl">{dummySeo.title}</h2>
+        <div className="mt-8 space-y-8">
+          {dummySeo.sections.map((section) => (
+            <article key={section.heading}>
+              <h3 className="text-xl font-bold text-[#033473]">{section.heading}</h3>
+              {section.paragraphs.map((text) => <p key={text.slice(0, 24)} className="mt-3 leading-7 text-[#4a5568]">{text}</p>)}
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto mt-16 grid max-w-[1320px] gap-4 px-4 sm:px-6 md:grid-cols-2">
+        {dummyNewArrivals.map((banner) => (
+          <Link key={banner.src} href={banner.href} className="block overflow-hidden rounded-2xl"><Img src={banner.src} alt={banner.alt} className="w-full transition duration-300 hover:scale-[1.02]" /></Link>
+        ))}
+      </section>
+
+      <section aria-label="Store promises" className="mt-16 border-y border-[#033473]/10 bg-[#eef3fa]">
+        <ul className="mx-auto grid max-w-[1320px] gap-6 px-4 py-8 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
+          {dummyFeatures.map((feature) => (
+            <li key={feature.title} className="flex items-center gap-4">
+              <Img src={feature.src} alt="" className="size-16 shrink-0 object-contain" />
+              <div><h3 className="font-bold text-[#033473]">{feature.title}</h3><p className="text-sm text-[#4a5568]">{feature.body}</p></div>
             </li>
           ))}
         </ul>
       </section>
-
-      <section className="mx-auto max-w-[1320px] px-4 pt-16 sm:px-6">
-        <h2 className="text-2xl font-bold tracking-tight text-[#033473] sm:text-3xl">Shop by disposability</h2>
-        <ul className="mt-6 grid gap-3 sm:grid-cols-3">
-          {['Daily', 'Monthly', 'Yearly'].map((term) => (
-            <li key={term}>
-              <Link href={`/shop?q=${encodeURIComponent(term)}`} className="flex items-center justify-between rounded-2xl bg-[#eef3fa] px-6 py-5 font-bold uppercase tracking-wide text-[#033473] transition hover:bg-[#033473] hover:text-white">
-                {term} lenses <ArrowRight size={16} aria-hidden="true" />
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="mx-auto mt-16 grid max-w-[1320px] gap-8 px-4 sm:px-6 md:grid-cols-2">
-        <div className="rounded-3xl bg-[#eef3fa] p-8 sm:p-10">
-          <h2 className="text-2xl font-bold tracking-tight text-[#033473]">About {`ISK Lenses`}</h2>
-          <p className="mt-4 leading-7 text-[#4a5568]">ISK Lenses is an online store for contact lenses in Pakistan. Choose between clear and colored lenses across brands and collections, compare the options listed for each product, and place your order in a few steps.</p>
-        </div>
-        <div className="rounded-3xl bg-[#033473] p-8 text-white sm:p-10">
-          <h2 className="text-2xl font-bold tracking-tight">Easy online shopping</h2>
-          <p className="mt-4 leading-7 text-white/85">Browse categories, pick your lens option, and check out as a guest or with an account. Pay by cash on delivery; we confirm the delivery charge with you before dispatch.</p>
-          <Link href="/shipping-returns" className="mt-6 inline-flex items-center gap-2 text-sm font-semibold underline underline-offset-4">Shipping &amp; returns <ArrowRight size={15} aria-hidden="true" /></Link>
-        </div>
-      </section>
-    </main>
+    </>
   )
 }

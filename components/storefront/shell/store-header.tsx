@@ -7,13 +7,10 @@ import { ChevronDown, Menu, Phone, Search, ShoppingBag, User, X } from 'lucide-r
 import { MiniCart } from '@/components/storefront/shell/mini-cart'
 import { useStorefrontCart } from '@/lib/hooks/use-storefront-cart'
 import { useStorefrontCategories } from '@/lib/hooks/use-storefront-categories'
+import { dummyContact, dummyAnnouncements } from '@/lib/dummy/eyelenses-home'
 import { categoryHref, categoryTree, STORE_NAME, storeContact } from '@/lib/store-config'
 
-const announcements = [
-  'Delivery available all over Pakistan',
-  'Cash on delivery on every order',
-  'Delivery charge is confirmed with you before dispatch',
-]
+const announcements = dummyAnnouncements
 
 export function StoreHeader() {
   const router = useRouter()
@@ -71,10 +68,8 @@ export function StoreHeader() {
       <div className="bg-[#033473] text-white">
         <div className="mx-auto flex h-9 max-w-[1320px] items-center justify-between gap-4 px-4 text-xs sm:px-6">
           <p className="hidden min-w-0 items-center gap-2 truncate sm:flex" aria-live="off">
-            {storeContact.phone && (
-              <a href={`tel:${storeContact.phone.replace(/[^\d+]/g, '')}`} className="inline-flex items-center gap-1.5 hover:underline"><Phone size={12} aria-hidden="true" />{storeContact.phone}</a>
-            )}
-            {storeContact.email && <a href={`mailto:${storeContact.email}`} className="ml-3 hover:underline">{storeContact.email}</a>}
+            <a href={`tel:${(storeContact.phone || dummyContact.phone).replace(/[^\d+]/g, '')}`} className="inline-flex items-center gap-1.5 hover:underline"><Phone size={12} aria-hidden="true" />{storeContact.phone || dummyContact.phone}</a>
+            <a href={`mailto:${storeContact.email || dummyContact.email}`} className="ml-3 hover:underline">{storeContact.email || dummyContact.email}</a>
           </p>
           <p className="flex-1 truncate text-center font-medium">⚡ {announcements[announcement]}</p>
           <Link href="/contact-us" className="hidden shrink-0 hover:underline sm:inline">Contact us</Link>
