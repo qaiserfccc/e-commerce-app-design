@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, ArrowRight, ShoppingBag } from 'lucide-react'
-import { StorefrontBag } from '@/components/storefront/storefront-bag'
+import { useRouter } from 'next/navigation'
+import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { useStorefrontCart } from '@/lib/hooks/use-storefront-cart'
 import { useProduct, type Product, type ProductAsset } from '@/lib/hooks/use-storefront-data'
 import { getProductImageSources, StorefrontProductImage } from '@/components/storefront/product-image'
@@ -38,8 +38,8 @@ export function StorefrontProductDetail({
       : variants[0]?.id ?? '',
   )
   const [mediaIndex, setMediaIndex] = useState(0)
-  const [bagOpen, setBagOpen] = useState(false)
-  const { add, count } = useStorefrontCart()
+  const router = useRouter()
+  const { add } = useStorefrontCart()
   const selectedVariant = variants.find((variant) => variant.id === selectedVariantId) ?? variants[0] ?? null
   const media = mediaFor(product)
   const selectedMedia = media[mediaIndex] ?? media[0] ?? null
@@ -55,22 +55,12 @@ export function StorefrontProductDetail({
   }
 
   return (
-    <main className="storefront-sky mx-auto min-h-[calc(100vh-72px)] max-w-[1500px] bg-[#edf4ef] px-5 pb-24 text-[#152a52] sm:px-8 lg:px-12">
+    <main className="storefront-sky mx-auto min-h-[calc(100vh-72px)] max-w-[1320px] bg-white px-5 pb-24 text-[#152a52] sm:px-8 lg:px-12">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#152a52]/20 py-4">
-        <Link href="/products" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.1em] hover:text-[#16468a] focus-visible:outline-2 focus-visible:outline-[#16468a]">
-          <ArrowLeft size={15} aria-hidden="true" /> ISK Lenses / Products
+        <Link href="/shop" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.1em] hover:text-[#16468a] focus-visible:outline-2 focus-visible:outline-[#16468a]">
+          <ArrowLeft size={15} aria-hidden="true" /> Back to shop
         </Link>
-        <button
-          type="button"
-          onClick={() => setBagOpen((open) => !open)}
-          aria-expanded={bagOpen}
-          aria-controls="shopping-bag"
-          className="inline-flex items-center gap-2 border border-[#152a52] bg-[#152a52] px-4 py-2.5 text-xs font-bold uppercase tracking-[.08em] text-[#d3ff48] hover:bg-[#16468a] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16468a]"
-        >
-          <ShoppingBag size={15} aria-hidden="true" /> Bag {count}
-        </button>
       </div>
-      <StorefrontBag open={bagOpen} onClose={() => setBagOpen(false)} />
       {isError && <p role="status" className="mt-3 text-xs text-[#782b36]">Product details could not be refreshed. Showing the listing as it was loaded.</p>}
       <div className="grid gap-9 pt-7 lg:grid-cols-[1.1fr_.9fr] lg:gap-14 lg:pt-10">
         <section aria-label={`${product.name} product media`}>
@@ -187,7 +177,7 @@ export function StorefrontProductDetail({
             type="button"
             onClick={() => {
               add(product, selectedVariant)
-              setBagOpen(true)
+              router.push('/cart')
             }}
             disabled={stockQuantity < 1}
             className="mt-8 w-full bg-[#152a52] px-5 py-4 text-xs font-black uppercase tracking-[.15em] text-[#d3ff48] hover:bg-[#16468a] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16468a] disabled:cursor-not-allowed disabled:bg-[#dbe7e1] disabled:text-[#314a63]"

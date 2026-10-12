@@ -192,3 +192,12 @@ docs/NEXT_AGENT_HANDOFF.md
 ```
 
 This file is a reference, not a secret store. The authoritative environment values remain in the connected Vercel project integrations and Vars settings.
+
+## Eyelenses.pk-style redesign (branch `qaiserfccc-eyelenses-pk-redesign`)
+
+- Storefront routes live in `app/(store)/`: `/`, `/shop`, `/product-category/[...path]`, `/product/[slug]`, `/cart`, `/checkout`, `/checkout/confirmation`, `/my-account`, `/faq`, `/contact-us`, `/blogs`, `/shipping-returns`, `/privacy-policy`, `/terms-conditions`. `/products*` redirects to `/shop` and `/product/*`.
+- Admin moved to `/admin` (`components/admin/admin-shell.tsx` wraps `AdminWorkspace`, themed via `.admin-theme` in `globals.css`).
+- Shell: `components/storefront/shell/` (announcement bar, header, mega-menu, mini-cart, footer). Palette navy `#033473`, font Outfit. Legacy checkout/product-detail are re-themed through `.storefront-sky` colour remaps.
+- Optional env vars (names only): `NEXT_PUBLIC_STORE_PHONE`, `NEXT_PUBLIC_STORE_EMAIL`, `NEXT_PUBLIC_STORE_WHATSAPP`, `NEXT_PUBLIC_STORE_INSTAGRAM_URL`, `NEXT_PUBLIC_STORE_FACEBOOK_URL`.
+- Static/policy pages are neutral drafts; blogs has no posts. Have the owner review legal text, return terms, and contact details before launch.
+- `DESIGN.md` still describes the earlier design and needs a rewrite for this system.

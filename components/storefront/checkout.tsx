@@ -197,9 +197,9 @@ export function Checkout() {
 
   if (!lines.length) {
     return (
-      <main className="storefront-sky mx-auto min-h-[calc(100vh-72px)] max-w-[1200px] bg-[#edf4ef] px-5 pb-24 text-[#152a52] sm:px-8 lg:px-12">
+      <main className="storefront-sky mx-auto max-w-[1200px] bg-[#edf4ef] px-5 pb-24 text-[#152a52] sm:px-8 lg:px-12">
         <div className="border-b border-[#152a52]/20 py-4">
-          <Link href="/products" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.1em] hover:text-[#16468a] focus-visible:outline-2 focus-visible:outline-[#16468a]">
+          <Link href="/shop" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.1em] hover:text-[#16468a] focus-visible:outline-2 focus-visible:outline-[#16468a]">
             <ArrowLeft size={15} /> Products
           </Link>
         </div>
@@ -207,7 +207,7 @@ export function Checkout() {
           <PackageCheck className="mx-auto size-10 text-[#16468a]" aria-hidden="true" />
           <h1 className="display-type mt-5 text-5xl uppercase leading-none">Your bag is empty.</h1>
           <p className="mt-4 text-sm leading-6 text-[#314a63]">Choose a product before continuing to checkout.</p>
-          <Link href="/products" className="mt-7 inline-flex bg-[#152a52] px-5 py-4 text-xs font-black uppercase tracking-[.13em] text-[#d3ff48] hover:bg-[#16468a] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16468a]">
+          <Link href="/shop" className="mt-7 inline-flex bg-[#152a52] px-5 py-4 text-xs font-black uppercase tracking-[.13em] text-[#d3ff48] hover:bg-[#16468a] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16468a]">
             Browse products
           </Link>
         </section>
@@ -216,9 +216,9 @@ export function Checkout() {
   }
 
   return (
-    <main className="storefront-sky mx-auto min-h-[calc(100vh-72px)] max-w-[1400px] bg-[#edf4ef] px-5 pb-24 text-[#152a52] sm:px-8 lg:px-12">
+    <main className="storefront-sky mx-auto max-w-[1400px] bg-[#edf4ef] px-5 pb-24 text-[#152a52] sm:px-8 lg:px-12">
       <nav aria-label="Checkout navigation" className="flex min-h-[64px] items-center justify-between gap-4 border-b border-[#152a52]/20 py-3">
-        <Link href="/products" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.1em] hover:text-[#16468a] focus-visible:outline-2 focus-visible:outline-[#16468a]">
+        <Link href="/shop" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.1em] hover:text-[#16468a] focus-visible:outline-2 focus-visible:outline-[#16468a]">
           <ArrowLeft size={15} aria-hidden="true" /> ISK Lenses / Products
         </Link>
         <p className="font-mono text-[10px] uppercase tracking-[.16em] text-[#314a63]">Cash on delivery · Pakistan</p>
@@ -405,7 +405,7 @@ export function Checkout() {
             <div className="flex items-start justify-between gap-4 border-t border-[#152a52]/20 pt-3 font-bold"><span>COD amount now recorded</span><strong className="font-mono text-right">{formatPrice(subtotal, currency)}</strong></div>
           </div>
           <p className="mt-4 border border-[#152a52]/15 bg-white/65 px-3 py-3 text-xs leading-5 text-[#314a63]">This amount does not include a delivery fee. The store must confirm the final payable total with you before dispatch. Nothing is charged online.</p>
-          <Link href="/products" className="mt-5 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.1em] underline underline-offset-4 hover:text-[#16468a] focus-visible:outline-2 focus-visible:outline-[#16468a]">
+          <Link href="/shop" className="mt-5 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.1em] underline underline-offset-4 hover:text-[#16468a] focus-visible:outline-2 focus-visible:outline-[#16468a]">
             <Store size={14} aria-hidden="true" /> Edit your bag in Products
           </Link>
         </aside>

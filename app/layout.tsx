@@ -1,11 +1,14 @@
 import { Analytics } from '@vercel/analytics/next'
+import { Outfit } from 'next/font/google'
 import type { Metadata, Viewport } from 'next'
 import { StorefrontCartProvider } from '@/lib/hooks/use-storefront-cart'
 import './globals.css'
 
+const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit', display: 'swap' })
+
 export const metadata: Metadata = {
-  title: 'ISK Lenses — Contact lens catalogue',
-  description: 'Browse the ISK Lenses catalogue and compare published product details.',
+  title: { default: 'ISK Lenses — Contact lenses in Pakistan', template: '%s — ISK Lenses' },
+  description: 'Shop contact lenses online in Pakistan. Browse brands, colors and collections and order with cash on delivery.',
   generator: 'v0.app',
   icons: {
     icon: [
@@ -28,7 +31,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   colorScheme: 'light',
-  themeColor: '#edf4ef',
+  themeColor: '#033473',
 }
 
 export default function RootLayout({
@@ -37,7 +40,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={outfit.variable}>
       <body className="antialiased">
         <StorefrontCartProvider>{children}</StorefrontCartProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
