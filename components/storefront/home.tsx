@@ -47,7 +47,7 @@ export function Home() {
         <div className="relative overflow-hidden rounded-[1.5rem] bg-slate-950 shadow-[0_25px_70px_-35px_rgba(6,182,212,.8)]">
           <div className="pointer-events-none absolute -right-20 -top-32 size-80 rounded-full bg-cyan-400/30 blur-3xl" />
           <Slider label="Promotional banners" autoPlayMs={6000} dots>
-            {dummyBanners.map((banner) => <Link key={banner.src} href={banner.href} className="block"><Img src={banner.src} alt={banner.alt} className="mx-auto h-auto max-h-[360px] w-full object-contain" /></Link>)}
+            {dummyBanners.map((banner) => <Link key={banner.src} href={banner.href} className="block"><Img src={banner.src} alt={banner.alt} className="mx-auto h-auto max-h-[420px] w-full object-contain" /></Link>)}
           </Slider>
         </div>
       </section>

@@ -1,6 +1,6 @@
 // Static storefront content retained for layout parity.
 // Replace each export with backend data when the storefront is linked to the database.
-const U = 'https://isklenses.com/wp-content/uploads'
+const U = 'https://eyelenses.pk/wp-content/uploads'
 
 export const dummyContact = {
   phone: '(+92) 301 574 0405',
