@@ -57,15 +57,15 @@ export function StoreHeader() {
         placeholder="Search for lenses, brands, colors…"
         className="min-w-0 flex-1 bg-transparent px-4 py-2.5 text-sm outline-none"
       />
-      <button type="submit" aria-label="Search" className="grid h-10 w-12 place-items-center bg-[#033473] text-white hover:bg-[#0a4fa3]">
+      <button type="submit" aria-label="Search" className="grid h-10 w-12 place-items-center bg-[#075985] text-white hover:bg-[#0a4fa3]">
         <Search size={17} aria-hidden="true" />
       </button>
     </form>
   )
 
   return (
-    <header className="sticky top-0 z-40 bg-white shadow-sm">
-      <div className="bg-[#033473] text-white">
+    <header className="sticky top-0 z-40 border-b border-white/70 bg-white/75 shadow-[0_8px_30px_rgba(8,145,178,0.10)] backdrop-blur-xl">
+      <div className="bg-[#075985] text-white">
         <div className="mx-auto flex h-9 max-w-[1320px] items-center justify-between gap-4 px-4 text-xs sm:px-6">
           <p className="hidden min-w-0 items-center gap-2 truncate sm:flex" aria-live="off">
             <a href={`tel:${(storeContact.phone || dummyContact.phone).replace(/[^\d+]/g, '')}`} className="inline-flex items-center gap-1.5 hover:underline"><Phone size={12} aria-hidden="true" />{storeContact.phone || dummyContact.phone}</a>
@@ -77,22 +77,22 @@ export function StoreHeader() {
       </div>
 
       <div className="mx-auto flex h-16 max-w-[1320px] items-center gap-3 px-4 sm:px-6">
-        <button type="button" aria-label="Open menu" aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)} className="grid size-10 place-items-center rounded-full hover:bg-[#eef3fa] lg:hidden">
+        <button type="button" aria-label="Open menu" aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)} className="grid size-10 place-items-center rounded-full hover:bg-[#e0f2fe] lg:hidden">
           <Menu size={22} aria-hidden="true" />
         </button>
         <Link href="/" className="flex shrink-0 items-center gap-2 text-[#033473]">
-          <span className="grid size-9 place-items-center rounded-full bg-[#033473] text-white"><span className="size-3.5 rounded-full border-2 border-white" /></span>
+          <span className="grid size-9 place-items-center rounded-full bg-[#075985] text-white"><span className="size-3.5 rounded-full border-2 border-white" /></span>
           <span className="text-xl font-extrabold tracking-tight">{STORE_NAME}</span>
         </Link>
         <div className="mx-6 hidden max-w-xl flex-1 lg:block">{searchForm}</div>
         <div className="ml-auto flex items-center gap-1">
-          <button type="button" aria-label="Search" aria-expanded={searchOpen} onClick={() => setSearchOpen((open) => !open)} className="grid size-10 place-items-center rounded-full hover:bg-[#eef3fa] lg:hidden">
+          <button type="button" aria-label="Search" aria-expanded={searchOpen} onClick={() => setSearchOpen((open) => !open)} className="grid size-10 place-items-center rounded-full hover:bg-[#e0f2fe] lg:hidden">
             <Search size={20} aria-hidden="true" />
           </button>
-          <Link href="/my-account" aria-label="My account" className="grid size-10 place-items-center rounded-full hover:bg-[#eef3fa]">
+          <Link href="/my-account" aria-label="My account" className="grid size-10 place-items-center rounded-full hover:bg-[#e0f2fe]">
             <User size={20} aria-hidden="true" />
           </Link>
-          <button type="button" onClick={() => setCartOpen(true)} aria-label={`Open cart, ${count} items`} className="relative grid size-10 place-items-center rounded-full hover:bg-[#eef3fa]">
+          <button type="button" onClick={() => setCartOpen(true)} aria-label={`Open cart, ${count} items`} className="relative grid size-10 place-items-center rounded-full hover:bg-[#e0f2fe]">
             <ShoppingBag size={20} aria-hidden="true" />
             {count > 0 && <span className="absolute -right-0.5 -top-0.5 grid min-w-5 place-items-center rounded-full bg-[#033473] px-1 text-xs font-bold leading-5 text-white">{count}</span>}
           </button>
@@ -115,7 +115,7 @@ export function StoreHeader() {
                 {kids.length > 0 && (
                   <div className="invisible absolute left-0 top-full z-50 max-h-[70vh] min-w-64 overflow-auto rounded-b-lg border border-[#033473]/15 bg-white p-2 opacity-0 shadow-xl transition group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
                     {kids.map((kid) => (
-                      <Link key={kid.sourceCategoryId} href={categoryHref(kid)} className="block rounded px-3 py-2 text-sm font-medium hover:bg-[#eef3fa] hover:text-[#033473]">{kid.name}</Link>
+                      <Link key={kid.sourceCategoryId} href={categoryHref(kid)} className="block rounded px-3 py-2 text-sm font-medium hover:bg-[#e0f2fe] hover:text-[#033473]">{kid.name}</Link>
                     ))}
                   </div>
                 )}

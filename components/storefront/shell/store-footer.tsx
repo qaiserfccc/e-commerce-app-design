@@ -21,7 +21,7 @@ export function StoreFooter() {
   const email = storeContact.email || dummyContact.email
   const facebook = storeContact.facebook || dummyContact.facebook
   return (
-    <footer className="mt-20 bg-[#033473] text-white">
+    <footer className="mt-20 border-t border-cyan-200/60 bg-gradient-to-br from-[#075985] via-[#0e7490] to-[#164e63] text-white shadow-[0_-12px_40px_rgba(8,145,178,0.12)]">
       <div className="mx-auto grid max-w-[1320px] gap-10 px-4 py-14 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
         <LinkColumn title="Brands" links={dummyFooter.brands.map((name) => [name, `/product-category/${slug(name)}`])} />
         <div className="space-y-10">
