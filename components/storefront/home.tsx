@@ -43,11 +43,11 @@ function ProductCard({ product }: { product: DummyProduct }) {
 export function Home() {
   return (
     <main className="overflow-hidden bg-[#fbfdff] text-slate-950">
-      <section aria-label="Promotions" className="mx-auto max-w-[1440px] px-3 pt-3 sm:px-6 sm:pt-5">
-        <div className="relative overflow-hidden rounded-[1.75rem] bg-slate-950 shadow-[0_25px_70px_-35px_rgba(6,182,212,.8)]">
+      <section aria-label="Promotions" className="mx-auto max-w-[1280px] px-4 pt-4 sm:px-8 sm:pt-6">
+        <div className="relative overflow-hidden rounded-[1.5rem] bg-slate-950 shadow-[0_25px_70px_-35px_rgba(6,182,212,.8)]">
           <div className="pointer-events-none absolute -right-20 -top-32 size-80 rounded-full bg-cyan-400/30 blur-3xl" />
           <Slider label="Promotional banners" autoPlayMs={6000} dots>
-            {dummyBanners.map((banner) => <Link key={banner.src} href={banner.href} className="block"><Img src={banner.src} alt={banner.alt} className="mx-auto aspect-[3.5/1] w-full object-cover sm:aspect-[4.5/1]" /></Link>)}
+            {dummyBanners.map((banner) => <Link key={banner.src} href={banner.href} className="block"><Img src={banner.src} alt={banner.alt} className="mx-auto aspect-[5.4/1] w-full object-cover sm:aspect-[6.2/1]" /></Link>)}
           </Slider>
         </div>
       </section>
@@ -70,7 +70,7 @@ export function Home() {
 
       <section className="mx-auto max-w-6xl px-4 pb-16 sm:px-6"><div className="rounded-[2rem] border border-slate-200 bg-white p-6 sm:p-10"><SectionHeading eyebrow="The ISK journal" title={dummySeo.title} /><div className="mt-8 grid gap-8 md:grid-cols-2">{dummySeo.sections.slice(0, 4).map((section) => <article key={section.heading}><h3 className="text-lg font-black text-slate-900">{section.heading}</h3>{section.paragraphs.slice(0, 1).map((text) => <p key={text.slice(0, 24)} className="mt-3 text-sm leading-7 text-slate-500">{text}</p>)}</article>)}</div></div></section>
 
-      <section className="mx-auto grid max-w-6xl gap-4 px-4 pb-16 sm:px-6 md:grid-cols-2">{dummyNewArrivals.map((banner) => <Link key={banner.src} href={banner.href} className="group overflow-hidden rounded-[1.5rem]"><Img src={banner.src} alt={banner.alt} className="w-full transition duration-500 group-hover:scale-105" /></Link>)}</section>
+      <section aria-label="New arrivals" className="bg-gradient-to-r from-violet-50 via-white to-cyan-50 px-4 pb-16 sm:px-6"><div className="mx-auto max-w-6xl"><div className="mb-6 flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.24em] text-violet-600">Just landed</p><h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">New arrivals</h2></div><Link href="/shop" className="inline-flex items-center gap-2 text-sm font-bold text-slate-950 transition hover:text-violet-600">Shop new <ArrowRight aria-hidden="true" /></Link></div>{dummyNewArrivals[0] && <Link href={dummyNewArrivals[0].href} className="group block overflow-hidden rounded-[1.75rem] border border-white/80 bg-white shadow-[0_24px_70px_-35px_rgba(124,58,237,.45)]"><Img src={dummyNewArrivals[0].src} alt={dummyNewArrivals[0].alt} className="aspect-[3.6/1] w-full object-cover transition duration-700 group-hover:scale-[1.02]" /></Link>}</div></section>
 
       <section aria-label="Store promises" className="border-t border-slate-200 bg-white"><ul className="mx-auto grid max-w-6xl gap-5 px-4 py-10 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">{dummyFeatures.map((feature, i) => { const Icon = [Truck, ShieldCheck, Headphones, Eye][i] ?? Eye; return <li key={feature.title} className="flex items-center gap-4"><span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-cyan-50 text-cyan-600"><Icon aria-hidden="true" /></span><div><h3 className="font-bold text-slate-950">{feature.title}</h3><p className="text-sm text-slate-500">{feature.body}</p></div></li> })}</ul></section>
     </main>
