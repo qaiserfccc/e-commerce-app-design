@@ -64,7 +64,7 @@ export function StoreHeader() {
   )
 
   return (
-    <header className="sticky top-0 z-40 bg-white shadow-sm">
+    <header className="sticky top-0 z-40 border-b border-white/70 bg-white/75 shadow-[0_8px_30px_rgba(8,145,178,0.10)] backdrop-blur-xl">
       <div className="bg-[#075985] text-white">
         <div className="mx-auto flex h-9 max-w-[1320px] items-center justify-between gap-4 px-4 text-xs sm:px-6">
           <p className="hidden min-w-0 items-center gap-2 truncate sm:flex" aria-live="off">

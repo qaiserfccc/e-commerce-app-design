@@ -156,24 +156,24 @@
 /* ISK Lenses colour system stays light for consistent product-color reproduction. */
 :root {
   color-scheme: light;
-  --background: #ffffff;
-  --foreground: #0a0a0a;
-  --card: #fff;
-  --card-foreground: #152a52;
-  --popover: #fff;
-  --popover-foreground: #152a52;
-  --primary: #0ea5e9;
+  --background: #f5fbff;
+  --foreground: #102a43;
+  --card: rgba(255, 255, 255, 0.82);
+  --card-foreground: #123b5d;
+  --popover: rgba(255, 255, 255, 0.96);
+  --popover-foreground: #123b5d;
+  --primary: #0891b2;
   --primary-foreground: #ffffff;
-  --secondary: #e0f2fe;
+  --secondary: #dff7ff;
   --secondary-foreground: #075985;
-  --muted: #f0f9ff;
-  --muted-foreground: #54748a;
-  --accent: #fb7185;
-  --accent-foreground: #881337;
+  --muted: #eaf8fd;
+  --muted-foreground: #58758a;
+  --accent: #f59e0b;
+  --accent-foreground: #713f12;
   --destructive: #dc4b5c;
-  --border: #bae6fd;
-  --input: #a5d8ee;
-  --ring: #38bdf8;
+  --border: #b8e4f2;
+  --input: #a9d9e8;
+  --ring: #22c1dc;
   --chart-1: #0ea5e9;
   --chart-2: #38bdf8;
   --chart-3: #fb7185;
@@ -188,6 +188,23 @@
   --sidebar-accent-foreground: #075985;
   --sidebar-border: #bae6fd;
   --sidebar-ring: #38bdf8;
+}
+
+.glass-surface {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow: 0 12px 35px rgba(8, 145, 178, 0.10);
+  backdrop-filter: blur(18px);
+}
+
+.glass-hover {
+  transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.glass-hover:hover {
+  background: rgba(224, 247, 255, 0.92);
+  border-color: rgba(34, 193, 220, 0.55);
+  box-shadow: 0 14px 32px rgba(8, 145, 178, 0.16);
 }
 
 @layer base {
