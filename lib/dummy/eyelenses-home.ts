@@ -1,12 +1,13 @@
-// Static dummy content copied from eyelenses.pk for layout parity.
+// Static storefront content retained for layout parity.
 // Replace each export with backend data when the storefront is linked to the database.
-const U = 'https://eyelenses.pk/wp-content/uploads'
+const U = 'https://isklenses.com/wp-content/uploads'
 
 export const dummyContact = {
-  phone: '+923355367373',
-  email: 'info@eyelenses.pk',
+  phone: '(+92) 301 574 0405',
+  email: 'info@isklenses.com',
   address: 'Plot No. 169, A-4, Gul Manzil, G.H.Q Road, Garden West, Karachi.',
-  facebook: 'https://www.facebook.com/eyelensespk/',
+  facebook: 'https://web.facebook.com/ISKContactLenses',
+  instagram: 'https://instagram.com/isk_contact_lenses',
 }
 
 export const dummyAnnouncements = [
@@ -64,7 +65,7 @@ export const dummyBrandLogos = [
 ]
 
 export const dummyWhyChoose = {
-  eyebrow: 'Why Choose EyeLenses.pk?',
+  eyebrow: 'Why Choose ISK Lenses?',
   heading: 'Your 1st Online Destination for Eye Lenses in Pakistan',
   lines: ['Explore a Wide Range of Stylish Eye Lenses', 'Quality Lenses Delivered to Your Doorstep'],
   items: [
@@ -105,7 +106,7 @@ export const dummySeo = {
   title: 'EyeLenses – Exceptional Eyelens Experience for Everyone',
   sections: [
     { heading: 'Experience the Ultimate Eye Comfort with Eye Lenses', paragraphs: ['Your eyes really are the most lovable part of your face, and that’s why you only get the best at Eye Lenses — the most reliable online outlet for premium contact lenses in Pakistan. Plus, our contact lenses price range is designed to stay affordable while still giving you top-quality comfort and style. Whether you need vision correction, color addition, or ultimate comfort throughout the day, there is a lens for every need. At Eye Lenses, a blend of clear, chic, and safe lenses is used to keep your eyes lively and fresh wherever life leads you.'] },
-    { heading: 'About EyeLenses.pk', paragraphs: ['Eye Lenses is a main online dispensary of contact lenses that serves all categories of users, ranging from occasional wearers to daily lens users. We have a very broad selection of those lenses, including transparent, colored, and prescription lenses, all from world-renowned brands. We will not offer you any lens that is not extremely high in quality, comfort, and durability. At Eye Lenses, we know how much eye health matters to you; hence, we only select products that allow for maximum airflow and moisture retention. Our goal is to make premium eye care products available to the entire Pakistan with just a few clicks.'] },
+    { heading: 'About ISK Lenses', paragraphs: ['Eye Lenses is a main online dispensary of contact lenses that serves all categories of users, ranging from occasional wearers to daily lens users. We have a very broad selection of those lenses, including transparent, colored, and prescription lenses, all from world-renowned brands. We will not offer you any lens that is not extremely high in quality, comfort, and durability. At Eye Lenses, we know how much eye health matters to you; hence, we only select products that allow for maximum airflow and moisture retention. Our goal is to make premium eye care products available to the entire Pakistan with just a few clicks.'] },
     { heading: 'Why Choose Eye Lenses?', paragraphs: ['By choosing the best Eye Lenses Pakistan, you are choosing practicality, trustworthiness, and splendid quality. The lenses we sell do not just provide vision correction; we give you an entire eye care experience. On our platform, you can find different options, such as Transparent Lenses for a natural look and colored lenses for trying out different looks. At Eye Lenses, we hold the viewpoint that every individual’s eye is different and thus deserve a perfect pair of lenses. Hence, we provide an extensive selection of lenses that match every need and lifestyle at our store. Our assortment consists of Transparent Lenses, colored lenses, daily wear, monthly wear, and prescription lenses.', 'Moreover, we provide lenses with cutting-edge hydration technology that keep your eyes comfortable throughout the day. Whether it’s a party, a business meeting, or you just need sharper vision, our collection features some of the best eye lens brands in Pakistan that always deliver the comfort, style, and clarity you’re looking for. With our featured brands and quality guarantee, you can shop with confidence, knowing your eyesight is protected, and you’re getting the best value based on the current eye lens price in Pakistan.'] },
     { heading: 'Safe and Comfortable Eye Experience', paragraphs: ['To us, eye comfort and safety are the most important things. Eye Lenses, therefore, make lenses from the most advanced materials that permit natural O2 flow to the eyes, thus preventing the chances of dryness and irritation. Our transparent lenses and colored variants are very light, easily manageable, and can also be used by people with sensitive eyes.', 'The products must undergo rigorous quality assurance testing before they are made available to customers. If the right type of care and cleaning is provided, the lenses you receive from Eye Lenses will give you crystal-clear vision and comfort that lasts for hours throughout the day. For those comparing options and contact lenses price, Eye Lenses ensures premium comfort and safety at a fair value.'] },
     { heading: 'Easy Online Shopping at Eye Lenses Pakistan', paragraphs: ['Buying contact lenses can never get easier than this. At Eye Lenses, we have developed a process that is simple and secure. You can check out the different product categories, analyze the various features, and then place the order for your favorite Transparent Lenses or colored lenses, etc. Our website has been built to facilitate your shopping experience from selecting a product to the checkout stage.', 'So go ahead and place your order, as we will ensure fast delivery throughout Pakistan in safe and secure packages so that your lenses reach you quickly and in perfect condition. Best Eye Lenses Pakistan is dedicated to ensuring you not only see perfectly but also look great every day. We aim to provide top-notch lenses that match your vision requirements as well as your style.'] },
