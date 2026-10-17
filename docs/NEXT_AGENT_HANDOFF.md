@@ -209,3 +209,6 @@ This file is a reference, not a secret store. The authoritative environment valu
 - Home, header and footer are loaded from the DB via `lib/data/site-content.ts`; the catalog via `lib/data/catalog.ts`. Admin edits them under "Storefront content" (`app/actions/content.ts`, upload to Vercel Blob at `/api/admin/content/upload`).
 - Cache (`lib/cache.ts`): Redis REST when `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` (or `KV_REST_API_URL`/`KV_REST_API_TOKEN`) are set, else per-process memory. Namespaces `catalog` (300s/600s) and `content` (300s); invalidated on admin/checkout writes.
 - Seeded image URLs still point at eyelenses.pk until re-uploaded to Blob by an admin.
+
+### Applied to Neon (main branch, only branch)
+Migration 0007 applied and schema validated. `scripts/mirror-content-images.mjs` mirrored all seeded banner/footer-logo images into Vercel Blob and rewrote DB URLs (re-runnable; needs `DATABASE_URL` + `BLOB_READ_WRITE_TOKEN`). Product images were already on Blob.
