@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
-import { getActiveProductCategories } from '@/app/actions/storefront'
+import { getCategories } from '@/lib/data/catalog'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
-    const categories = await getActiveProductCategories()
+    const categories = await getCategories()
     return NextResponse.json(
       { data: categories },
       { headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=3600' } },

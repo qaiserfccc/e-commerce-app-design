@@ -8,6 +8,37 @@ type Mode = 'login' | 'register'
 
 const inputClass = 'mt-1.5 w-full rounded-lg border border-[#033473]/30 bg-white px-3 py-3 text-base focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#033473]'
 
+type OrderRow = { id: string; orderNumber: number; status: string; total: string; currency: string; createdAt: string }
+
+function MyOrders() {
+  const [orders, setOrders] = useState<OrderRow[] | null>(null)
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    fetch('/api/storefront/orders', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('failed'))))
+      .then((b) => setOrders(b.data ?? []))
+      .catch(() => setFailed(true))
+  }, [])
+  return (
+    <section className="mt-6" aria-label="My orders">
+      <h2 className="text-lg font-semibold">My orders</h2>
+      {failed ? <p className="mt-2 text-sm text-red-700">Orders could not be loaded.</p>
+        : orders === null ? <p className="mt-2 text-sm text-[#4a5568]">Loading orders…</p>
+        : orders.length === 0 ? <p className="mt-2 text-sm text-[#4a5568]">No orders yet.</p>
+        : <ul className="mt-3 divide-y divide-[#033473]/10 rounded-2xl border border-[#033473]/15">
+            {orders.map((o) => (
+              <li key={o.id} className="flex flex-wrap items-center justify-between gap-2 p-4 text-sm">
+                <span className="font-semibold">Order #{o.orderNumber}</span>
+                <span className="capitalize text-[#4a5568]">{o.status}</span>
+                <span>{o.currency} {o.total}</span>
+                <span className="text-[#4a5568]">{new Date(o.createdAt).toLocaleDateString()}</span>
+              </li>
+            ))}
+          </ul>}
+    </section>
+  )
+}
+
 export function AccountPage() {
   const [customer, setCustomer] = useState<{ email: string } | null>(null)
   const [mode, setMode] = useState<Mode>('login')
@@ -63,11 +94,12 @@ export function AccountPage() {
         <section className="mt-8 rounded-2xl bg-[#eef3fa] p-6">
           <p className="text-sm text-[#4a5568]">Signed in as</p>
           <p className="mt-1 break-all font-semibold">{customer.email}</p>
-          <p className="mt-4 text-sm leading-6 text-[#4a5568]">Your details are used to pre-fill checkout. Order history is not available online yet; keep your order reference from the confirmation page.</p>
+          <p className="mt-4 text-sm leading-6 text-[#4a5568]">Your details are used to pre-fill checkout. Delivery fees are confirmed with you before dispatch.</p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link href="/checkout" className="rounded-full bg-[#033473] px-6 py-3 text-sm font-semibold text-white hover:bg-[#0a4fa3]">Go to checkout</Link>
             <button type="button" disabled={busy} onClick={() => void post({ action: 'logout' })} className="rounded-full border border-[#033473] px-6 py-3 text-sm font-semibold text-[#033473] hover:bg-white disabled:opacity-50">Sign out</button>
           </div>
+          <MyOrders />
         </section>
       ) : (
         <section className="mt-8">

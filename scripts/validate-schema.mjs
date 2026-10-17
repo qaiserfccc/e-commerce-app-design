@@ -29,6 +29,9 @@ const REQUIRED_TABLES = [
   'store_product_import_items',
   'store_activity_events',
   'store_admin_users',
+  'store_banners',
+  'store_reviews',
+  'store_settings',
 ]
 
 const TABLE_SCHEMAS = {
@@ -123,6 +126,9 @@ const TABLE_SCHEMAS = {
   store_product_import_runs: ['id', 'next_page', 'imported_count', 'created_at', 'updated_at'],
   store_product_import_items: ['run_id', 'source_product_id', 'slug', 'payload'],
   store_activity_events: ['id', 'entity_type', 'entity_id', 'event_type', 'payload', 'created_at'],
+  store_banners: ['id', 'placement', 'title', 'body', 'image_url', 'blob_pathname', 'href', 'sort_order', 'is_active', 'created_at', 'updated_at'],
+  store_reviews: ['id', 'author', 'body', 'sort_order', 'is_active', 'created_at', 'updated_at'],
+  store_settings: ['key', 'value', 'updated_at'],
   store_admin_users: [
     'id',
     'email',

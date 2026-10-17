@@ -201,3 +201,11 @@ This file is a reference, not a secret store. The authoritative environment valu
 - Optional env vars (names only): `NEXT_PUBLIC_STORE_PHONE`, `NEXT_PUBLIC_STORE_EMAIL`, `NEXT_PUBLIC_STORE_WHATSAPP`, `NEXT_PUBLIC_STORE_INSTAGRAM_URL`, `NEXT_PUBLIC_STORE_FACEBOOK_URL`.
 - Static/policy pages are neutral drafts; blogs has no posts. Have the owner review legal text, return terms, and contact details before launch.
 - `DESIGN.md` still describes the earlier design and needs a rewrite for this system.
+
+## Roles, cache and DB-driven storefront
+
+- Roles: admin side (`owner > admin > staff`, `lib/auth/admin.ts`), buyer (customer account, `lib/auth/store-customer.ts`, `/my-account` incl. "My orders" via `/api/storefront/orders`), and guest COD checkout.
+- Migration `db/migrations/0007_storefront_content.sql` adds `store_banners`, `store_reviews`, `store_settings` (seeded from the former dummy homepage data). **Must be applied to Neon** before the home page, header and footer show content.
+- Home, header and footer are loaded from the DB via `lib/data/site-content.ts`; the catalog via `lib/data/catalog.ts`. Admin edits them under "Storefront content" (`app/actions/content.ts`, upload to Vercel Blob at `/api/admin/content/upload`).
+- Cache (`lib/cache.ts`): Redis REST when `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` (or `KV_REST_API_URL`/`KV_REST_API_TOKEN`) are set, else per-process memory. Namespaces `catalog` (300s/600s) and `content` (300s); invalidated on admin/checkout writes.
+- Seeded image URLs still point at eyelenses.pk until re-uploaded to Blob by an admin.

@@ -3,6 +3,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { and, asc, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm'
 import { del } from '@vercel/blob'
+import { invalidateCache } from '@/lib/cache'
 import { db } from '@/lib/db'
 import {
   storeActivityEvents,
@@ -263,7 +264,7 @@ export async function getProductVariants(productId: string) {
     .orderBy(storeProductVariants.name)
 }
 
-export async function createProductVariant(productId: string, data: ProductVariantInput) {
+async function createProductVariantImpl(productId: string, data: ProductVariantInput) {
   await requireAdminSession('admin')
   validateUuid(productId, 'Product ID')
   const values = validateProductVariantInput(data)
@@ -284,7 +285,7 @@ export async function createProductVariant(productId: string, data: ProductVaria
   })
 }
 
-export async function updateProductVariant(productId: string, variantId: string, data: ProductVariantInput) {
+async function updateProductVariantImpl(productId: string, variantId: string, data: ProductVariantInput) {
   await requireAdminSession('admin')
   validateUuid(productId, 'Product ID')
   validateUuid(variantId, 'Variant ID')
@@ -311,7 +312,7 @@ export async function updateProductVariant(productId: string, variantId: string,
   })
 }
 
-export async function archiveProductVariant(productId: string, variantId: string) {
+async function archiveProductVariantImpl(productId: string, variantId: string) {
   await requireAdminSession('admin')
   validateUuid(productId, 'Product ID')
   validateUuid(variantId, 'Variant ID')
@@ -335,7 +336,7 @@ export async function archiveProductVariant(productId: string, variantId: string
   })
 }
 
-export async function createProduct(data: ProductInput) {
+async function createProductImpl(data: ProductInput) {
   await requireAdminSession('admin')
   const values = validateProductInput(data)
 
@@ -576,7 +577,7 @@ function boundedIskProduct(value: unknown) {
   }
 }
 
-export async function beginIskCatalogReplacement() {
+async function beginIskCatalogReplacementImpl() {
   await requireAdminSession('admin')
   const [run] = await db.transaction(async (tx) => {
     await tx.delete(storeProductImportRuns).where(
@@ -587,7 +588,7 @@ export async function beginIskCatalogReplacement() {
   return { runId: run.id, nextPage: run.nextPage }
 }
 
-export async function syncIskProductCategories() {
+async function syncIskProductCategoriesImpl() {
   await requireAdminSession('admin')
   const perPage = 100
   const categories: Array<{
@@ -726,7 +727,7 @@ function stagedProduct(value: unknown) {
   }
 }
 
-export async function importIskCatalogPage(runId: string, page: number) {
+async function importIskCatalogPageImpl(runId: string, page: number) {
   await requireAdminSession('admin')
   validateUuid(runId, 'Import run ID')
   if (!Number.isSafeInteger(page) || page < 1 || page > 100) {
@@ -879,7 +880,7 @@ export async function importIskCatalogPage(runId: string, page: number) {
   }
 }
 
-export async function updateProduct(
+async function updateProductImpl(
   productId: string,
   data: Partial<ProductInput> & { heroImageUrl?: string | null },
 ) {
@@ -957,13 +958,13 @@ export async function updateProduct(
   })
 }
 
-export async function deleteProduct(productId: string) {
+async function deleteProductImpl(productId: string) {
   await requireAdminSession('admin')
   validateUuid(productId, 'Product ID')
   return updateProduct(productId, { status: 'archived' })
 }
 
-export async function updateProductStock(productId: string, quantity: number) {
+async function updateProductStockImpl(productId: string, quantity: number) {
   await requireAdminSession('admin')
   validateUuid(productId, 'Product ID')
   if (!Number.isSafeInteger(quantity) || quantity < 0) throw new Error('Stock quantity must be a non-negative whole number.')
@@ -992,7 +993,7 @@ export async function updateProductStock(productId: string, quantity: number) {
   })
 }
 
-export async function addProductAsset(
+async function addProductAssetImpl(
   productId: string,
   blobPathname: string,
   blobUrl: string,
@@ -1045,7 +1046,7 @@ export async function addProductAsset(
   })
 }
 
-export async function moveProductAsset(assetId: string, direction: 'up' | 'down') {
+async function moveProductAssetImpl(assetId: string, direction: 'up' | 'down') {
   await requireAdminSession('admin')
   validateUuid(assetId, 'Asset ID')
   if (direction !== 'up' && direction !== 'down') throw new Error('Media direction is invalid.')
@@ -1085,7 +1086,7 @@ export async function getProductAssetById(assetId: string) {
   return asset ?? null
 }
 
-export async function deleteProductAsset(assetId: string) {
+async function deleteProductAssetImpl(assetId: string) {
   await requireAdminSession('admin')
   validateUuid(assetId, 'Asset ID')
 
@@ -1221,7 +1222,7 @@ export async function getOrderStats() {
   }
 }
 
-export async function updateOrderStatus(orderId: string, status: string) {
+async function updateOrderStatusImpl(orderId: string, status: string) {
   await requireAdminSession('admin')
   validateUuid(orderId, 'Order ID')
   if (!orderStatuses.includes(status as (typeof orderStatuses)[number])) throw new Error('Order status is invalid.')
@@ -1640,4 +1641,88 @@ export async function updateOwnSystemUserCredentials(input: { email: string; pas
   }
   await clearAdminSession()
   return { email }
+}
+
+export async function createProductVariant(...args: Parameters<typeof createProductVariantImpl>) {
+  const result = await createProductVariantImpl(...args)
+  await invalidateCache('catalog')
+  return result
+}
+
+export async function updateProductVariant(...args: Parameters<typeof updateProductVariantImpl>) {
+  const result = await updateProductVariantImpl(...args)
+  await invalidateCache('catalog')
+  return result
+}
+
+export async function archiveProductVariant(...args: Parameters<typeof archiveProductVariantImpl>) {
+  const result = await archiveProductVariantImpl(...args)
+  await invalidateCache('catalog')
+  return result
+}
+
+export async function createProduct(...args: Parameters<typeof createProductImpl>) {
+  const result = await createProductImpl(...args)
+  await invalidateCache('catalog')
+  return result
+}
+
+export async function beginIskCatalogReplacement(...args: Parameters<typeof beginIskCatalogReplacementImpl>) {
+  const result = await beginIskCatalogReplacementImpl(...args)
+  await invalidateCache('catalog')
+  return result
+}
+
+export async function syncIskProductCategories(...args: Parameters<typeof syncIskProductCategoriesImpl>) {
+  const result = await syncIskProductCategoriesImpl(...args)
+  await invalidateCache('catalog')
+  return result
+}
+
+export async function importIskCatalogPage(...args: Parameters<typeof importIskCatalogPageImpl>) {
+  const result = await importIskCatalogPageImpl(...args)
+  await invalidateCache('catalog')
+  return result
+}
+
+export async function updateProduct(...args: Parameters<typeof updateProductImpl>) {
+  const result = await updateProductImpl(...args)
+  await invalidateCache('catalog')
+  return result
+}
+
+export async function deleteProduct(...args: Parameters<typeof deleteProductImpl>) {
+  const result = await deleteProductImpl(...args)
+  await invalidateCache('catalog')
+  return result
+}
+
+export async function updateProductStock(...args: Parameters<typeof updateProductStockImpl>) {
+  const result = await updateProductStockImpl(...args)
+  await invalidateCache('catalog')
+  return result
+}
+
+export async function addProductAsset(...args: Parameters<typeof addProductAssetImpl>) {
+  const result = await addProductAssetImpl(...args)
+  await invalidateCache('catalog')
+  return result
+}
+
+export async function moveProductAsset(...args: Parameters<typeof moveProductAssetImpl>) {
+  const result = await moveProductAssetImpl(...args)
+  await invalidateCache('catalog')
+  return result
+}
+
+export async function deleteProductAsset(...args: Parameters<typeof deleteProductAssetImpl>) {
+  const result = await deleteProductAssetImpl(...args)
+  await invalidateCache('catalog')
+  return result
+}
+
+export async function updateOrderStatus(...args: Parameters<typeof updateOrderStatusImpl>) {
+  const result = await updateOrderStatusImpl(...args)
+  await invalidateCache('catalog')
+  return result
 }

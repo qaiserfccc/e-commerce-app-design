@@ -31,11 +31,12 @@ import {
   type AdminOrder,
   type AdminProduct,
 } from '@/lib/hooks/use-admin-data'
+import { ContentManager } from '@/components/admin/content-manager'
 import { ProjectKanban } from '@/components/admin/project-kanban'
 import { ProductVariantManager } from '@/components/admin/product-variant-manager'
 import { getProductImageSources } from '@/components/storefront/product-image'
 
-type Section = 'overview' | 'products' | 'orders' | 'customers' | 'analytics' | 'system-users' | 'project-plan'
+type Section = 'overview' | 'products' | 'orders' | 'customers' | 'analytics' | 'content' | 'system-users' | 'project-plan'
 
 const sections: Array<{ id: Section; label: string; icon: typeof LayoutDashboard }> = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -43,6 +44,7 @@ const sections: Array<{ id: Section; label: string; icon: typeof LayoutDashboard
   { id: 'orders', label: 'Orders', icon: ShoppingBag },
   { id: 'customers', label: 'Customers', icon: Users },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+  { id: 'content', label: 'Storefront content', icon: Tags },
   { id: 'system-users', label: 'System users', icon: Users },
   { id: 'project-plan', label: 'Project Kanban', icon: ClipboardList },
 ]
@@ -1305,6 +1307,7 @@ export function AdminWorkspace() {
     orders: <OrdersWorkspace canEdit={session.role === 'owner' || session.role === 'admin'} />,
     customers: <CustomersWorkspace />,
     analytics: <AnalyticsWorkspace />,
+    content: <ContentManager canEdit={session.role === 'owner' || session.role === 'admin'} />,
     'system-users': session.role === 'owner' && session.userId
       ? <SystemUsersWorkspace signedInUserId={session.userId} signedInEmail={session.email ?? ''} />
       : <AdminOverview onNavigate={setSection} />,
