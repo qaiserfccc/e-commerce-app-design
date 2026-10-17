@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { and, eq, inArray, sql } from 'drizzle-orm'
+import { invalidateCache } from '@/lib/cache'
 import { db } from '@/lib/db'
 import {
   storeActivityEvents,
@@ -152,7 +153,7 @@ function databaseErrorCode(error: unknown) {
   return isRecord(error) && typeof error.code === 'string' ? error.code : null
 }
 
-export async function submitCodOrder(value: unknown) {
+async function submitCodOrderImpl(value: unknown) {
   const input = parseOrderInput(value)
   const session = await getCustomerSession()
 
@@ -412,4 +413,10 @@ export async function getOrderConfirmation() {
     .from(storeOrderItems)
     .where(eq(storeOrderItems.orderId, order.id))
   return { ...order, items }
+}
+
+export async function submitCodOrder(...args: Parameters<typeof submitCodOrderImpl>) {
+  const result = await submitCodOrderImpl(...args)
+  await invalidateCache('catalog')
+  return result
 }

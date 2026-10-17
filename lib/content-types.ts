@@ -1,0 +1,72 @@
+export const BANNER_PLACEMENTS = ['hero', 'promo', 'brand', 'category', 'service', 'new_arrival', 'feature', 'why_choose'] as const
+export type BannerPlacement = (typeof BANNER_PLACEMENTS)[number]
+
+export const SETTING_KEYS = ['announcements', 'contact', 'headings', 'seo_sections', 'footer'] as const
+export type SettingKey = (typeof SETTING_KEYS)[number]
+
+export interface BannerContent {
+  id: string
+  placement: BannerPlacement
+  title: string
+  body: string | null
+  imageUrl: string
+  href: string | null
+  sortOrder: number
+  isActive: boolean
+}
+
+export interface ReviewContent {
+  id: string
+  author: string
+  body: string
+  sortOrder: number
+  isActive: boolean
+}
+
+export interface ContactSettings {
+  phone?: string
+  email?: string
+  address?: string
+  facebook?: string
+  instagram?: string
+}
+
+export interface FooterSettings {
+  logo?: string
+  about?: string
+  brands?: string[]
+  collections?: string[]
+  explore?: [string, string][]
+  information?: [string, string][]
+}
+
+export interface HeadingSettings {
+  whyChoose?: string
+  whyChooseHeading?: string
+  whyChooseLines?: string[]
+  categories?: string
+  categoriesIntro?: string
+  serviceTitle?: string
+  serviceBody?: string
+  reviews?: string
+  reviewsIntro?: string
+  seoTitle?: string
+}
+
+export interface SeoSection {
+  heading: string
+  paragraphs: string[]
+}
+
+export interface SiteChrome {
+  announcements: string[]
+  contact: ContactSettings
+  footer: FooterSettings
+}
+
+export interface HomeContent {
+  banners: BannerContent[]
+  reviews: ReviewContent[]
+  headings: HeadingSettings
+  seoSections: SeoSection[]
+}

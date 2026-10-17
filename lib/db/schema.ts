@@ -159,3 +159,33 @@ export const storeAdminUsers = pgTable('store_admin_users', {
 }, (table) => ({
   emailUnique: uniqueIndex('store_admin_users_email_unique').on(sql`lower(${table.email})`),
 }))
+
+export const storeBanners = pgTable('store_banners', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  placement: text('placement').notNull(),
+  title: text('title').notNull().default(''),
+  body: text('body'),
+  imageUrl: text('image_url').notNull(),
+  blobPathname: text('blob_pathname'),
+  href: text('href'),
+  sortOrder: integer('sort_order').notNull().default(0),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const storeReviews = pgTable('store_reviews', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  author: text('author').notNull(),
+  body: text('body').notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const storeSettings = pgTable('store_settings', {
+  key: text('key').primaryKey(),
+  value: jsonb('value').$type<unknown>().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
