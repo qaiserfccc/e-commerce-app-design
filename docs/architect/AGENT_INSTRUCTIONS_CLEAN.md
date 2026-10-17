@@ -1,4 +1,4 @@
-## Project Agent Instructions — ISK Lenses Storefront
+# Project Agent Instructions — ISK Lenses Storefront
 
 This file is the canonical agent-facing instructions for working on this repository.
 
@@ -6,7 +6,7 @@ This file is the canonical agent-facing instructions for working on this reposit
 - **Primary branches**: `main` is canonical. Work on topic branches, open PRs to `main` when ready.
 - **GitHub identity**: All GitHub mutations must be performed as `@qaiserfccc` — verify with:
 
-```
+```bash
 gh api user --jq .login
 
 # proceed only when result is exactly: qaiserfccc
@@ -14,7 +14,7 @@ gh api user --jq .login
 
 - **Packaging & build**: use `pnpm` (scripts validated by `scripts/validate-build.mjs`). Typical checks:
 
-```
+```bash
 pnpm exec tsc --noEmit
 node scripts/validate-build.mjs
 pnpm build
