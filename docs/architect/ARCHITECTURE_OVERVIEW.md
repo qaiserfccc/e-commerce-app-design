@@ -1,22 +1,29 @@
 # Architecture Overview — ISK Lenses
 
-Short summary of key technical choices and locations of important code.
+Short summary of key technical choices and where the important code lives.
 
-- Framework: Next.js App Router (v16), React (v19), TypeScript.
+## Stack
+
+- Framework: Next.js App Router, React, TypeScript.
 - Styling: Tailwind CSS 4.
 - Package manager: `pnpm`.
-- Database: Neon Postgres accessed via `pg` + Drizzle ORM. Schema files under `db/migrations/` and mirrored in `lib/db/schema.ts`.
-- File storage: Vercel Blob for product and site media (`BLOB_READ_WRITE_TOKEN`).
-- Data access:
-  - Server actions: `app/actions/`
-  - API route handlers: `app/api/`
-  - Client refresh hooks: `lib/hooks/`
+- Database: Neon Postgres via `pg` and Drizzle ORM.
+- File storage: Vercel Blob (`BLOB_READ_WRITE_TOKEN`).
 
-- Important scripts:
-  - `scripts/validate-build.mjs` — build validation
-  - `scripts/validate-schema.mjs` — schema validation (requires `DATABASE_URL`)
-  - `scripts/rehost-source-product-images.mjs` — rehosts product images into Blob
+## Code layout
 
-- Security notes:
-  - Admin sessions require `ADMIN_SESSION_SECRET`.
-  - Never commit secrets; use Vercel project Vars for env values.
+- Migrations: `db/migrations/`, mirrored in `lib/db/schema.ts`.
+- Server actions: `app/actions/`.
+- API route handlers: `app/api/`.
+- Client refresh hooks: `lib/hooks/`.
+
+## Scripts
+
+- `scripts/validate-build.mjs` — build validation.
+- `scripts/validate-schema.mjs` — schema validation (requires `DATABASE_URL`).
+- `scripts/rehost-source-product-images.mjs` — rehosts product images into Blob.
+
+## Security notes
+
+- Admin sessions require `ADMIN_SESSION_SECRET`.
+- Never commit secrets; keep env values in Vercel project variables.
