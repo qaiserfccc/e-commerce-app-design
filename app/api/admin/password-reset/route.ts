@@ -41,8 +41,8 @@ export async function POST(request: NextRequest) {
     ) {
       return NextResponse.json({ error: 'Enter your email, recovery key, and a new password.' }, { status: 400 })
     }
-    if (body.newPassword.length < 6 || body.newPassword.length > 256) {
-      return NextResponse.json({ error: 'Password must be between 6 and 256 characters.' }, { status: 400 })
+    if (!body.newPassword || body.newPassword.length > 256) {
+      return NextResponse.json({ error: 'Enter a new password.' }, { status: 400 })
     }
 
     const ok = await resetAdminPasswordWithRecoveryKey({

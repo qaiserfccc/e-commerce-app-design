@@ -81,12 +81,11 @@ export function ForgotPasswordForm() {
           </label>
           <label className="block text-sm font-medium">
             New password
-            <input required type="password" minLength={6} maxLength={256} autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} className={inputClass} />
-            <span className="mt-1 block text-xs font-normal text-[#68675f]">At least 6 characters.</span>
+            <input required type="password" maxLength={256} autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} className={inputClass} />
           </label>
           <label className="block text-sm font-medium">
             Confirm new password
-            <input required type="password" minLength={6} maxLength={256} autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className={inputClass} />
+            <input required type="password" maxLength={256} autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className={inputClass} />
           </label>
           <button
             type="submit"
