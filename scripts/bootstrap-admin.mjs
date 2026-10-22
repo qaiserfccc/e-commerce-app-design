@@ -15,8 +15,8 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
   console.error('ADMIN_EMAIL must be a valid email address.')
   process.exit(1)
 }
-if (ADMIN_PASSWORD.length < 6 || ADMIN_PASSWORD.length > 256) {
-  console.error('ADMIN_PASSWORD must be between 6 and 256 characters.')
+if (!ADMIN_PASSWORD || ADMIN_PASSWORD.length > 256) {
+  console.error('ADMIN_PASSWORD is required.')
   process.exit(1)
 }
 

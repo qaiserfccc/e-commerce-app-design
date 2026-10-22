@@ -1121,7 +1121,7 @@ function SystemUsersWorkspace({ signedInUserId, signedInEmail }: { signedInUserI
         </label>
         <label className="block text-sm font-medium">
           New password <span className="font-normal text-[#68675f]">(optional)</span>
-          <input type="password" minLength={6} maxLength={256} autoComplete="new-password" value={ownerPassword} onChange={(event) => setOwnerPassword(event.target.value)} className={`${inputClass} mt-2`} />
+          <input type="password" maxLength={256} autoComplete="new-password" value={ownerPassword} onChange={(event) => setOwnerPassword(event.target.value)} className={`${inputClass} mt-2`} />
           <span className="mt-1 block text-xs font-normal text-[#68675f]">Leave blank to keep the current password; changing login details signs you out.</span>
         </label>
         <div className="flex items-end sm:col-span-2">
@@ -1136,8 +1136,8 @@ function SystemUsersWorkspace({ signedInUserId, signedInEmail }: { signedInUserI
         </label>
         <label className="block text-sm font-medium">
           Initial password
-          <input required type="password" minLength={6} maxLength={256} autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} className={`${inputClass} mt-2`} />
-          <span className="mt-1 block text-xs font-normal text-[#68675f]">Use at least 6 characters.</span>
+          <input required type="password" maxLength={256} autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} className={`${inputClass} mt-2`} />
+          <span className="mt-1 block text-xs font-normal text-[#68675f]">Share it securely.</span>
         </label>
         <label className="block text-sm font-medium">
           Role
@@ -1171,7 +1171,7 @@ function SystemUsersWorkspace({ signedInUserId, signedInEmail }: { signedInUserI
                     <div className="flex flex-wrap items-center gap-2">
                     {user.id !== signedInUserId && (resetTargetId === user.id ? (
                       <form onSubmit={(event) => void submitPasswordReset(event, user)} className="flex flex-wrap items-center gap-2">
-                        <input required autoFocus type="password" minLength={6} maxLength={256} autoComplete="new-password" placeholder="New password" aria-label={`New password for ${user.email}`} value={resetPassword} onChange={(event) => setResetPassword(event.target.value)} className={`${inputClass} !w-48`} />
+                        <input required autoFocus type="password" maxLength={256} autoComplete="new-password" placeholder="New password" aria-label={`New password for ${user.email}`} value={resetPassword} onChange={(event) => setResetPassword(event.target.value)} className={`${inputClass} !w-48`} />
                         <button type="submit" disabled={busyUserId === user.id} className={primaryButton}>Save</button>
                         <button type="button" onClick={() => { setResetTargetId(''); setResetPassword('') }} className={secondaryButton}>Cancel</button>
                       </form>

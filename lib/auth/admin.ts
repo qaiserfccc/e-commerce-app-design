@@ -92,8 +92,8 @@ function deriveKey(password: string, salt: Buffer) {
 }
 
 export async function hashAdminPassword(password: string) {
-  if (password.length < 6 || password.length > 256) {
-    throw new Error('Password must be between 6 and 256 characters.')
+  if (!password || password.length > 256) {
+    throw new Error('Enter a password.')
   }
   const salt = randomBytes(16)
   const derivedKey = await deriveKey(password, salt)
