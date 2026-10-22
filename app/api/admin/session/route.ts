@@ -10,39 +10,6 @@ import {
 
 export const dynamic = 'force-dynamic'
 
-const failedAttempts = new Map<string, { count: number; resetAt: number }>()
-const attemptWindowMs = 15 * 60 * 1000
-const maximumAttempts = 5
-
-function clientAddress(request: NextRequest) {
-  const forwarded = request.headers.get('x-forwarded-for')
-  return forwarded?.split(',').at(-1)?.trim() || request.headers.get('x-real-ip') || 'unknown'
-}
-
-function isRateLimited(address: string) {
-  const entry = failedAttempts.get(address)
-  if (!entry || entry.resetAt <= Date.now()) {
-    failedAttempts.delete(address)
-    return false
-  }
-  return entry.count >= maximumAttempts
-}
-
-function recordFailedAttempt(address: string) {
-  const now = Date.now()
-  const entry = failedAttempts.get(address)
-  if (!entry || entry.resetAt <= now) {
-    failedAttempts.set(address, { count: 1, resetAt: now + attemptWindowMs })
-  } else {
-    entry.count += 1
-  }
-  if (failedAttempts.size > 1000) {
-    for (const [key, value] of failedAttempts) {
-      if (value.resetAt <= now) failedAttempts.delete(key)
-    }
-  }
-}
-
 function authError(error: unknown) {
   if (error instanceof AdminAuthError) {
     return NextResponse.json(
@@ -113,14 +80,6 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const address = clientAddress(request)
-    if (isRateLimited(address)) {
-      return NextResponse.json(
-        { error: 'Too many unsuccessful sign-in attempts. Try again later.' },
-        { status: 429, headers: { 'Retry-After': String(Math.ceil(attemptWindowMs / 1000)) } },
-      )
-    }
-
     const body: unknown = await request.json()
     if (
       !body ||
@@ -140,12 +99,10 @@ export async function POST(request: NextRequest) {
     }
     const user = await verifyAdminCredentials(body.email, body.password)
     if (!user) {
-      recordFailedAttempt(address)
       return NextResponse.json({ error: 'The email or password is incorrect.' }, { status: 401 })
     }
 
     const expiresAt = await createAdminSession(user)
-    failedAttempts.delete(address)
     return NextResponse.json(
       { authenticated: true, email: user.email, role: user.role, expiresAt },
       { headers: { 'Cache-Control': 'no-store' } },

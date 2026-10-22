@@ -26,6 +26,7 @@ pnpm build
 
 - **Runtime & operations**:
   - Admin sessions require `ADMIN_SESSION_SECRET`. Shopper sessions use `CUSTOMER_SESSION_SECRET` or derive from admin secret.
+  - Admin password recovery (`/admin/forgot-password`) is enabled only when `ADMIN_RECOVERY_KEY` (8+ characters) is set; owners can also reset other accounts from the System users panel.
   - Uploads use `BLOB_READ_WRITE_TOKEN` for Vercel Blob.
   - Do not commit secret values; use the Vercel UI for environment variables.
 

@@ -19,6 +19,7 @@ import {
   updateCustomer,
   getSystemUsers,
   setSystemUserActive,
+  resetSystemUserPassword,
   updateOwnSystemUserCredentials,
 } from '@/app/actions/admin'
 import {
@@ -186,6 +187,7 @@ function AdminLogin({
             {submitting && <LoaderCircle size={16} className="animate-spin" />}
             {submitting ? 'Signing in…' : prefill ? 'Quick sign in' : 'Sign in'}
           </button>
+          <a href="/admin/forgot-password" className="block text-center text-sm text-[#68675f] underline">Forgot password?</a>
         </form>
       )}
     </section>
@@ -1016,6 +1018,8 @@ function SystemUsersWorkspace({ signedInUserId, signedInEmail }: { signedInUserI
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [busyUserId, setBusyUserId] = useState('')
+  const [resetTargetId, setResetTargetId] = useState('')
+  const [resetPassword, setResetPassword] = useState('')
   const [message, setMessage] = useState('')
   const [messageTone, setMessageTone] = useState<'error' | 'info'>('error')
   const [loadError, setLoadError] = useState('')
@@ -1071,6 +1075,24 @@ function SystemUsersWorkspace({ signedInUserId, signedInEmail }: { signedInUserI
     }
   }
 
+  async function submitPasswordReset(event: FormEvent<HTMLFormElement>, user: AdminSystemUser) {
+    event.preventDefault()
+    setBusyUserId(user.id)
+    setMessage('')
+    try {
+      await resetSystemUserPassword(user.id, resetPassword)
+      setResetTargetId('')
+      setResetPassword('')
+      setMessageTone('info')
+      setMessage(`Password reset for ${user.email}. Their sessions were signed out; share the new password securely.`)
+    } catch (resetError) {
+      setMessageTone('error')
+      setMessage(errorMessage(resetError))
+    } finally {
+      setBusyUserId('')
+    }
+  }
+
   async function updateOwnerCredentials(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setSaving(true)
@@ -1099,7 +1121,7 @@ function SystemUsersWorkspace({ signedInUserId, signedInEmail }: { signedInUserI
         </label>
         <label className="block text-sm font-medium">
           New password <span className="font-normal text-[#68675f]">(optional)</span>
-          <input type="password" minLength={16} maxLength={256} autoComplete="new-password" value={ownerPassword} onChange={(event) => setOwnerPassword(event.target.value)} className={`${inputClass} mt-2`} />
+          <input type="password" minLength={6} maxLength={256} autoComplete="new-password" value={ownerPassword} onChange={(event) => setOwnerPassword(event.target.value)} className={`${inputClass} mt-2`} />
           <span className="mt-1 block text-xs font-normal text-[#68675f]">Leave blank to keep the current password; changing login details signs you out.</span>
         </label>
         <div className="flex items-end sm:col-span-2">
@@ -1114,8 +1136,8 @@ function SystemUsersWorkspace({ signedInUserId, signedInEmail }: { signedInUserI
         </label>
         <label className="block text-sm font-medium">
           Initial password
-          <input required type="password" minLength={16} maxLength={256} autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} className={`${inputClass} mt-2`} />
-          <span className="mt-1 block text-xs font-normal text-[#68675f]">Use at least 16 characters and share it securely.</span>
+          <input required type="password" minLength={6} maxLength={256} autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} className={`${inputClass} mt-2`} />
+          <span className="mt-1 block text-xs font-normal text-[#68675f]">Use at least 6 characters.</span>
         </label>
         <label className="block text-sm font-medium">
           Role
@@ -1146,6 +1168,16 @@ function SystemUsersWorkspace({ signedInUserId, signedInEmail }: { signedInUserI
                   <td className="px-4 py-3 text-xs text-[#68675f]">{user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : 'Never'}</td>
                   <td className="px-4 py-3">{user.isActive ? 'Active' : 'Inactive'}</td>
                   <td className="px-4 py-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                    {user.id !== signedInUserId && (resetTargetId === user.id ? (
+                      <form onSubmit={(event) => void submitPasswordReset(event, user)} className="flex flex-wrap items-center gap-2">
+                        <input required autoFocus type="password" minLength={6} maxLength={256} autoComplete="new-password" placeholder="New password" aria-label={`New password for ${user.email}`} value={resetPassword} onChange={(event) => setResetPassword(event.target.value)} className={`${inputClass} !w-48`} />
+                        <button type="submit" disabled={busyUserId === user.id} className={primaryButton}>Save</button>
+                        <button type="button" onClick={() => { setResetTargetId(''); setResetPassword('') }} className={secondaryButton}>Cancel</button>
+                      </form>
+                    ) : (
+                      <button type="button" onClick={() => { setResetTargetId(user.id); setResetPassword('') }} className={secondaryButton} aria-label={`Reset password for ${user.email}`}>Reset password</button>
+                    ))}
                     <button
                       type="button"
                       disabled={busyUserId === user.id || user.id === signedInUserId}
@@ -1155,6 +1187,7 @@ function SystemUsersWorkspace({ signedInUserId, signedInEmail }: { signedInUserI
                     >
                       {busyUserId === user.id ? 'Saving…' : user.isActive ? 'Deactivate' : 'Activate'}
                     </button>
+                    </div>
                   </td>
                 </tr>
               ))}
