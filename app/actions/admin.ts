@@ -1603,6 +1603,30 @@ export async function setSystemUserActive(userId: string, isActive: boolean) {
   })
 }
 
+export async function resetSystemUserPassword(userId: string, newPassword: string) {
+  const actor = await requireAdminSession('owner')
+  validateUuid(userId, 'System user ID')
+  if (userId === actor.userId) throw new Error('Use "Update your owner login" to change your own password.')
+  if (typeof newPassword !== 'string') throw new Error('A new password is required.')
+  const passwordHash = await hashAdminPassword(newPassword)
+
+  return db.transaction(async (tx) => {
+    const [user] = await tx
+      .update(storeAdminUsers)
+      .set({ passwordHash, sessionVersion: sql`${storeAdminUsers.sessionVersion} + 1`, updatedAt: new Date() })
+      .where(eq(storeAdminUsers.id, userId))
+      .returning({ id: storeAdminUsers.id, email: storeAdminUsers.email, role: storeAdminUsers.role })
+    if (!user) throw new Error('System user not found.')
+    await tx.insert(storeActivityEvents).values({
+      entityType: 'admin_user',
+      entityId: user.id,
+      eventType: 'password_reset',
+      payload: { role: user.role, actorId: actor.userId },
+    })
+    return { id: user.id, email: user.email }
+  })
+}
+
 export async function updateOwnSystemUserCredentials(input: { email: string; password?: string }) {
   const actor = await requireAdminSession('owner')
   if (!input || typeof input !== 'object') throw new Error('Account details are required.')
