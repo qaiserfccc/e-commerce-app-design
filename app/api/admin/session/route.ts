@@ -26,32 +26,15 @@ function sameOrigin(request: NextRequest) {
   return origin === request.nextUrl.origin && request.headers.get('sec-fetch-site') !== 'cross-site'
 }
 
-function isLocalDevelopmentRequest(request: NextRequest) {
-  const host = request.headers.get('host')
-  if (!host || request.headers.get('sec-fetch-site') !== 'same-origin') return false
-
-  try {
-    return ['localhost', '127.0.0.1', '[::1]'].includes(new URL(`http://${host}`).hostname)
-  } catch {
-    return false
-  }
-}
-
 export async function GET(request: NextRequest) {
   try {
-    if (!isAdminAuthConfigured()) {
+    if (!(await isAdminAuthConfigured())) {
       return NextResponse.json(
         { authenticated: false, configured: false, error: 'Admin access needs to be configured.' },
         { status: 503, headers: { 'Cache-Control': 'no-store' } },
       )
     }
     const session = await getAdminSession()
-    const localPrefillEnabled =
-      process.env.NODE_ENV === 'development' &&
-      process.env.ADMIN_LOGIN_PREFILL === 'true' &&
-      isLocalDevelopmentRequest(request) &&
-      Boolean(process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) &&
-      !session
     return NextResponse.json(
       {
         authenticated: Boolean(session),
@@ -59,9 +42,6 @@ export async function GET(request: NextRequest) {
         email: session?.email,
         role: session?.role,
         expiresAt: session?.expiresAt,
-        loginPrefill: localPrefillEnabled
-          ? { email: process.env.ADMIN_EMAIL ?? '', password: process.env.ADMIN_PASSWORD ?? '' }
-          : undefined,
       },
       { headers: { 'Cache-Control': 'no-store' } },
     )
@@ -94,7 +74,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Enter a valid email and password.' }, { status: 400 })
     }
 
-    if (!isAdminAuthConfigured()) {
+    if (!(await isAdminAuthConfigured())) {
       return NextResponse.json({ error: 'Admin access needs to be configured.' }, { status: 503 })
     }
     const user = await verifyAdminCredentials(body.email, body.password)

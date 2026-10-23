@@ -23,8 +23,8 @@ async function loadCatalog(category: string | null, query: string | null) {
     getActiveProductVariantsForProducts(productIds),
     getProductCategoryIdsForProducts(productIds),
   ])
-  const assetsByProduct = Map.groupBy(assets, (asset) => asset.productId)
-  const variantsByProduct = Map.groupBy(variants, (variant) => variant.productId)
+  const assetsByProduct = groupBy(assets, (asset) => asset.productId)
+  const variantsByProduct = groupBy(variants, (variant) => variant.productId)
   const categoryIdsByProduct = new Map(categoryAssignments.map(({ productId, sourceCategoryIds }) => [productId, sourceCategoryIds]))
   return products.map((product) => ({
     ...product,
@@ -40,4 +40,15 @@ export function getCatalog(category: string | null = null, query: string | null 
 
 export function getCategories() {
   return cached(CATALOG_NAMESPACE, 'categories', 600, () => getActiveProductCategories())
+}
+
+function groupBy<T, K>(items: T[], key: (item: T) => K) {
+  const map = new Map<K, T[]>()
+  for (const item of items) {
+    const k = key(item)
+    const list = map.get(k)
+    if (list) list.push(item)
+    else map.set(k, [item])
+  }
+  return map
 }

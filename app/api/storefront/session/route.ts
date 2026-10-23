@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
       await clearCustomerSession()
       return response({ customer: null })
     }
-    ensureCustomerSessionSigningConfigured()
+    await ensureCustomerSessionSigningConfigured()
     if (details.action === 'register') {
       const customer = await registerStoreCustomer(details.email, details.password)
       await createCustomerSession(customer)
