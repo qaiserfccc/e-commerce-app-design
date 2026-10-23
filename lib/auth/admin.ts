@@ -5,6 +5,7 @@ import { cookies } from 'next/headers'
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { storeAdminUsers } from '@/lib/db/schema'
+import { loadAuthSecret } from '@/lib/auth/secret'
 
 const COOKIE_NAME = 'isk-lenses-admin-session'
 const SESSION_DURATION_SECONDS = 8 * 60 * 60
@@ -31,11 +32,8 @@ export class AdminAuthError extends Error {
   }
 }
 
-function getSessionSecret() {
-  const secret = process.env.ADMIN_SESSION_SECRET
-  if (!secret) return null
-  if (secret.length < 32) throw new AdminAuthError('Admin session signing is not configured correctly.', 503)
-  return secret
+async function getSessionSecret() {
+  return loadAuthSecret()
 }
 
 function constantTimeEqual(left: string, right: string) {
@@ -78,8 +76,8 @@ function parseSession(token: string, secret: string): AdminSession | null {
   }
 }
 
-export function isAdminAuthConfigured() {
-  return getSessionSecret() !== null
+export async function isAdminAuthConfigured() {
+  try { await loadAuthSecret(); return true } catch { return false }
 }
 
 function deriveKey(password: string, salt: Buffer) {
@@ -122,7 +120,7 @@ export async function verifyAdminCredentials(email: string, password: string): P
 }
 
 export async function createAdminSession(user: AdminUser) {
-  const secret = getSessionSecret()
+  const secret = await getSessionSecret()
   if (!secret) throw new AdminAuthError('Admin session signing is not configured.', 503)
 
   const expiresAt = Math.floor(Date.now() / 1000) + SESSION_DURATION_SECONDS
@@ -150,7 +148,7 @@ export async function clearAdminSession() {
 }
 
 export async function getAdminSession(): Promise<AuthenticatedSession | null> {
-  const secret = getSessionSecret()
+  const secret = await getSessionSecret()
   if (!secret) return null
   const token = (await cookies()).get(COOKIE_NAME)?.value
   if (!token) return null
@@ -170,7 +168,7 @@ export async function getAdminSession(): Promise<AuthenticatedSession | null> {
 const roleLevel: Record<AdminRole, number> = { staff: 1, admin: 2, owner: 3 }
 
 export async function requireAdminSession(minimumRole: AdminRole = 'staff') {
-  if (!getSessionSecret()) throw new AdminAuthError('Admin session signing is not configured.', 503)
+  await getSessionSecret()
   const session = await getAdminSession()
   if (!session) throw new AdminAuthError('Sign in to access the admin workspace.', 401)
   if (roleLevel[session.role] < roleLevel[minimumRole]) {

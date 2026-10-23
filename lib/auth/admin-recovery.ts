@@ -8,8 +8,11 @@ import { hashAdminPassword } from '@/lib/auth/admin'
 
 const MINIMUM_RECOVERY_KEY_LENGTH = 8
 
-function getRecoveryKey() {
-  const key = process.env.ADMIN_RECOVERY_KEY
+// Recovery key is stored in the database (store_secrets, name 'admin_recovery_key'); unset means disabled.
+async function getRecoveryKey() {
+  const result = await db.execute(sql`SELECT value FROM store_secrets WHERE name = 'admin_recovery_key'`)
+  const rows = (Array.isArray(result) ? result : (result as { rows?: unknown[] }).rows ?? []) as { value?: string }[]
+  const key = rows[0]?.value
   return key && key.length >= MINIMUM_RECOVERY_KEY_LENGTH ? key : null
 }
 
@@ -19,12 +22,12 @@ function constantTimeEqual(left: string, right: string) {
   return timingSafeEqual(leftHash, rightHash)
 }
 
-export function isAdminRecoveryConfigured() {
-  return getRecoveryKey() !== null
+export async function isAdminRecoveryConfigured() {
+  return (await getRecoveryKey()) !== null
 }
 
 /**
- * Resets an admin password when the caller proves possession of ADMIN_RECOVERY_KEY.
+ * Resets an admin password when the caller proves possession of the stored recovery key.
  * Returns false for any wrong key or unknown email so callers cannot enumerate accounts.
  */
 export async function resetAdminPasswordWithRecoveryKey(input: {
@@ -32,7 +35,7 @@ export async function resetAdminPasswordWithRecoveryKey(input: {
   recoveryKey: string
   newPassword: string
 }) {
-  const expected = getRecoveryKey()
+  const expected = await getRecoveryKey()
   if (!expected) return false
 
   const keyMatches = constantTimeEqual(input.recoveryKey, expected)

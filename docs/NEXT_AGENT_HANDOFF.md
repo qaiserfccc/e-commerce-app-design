@@ -212,3 +212,6 @@ This file is a reference, not a secret store. The authoritative environment valu
 
 ### Applied to Neon (main branch, only branch)
 Migration 0007 applied and schema validated. `scripts/mirror-content-images.mjs` mirrored all seeded banner/footer-logo images into Vercel Blob and rewrote DB URLs (re-runnable; needs `DATABASE_URL` + `BLOB_READ_WRITE_TOKEN`). Product images were already on Blob.
+
+### Auth now fully DB-backed
+Admin and customer credentials live in `store_admin_users` / `store_customers`. The session signing secret is stored in `store_secrets` (migration 0008, lazily created by `lib/auth/secret.ts`); `ADMIN_SESSION_SECRET`, `CUSTOMER_SESSION_SECRET`, `ADMIN_EMAIL/PASSWORD/LOGIN_PREFILL` are no longer used. Optional recovery key: row `admin_recovery_key` in `store_secrets`. Create owners with `SEED_EMAIL=... SEED_PASSWORD=... node scripts/seed-admin.mjs`. Only `DATABASE_URL` and `BLOB_READ_WRITE_TOKEN` remain required env.

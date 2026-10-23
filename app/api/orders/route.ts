@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
   if (contentLength > 32_768) return response({ error: 'The order request is too large.' }, 413)
 
   try {
-    ensureCustomerSessionSigningConfigured()
+    await ensureCustomerSessionSigningConfigured()
     const body = await readJsonBody(request, 32_768)
     const order = await submitCodOrder(body)
     await setOrderReceipt(order.id)

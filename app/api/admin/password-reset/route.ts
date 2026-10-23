@@ -11,7 +11,7 @@ function sameOrigin(request: NextRequest) {
 }
 
 export async function GET() {
-  return NextResponse.json({ configured: isAdminRecoveryConfigured() }, { headers: noStore })
+  return NextResponse.json({ configured: await isAdminRecoveryConfigured() }, { headers: noStore })
 }
 
 export async function POST(request: NextRequest) {
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
   if (Number(request.headers.get('content-length') ?? 0) > 2048) {
     return NextResponse.json({ error: 'Request is too large.' }, { status: 413 })
   }
-  if (!isAdminRecoveryConfigured()) {
+  if (!(await isAdminRecoveryConfigured())) {
     return NextResponse.json({ error: 'Password recovery is not enabled for this site.' }, { status: 503, headers: noStore })
   }
 

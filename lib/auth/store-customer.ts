@@ -1,4 +1,5 @@
 import 'server-only'
+import { loadAuthSecret, peekAuthSecret } from '@/lib/auth/secret'
 
 import { createHash, createHmac, hkdfSync, randomBytes, scrypt, timingSafeEqual } from 'node:crypto'
 import { cookies } from 'next/headers'
@@ -42,15 +43,15 @@ export class CustomerAuthError extends Error {
 }
 
 function getSigningKey() {
-  const secret = process.env.CUSTOMER_SESSION_SECRET || process.env.ADMIN_SESSION_SECRET
-  if (!secret || secret.length < 32) {
-    throw new CustomerAuthError('Customer account signing is not configured.', 503)
-  }
-  return Buffer.from(hkdfSync('sha256', secret, 'isk-lenses', 'customer-session-and-receipt-v1', 32))
+  return Buffer.from(hkdfSync('sha256', peekAuthSecret(), 'isk-lenses', 'customer-session-and-receipt-v1', 32))
 }
 
-export function ensureCustomerSessionSigningConfigured() {
-  getSigningKey()
+export async function ensureCustomerSessionSigningConfigured() {
+  try {
+    await loadAuthSecret()
+  } catch {
+    throw new CustomerAuthError('Customer account signing is not configured.', 503)
+  }
 }
 
 function sign(payload: string) {
@@ -163,6 +164,7 @@ export async function verifyStoreCustomerCredentials(emailValue: unknown, passwo
 }
 
 export async function createCustomerSession(customer: StoreCustomerSession) {
+  await loadAuthSecret()
   const expiresAt = Math.floor(Date.now() / 1000) + SESSION_DURATION_SECONDS
   const token = encodeSignedPayload({
     customerId: customer.customerId,
@@ -185,6 +187,7 @@ export async function clearCustomerSession() {
 }
 
 export async function getCustomerSession(): Promise<StoreCustomerSession | null> {
+  await loadAuthSecret()
   const token = (await cookies()).get(COOKIE_NAME)?.value
   if (!token) return null
   const session = parseSignedPayload<CustomerSessionPayload>(token)
@@ -214,6 +217,7 @@ export async function getCustomerSession(): Promise<StoreCustomerSession | null>
 }
 
 export async function setOrderReceipt(orderId: string) {
+  await loadAuthSecret()
   if (!uuidPattern.test(orderId)) throw new Error('Order ID is invalid.')
   const expiresAt = Math.floor(Date.now() / 1000) + RECEIPT_DURATION_SECONDS
   const token = encodeSignedPayload({ orderId, expiresAt, purpose: 'order-receipt' })
@@ -227,6 +231,7 @@ export async function setOrderReceipt(orderId: string) {
 }
 
 export async function getOrderReceipt() {
+  await loadAuthSecret()
   const token = (await cookies()).get(RECEIPT_COOKIE_NAME)?.value
   if (!token) return null
   const receipt = parseSignedPayload<OrderReceiptPayload>(token)
