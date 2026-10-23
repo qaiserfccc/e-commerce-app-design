@@ -1,31 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import {
-  getActiveProductVariants,
-  getProductAssets,
-  getProductBySlug,
-  getProductCategoryIdsForProducts,
-} from '@/app/actions/storefront'
+import { getProduct } from '@/lib/data/catalog'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> },
-) {
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   try {
     const { slug } = await params
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
-      return NextResponse.json({ error: 'Product not found.' }, { status: 404 })
-    }
-    const product = await getProductBySlug(slug)
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) return NextResponse.json({ error: 'Product not found.' }, { status: 404 })
+    const product = await getProduct(slug)
     if (!product) return NextResponse.json({ error: 'Product not found.' }, { status: 404 })
-    const [assets, variants, categoryAssignments] = await Promise.all([
-      getProductAssets(product.id),
-      getActiveProductVariants(product.id),
-      getProductCategoryIdsForProducts([product.id]),
-    ])
     return NextResponse.json(
-      { data: { ...product, assets, variants, sourceCategoryIds: categoryAssignments[0]?.sourceCategoryIds ?? [] }, timestamp: new Date().toISOString() },
+      { data: product, timestamp: new Date().toISOString() },
       { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' } },
     )
   } catch (error) {

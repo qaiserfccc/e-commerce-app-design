@@ -215,3 +215,12 @@ Migration 0007 applied and schema validated. `scripts/mirror-content-images.mjs`
 
 ### Auth now fully DB-backed
 Admin and customer credentials live in `store_admin_users` / `store_customers`. The session signing secret is stored in `store_secrets` (migration 0008, lazily created by `lib/auth/secret.ts`); `ADMIN_SESSION_SECRET`, `CUSTOMER_SESSION_SECRET`, `ADMIN_EMAIL/PASSWORD/LOGIN_PREFILL` are no longer used. Optional recovery key: row `admin_recovery_key` in `store_secrets`. Create owners with `SEED_EMAIL=... SEED_PASSWORD=... node scripts/seed-admin.mjs`. Only `DATABASE_URL` and `BLOB_READ_WRITE_TOKEN` remain required env.
+
+## Nested categories and category-bound catalog (migration 0009, applied to Neon)
+
+- All legacy products (and their 757 Blob files via `scripts/purge-product-blobs.mjs`), the ISK import/sync tooling and `store_product_categories`/import tables were removed. Order history is kept (`store_order_items.product_id` has no FK).
+- `store_categories`: unlimited nesting (`parent_id`), globally unique slug, URL `/product-category/<slug chain>` (short links like `/product-category/bella` redirect to the canonical path). Managed in Admin → Categories (`app/actions/catalog-admin.ts`, `components/admin/category-manager.tsx`).
+- `store_products.category_id` is NOT NULL (RESTRICT): a product always belongs to a category and also shows in every ancestor. New fields: brand, SKU, short description, compare-at price, colors, diameter, base curve, water content, material, wear duration, pack contents, power type/range, UV, features, specs, usage, featured, SEO. Variants/assets/checkout are unchanged.
+- `store_product_reviews` (guest submit via `POST /api/products/[slug]/reviews`, moderated in admin) and `store_product_relations` (hand-picked related products).
+- Product-page bottom sections (related, also bought, best sellers, recent orders, featured, newest, same category) are configured in Admin → Reviews & product page, stored in `store_settings` key `product_page`.
+- `lib/data/catalog.ts` + `lib/catalog-types.ts` are the cached loaders/types. `scripts/seed-catalog.mjs` seeds a starter tree and 3 sample products (idempotent). Products now have to be created in admin.

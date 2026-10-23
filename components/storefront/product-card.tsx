@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ShoppingBag } from 'lucide-react'
+import { ShoppingBag, Star } from 'lucide-react'
 import { getProductImageSources, StorefrontProductImage } from '@/components/storefront/product-image'
 import { useStorefrontCart } from '@/lib/hooks/use-storefront-cart'
 import type { Product } from '@/lib/hooks/use-storefront-data'
@@ -30,7 +30,8 @@ export function ProductCard({ product }: { product: Product }) {
         <h3 className="mt-1 line-clamp-2 text-sm font-semibold leading-5">
           <Link href={href} className="hover:text-[#0a4fa3] hover:underline">{product.name}</Link>
         </h3>
-        <p className="mt-1.5 text-base font-bold text-[#033473]">{hasOptions && 'From '}{formatPrice(price, currency)}</p>
+        {product.ratingCount ? <p className="mt-1 flex items-center gap-1 text-xs text-[#4a5568]"><Star size={13} className="fill-[#f5a623] text-[#f5a623]" aria-hidden="true" />{product.ratingAvg?.toFixed(1)} ({product.ratingCount})</p> : null}
+        <p className="mt-1.5 text-base font-bold text-[#033473]">{hasOptions && 'From '}{formatPrice(price, currency)}{product.compareAtPrice && Number(product.compareAtPrice) > Number(price) && <s className="ml-2 text-sm font-normal text-[#6b7a90]">{formatPrice(product.compareAtPrice, currency)}</s>}</p>
         <div className="mt-auto pt-3">
           {hasOptions || !available ? (
             <Link href={href} className="block rounded-full border border-[#033473] py-2.5 text-center text-sm font-semibold text-[#033473] hover:bg-[#033473] hover:text-white">

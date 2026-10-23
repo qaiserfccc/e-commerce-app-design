@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { ChevronDown, Menu, Phone, Search, ShoppingBag, User, X } from 'lucide-react'
 import { MiniCart } from '@/components/storefront/shell/mini-cart'
 import { useStorefrontCart } from '@/lib/hooks/use-storefront-cart'
-import { useStorefrontCategories } from '@/lib/hooks/use-storefront-categories'
+import { useStorefrontCategories, type ProductCategory } from '@/lib/hooks/use-storefront-categories'
 import type { SiteChrome } from '@/lib/content-types'
 import { categoryHref, categoryTree, STORE_NAME, storeContact } from '@/lib/store-config'
 
@@ -22,11 +22,11 @@ export function StoreHeader({ chrome }: { chrome: SiteChrome }) {
   const [cartOpen, setCartOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const [expanded, setExpanded] = useState<number | null>(null)
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [announcement, setAnnouncement] = useState(0)
 
   const tree = useMemo(() => categoryTree(categories), [categories])
-  const roots = tree.get(0) ?? []
+  const roots = tree.get('root') ?? []
 
   useEffect(() => {
     setMobileOpen(false)
@@ -105,24 +105,7 @@ export function StoreHeader({ chrome }: { chrome: SiteChrome }) {
         <ul className="mx-auto flex max-w-[1320px] items-center gap-1 px-6 text-sm font-semibold">
           <li><Link href="/" className="block px-3 py-3 hover:text-[#0a4fa3]">Home</Link></li>
           <li><Link href="/shop" className="block px-3 py-3 hover:text-[#0a4fa3]">Shop all</Link></li>
-          {roots.slice(0, 8).map((root) => {
-            const kids = tree.get(root.sourceCategoryId) ?? []
-            return (
-              <li key={root.sourceCategoryId} className="group relative">
-                <Link href={categoryHref(root)} className="flex items-center gap-1 px-3 py-3 uppercase tracking-wide hover:text-[#0a4fa3]">
-                  {root.name}
-                  {kids.length > 0 && <ChevronDown size={14} aria-hidden="true" />}
-                </Link>
-                {kids.length > 0 && (
-                  <div className="invisible absolute left-0 top-full z-50 max-h-[70vh] min-w-64 overflow-auto rounded-b-lg border border-[#033473]/15 bg-white p-2 opacity-0 shadow-xl transition group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
-                    {kids.map((kid) => (
-                      <Link key={kid.sourceCategoryId} href={categoryHref(kid)} className="block rounded px-3 py-2 text-sm font-medium hover:bg-[#e0f2fe] hover:text-[#033473]">{kid.name}</Link>
-                    ))}
-                  </div>
-                )}
-              </li>
-            )
-          })}
+          {roots.slice(0, 8).map((root) => <DesktopItem key={root.id} node={root} tree={tree} top />)}
           <li className="ml-auto"><Link href="/blogs" className="block px-3 py-3 hover:text-[#0a4fa3]">Blogs</Link></li>
         </ul>
       </nav>
@@ -139,28 +122,8 @@ export function StoreHeader({ chrome }: { chrome: SiteChrome }) {
               {[['/', 'Home'], ['/shop', 'Shop all'], ['/blogs', 'Blogs'], ['/faq', 'FAQ'], ['/contact-us', 'Contact us'], ['/my-account', 'My account']].map(([href, label]) => (
                 <li key={href}><Link href={href} className="block border-b border-[#033473]/10 px-5 py-3.5">{label}</Link></li>
               ))}
-              <li className="px-5 pb-1 pt-4 text-xs font-bold uppercase tracking-widest text-[#4a5568]">Brands &amp; collections</li>
-              {roots.map((root) => {
-                const kids = tree.get(root.sourceCategoryId) ?? []
-                const open = expanded === root.sourceCategoryId
-                return (
-                  <li key={root.sourceCategoryId} className="border-b border-[#033473]/10">
-                    <div className="flex items-center">
-                      <Link href={categoryHref(root)} className="flex-1 px-5 py-3.5 uppercase">{root.name}</Link>
-                      {kids.length > 0 && (
-                        <button type="button" aria-expanded={open} aria-label={`Toggle ${root.name} collections`} onClick={() => setExpanded(open ? null : root.sourceCategoryId)} className="grid size-12 place-items-center">
-                          <ChevronDown size={18} className={open ? 'rotate-180' : ''} />
-                        </button>
-                      )}
-                    </div>
-                    {open && (
-                      <ul className="bg-[#eef3fa] py-1">
-                        {kids.map((kid) => <li key={kid.sourceCategoryId}><Link href={categoryHref(kid)} className="block px-8 py-2.5 font-medium">{kid.name}</Link></li>)}
-                      </ul>
-                    )}
-                  </li>
-                )
-              })}
+              <li className="px-5 pb-1 pt-4 text-xs font-bold uppercase tracking-widest text-[#4a5568]">Categories</li>
+              {roots.map((root) => <MobileItem key={root.id} node={root} tree={tree} expanded={expanded} toggle={(id) => setExpanded((current) => { const next = new Set(current); if (!next.delete(id)) next.add(id); return next })} depth={0} />)}
             </ul>
           </div>
         </div>
@@ -168,5 +131,42 @@ export function StoreHeader({ chrome }: { chrome: SiteChrome }) {
 
       <MiniCart open={cartOpen} onClose={() => setCartOpen(false)} />
     </header>
+  )
+}
+
+type Tree = ReturnType<typeof categoryTree>
+
+function DesktopItem({ node, tree, top = false }: { node: ProductCategory; tree: Tree; top?: boolean }) {
+  const kids = tree.get(node.id) ?? []
+  return (
+    <li className={top ? 'group/menu relative' : 'group/sub relative'}>
+      <Link href={categoryHref(node)} className={top ? 'flex items-center gap-1 px-3 py-3 uppercase tracking-wide hover:text-[#0a4fa3]' : 'flex items-center justify-between gap-3 rounded px-3 py-2 text-sm font-medium hover:bg-[#e0f2fe] hover:text-[#033473]'}>
+        {node.name}
+        {kids.length > 0 && <ChevronDown size={14} aria-hidden="true" className={top ? '' : '-rotate-90'} />}
+      </Link>
+      {kids.length > 0 && (
+        <ul className={`invisible absolute z-50 min-w-60 rounded-lg border border-[#033473]/15 bg-white p-2 opacity-0 shadow-xl transition ${top ? 'left-0 top-full group-hover/menu:visible group-hover/menu:opacity-100 group-focus-within/menu:visible group-focus-within/menu:opacity-100' : 'left-full top-0 group-hover/sub:visible group-hover/sub:opacity-100 group-focus-within/sub:visible group-focus-within/sub:opacity-100'}`}>
+          {kids.map((kid) => <DesktopItem key={kid.id} node={kid} tree={tree} />)}
+        </ul>
+      )}
+    </li>
+  )
+}
+
+function MobileItem({ node, tree, expanded, toggle, depth }: { node: ProductCategory; tree: Tree; expanded: Set<string>; toggle: (id: string) => void; depth: number }) {
+  const kids = tree.get(node.id) ?? []
+  const open = expanded.has(node.id)
+  return (
+    <li className={depth === 0 ? 'border-b border-[#033473]/10' : ''}>
+      <div className="flex items-center">
+        <Link href={categoryHref(node)} style={{ paddingLeft: 20 + depth * 16 }} className={`flex-1 py-3 pr-2 ${depth === 0 ? 'uppercase' : 'font-medium'}`}>{node.name}</Link>
+        {kids.length > 0 && (
+          <button type="button" aria-expanded={open} aria-label={`Toggle ${node.name}`} onClick={() => toggle(node.id)} className="grid size-12 place-items-center">
+            <ChevronDown size={18} className={open ? 'rotate-180' : ''} />
+          </button>
+        )}
+      </div>
+      {open && <ul className="bg-[#eef3fa]">{kids.map((kid) => <MobileItem key={kid.id} node={kid} tree={tree} expanded={expanded} toggle={toggle} depth={depth + 1} />)}</ul>}
+    </li>
   )
 }

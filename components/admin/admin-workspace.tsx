@@ -2,18 +2,15 @@
 
 import { useDeferredValue, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import {
-  Activity, ArrowDown, ArrowUp, BarChart3, ClipboardList, Download, LayoutDashboard, LoaderCircle,
+  Activity, ArrowDown, ArrowUp, BarChart3, ClipboardList, LayoutDashboard, LoaderCircle,
   LogOut, Package, Plus, Search, ShoppingBag, ShieldCheck, Tags, Users, X,
 } from 'lucide-react'
 import { useSWRConfig } from 'swr'
 import {
-  createProduct,
   createSystemUser,
-  deleteProduct,
   deleteProductAsset,
   updateOrderStatus,
   updateOrderDeliveryFee,
-  updateProduct,
   updateProductStock,
   moveProductAsset,
   updateCustomer,
@@ -32,16 +29,22 @@ import {
   type AdminOrder,
   type AdminProduct,
 } from '@/lib/hooks/use-admin-data'
+import { deleteProduct } from '@/app/actions/catalog-admin'
+import { CategoryManager } from '@/components/admin/category-manager'
+import { CatalogSettings } from '@/components/admin/catalog-settings'
+import { ProductEditor } from '@/components/admin/product-editor'
 import { ContentManager } from '@/components/admin/content-manager'
 import { ProjectKanban } from '@/components/admin/project-kanban'
 import { ProductVariantManager } from '@/components/admin/product-variant-manager'
 import { getProductImageSources } from '@/components/storefront/product-image'
 
-type Section = 'overview' | 'products' | 'orders' | 'customers' | 'analytics' | 'content' | 'system-users' | 'project-plan'
+type Section = 'overview' | 'categories' | 'products' | 'catalog-settings' | 'orders' | 'customers' | 'analytics' | 'content' | 'system-users' | 'project-plan'
 
 const sections: Array<{ id: Section; label: string; icon: typeof LayoutDashboard }> = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+  { id: 'categories', label: 'Categories', icon: Tags },
   { id: 'products', label: 'Products', icon: Package },
+  { id: 'catalog-settings', label: 'Reviews & product page', icon: ClipboardList },
   { id: 'orders', label: 'Orders', icon: ShoppingBag },
   { id: 'customers', label: 'Customers', icon: Users },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
@@ -270,90 +273,6 @@ function MetricCard({ label, value, icon }: { label: string; value: string; icon
   )
 }
 
-function ProductEditor({
-  product,
-  onSaved,
-  onCancel,
-}: {
-  product?: AdminProduct
-  onSaved: () => void
-  onCancel: () => void
-}) {
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-  const variantManaged = Boolean(product?.variants.some((variant) => variant.isActive !== false))
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setSaving(true)
-    setError('')
-    const form = new FormData(event.currentTarget)
-    const values = {
-      name: String(form.get('name') ?? ''),
-      slug: String(form.get('slug') ?? ''),
-      description: String(form.get('description') ?? ''),
-      category: String(form.get('category') ?? ''),
-      price: String(form.get('price') ?? ''),
-      currency: String(form.get('currency') ?? 'PKR'),
-      stockQuantity: Number(form.get('stockQuantity')),
-      status: String(form.get('status') ?? 'active'),
-    }
-    try {
-      if (product && variantManaged) {
-        await updateProduct(product.id, {
-          name: values.name,
-          slug: values.slug,
-          description: values.description,
-          category: values.category,
-          status: values.status,
-        })
-      } else if (product) await updateProduct(product.id, values)
-      else await createProduct(values)
-      onSaved()
-    } catch (saveError) {
-      setError(errorMessage(saveError))
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <form key={product?.id ?? 'new'} onSubmit={submit} className="rounded-2xl border border-[#1c1c1a]/10 bg-white p-5">
-      <div className="mb-5 flex items-center justify-between gap-4">
-        <h2 className="font-medium">{product ? `Edit ${product.name}` : 'Add a product'}</h2>
-        <button type="button" onClick={onCancel} aria-label="Close product editor" className="rounded-full p-2 hover:bg-[#f2f1ed] focus-visible:outline-2 focus-visible:outline-[#1c1c1a]"><X size={17} /></button>
-      </div>
-      {error && <div className="mb-4"><Notice>{error}</Notice></div>}
-      {variantManaged && <p className="mb-4 border border-[#1c1c1a]/15 bg-[#f2f1ed] px-3 py-2 text-xs text-[#55544e]">Price and stock are calculated from active lens options. Edit those values in Lens options below.</p>}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Name"><input name="name" required maxLength={180} defaultValue={product?.name} className={inputClass} /></Field>
-        <Field label="Slug"><input name="slug" required maxLength={180} pattern="[a-z0-9]+(-[a-z0-9]+)*" defaultValue={product?.slug} className={inputClass} /></Field>
-        <Field label="Category"><input name="category" required maxLength={100} defaultValue={product?.category} className={inputClass} /></Field>
-        <div className="grid grid-cols-[1fr_100px] gap-3">
-          <Field label="Price"><input name="price" required inputMode="decimal" pattern="\d+(\.\d{1,2})?" readOnly={variantManaged} defaultValue={product?.price} className={inputClass} /></Field>
-          <Field label="Currency"><input name="currency" required maxLength={3} pattern="[A-Za-z]{3}" readOnly={variantManaged} defaultValue={product?.currency ?? 'PKR'} className={inputClass} /></Field>
-        </div>
-        <Field label="Stock quantity"><input name="stockQuantity" type="number" required min="0" step="1" readOnly={variantManaged} defaultValue={product?.stockQuantity ?? 0} className={inputClass} /></Field>
-        <Field label="Status">
-          <select name="status" defaultValue={product?.status ?? 'active'} className={inputClass}>
-            <option value="active">Active</option><option value="draft">Draft</option><option value="archived">Archived</option>
-          </select>
-        </Field>
-        <div className="sm:col-span-2">
-          <Field label="Description"><textarea name="description" rows={3} maxLength={5000} defaultValue={product?.description ?? ''} className={inputClass} /></Field>
-        </div>
-      </div>
-      <div className="mt-5 flex flex-wrap gap-2">
-        <button type="submit" disabled={saving} className={primaryButton}>
-          {saving && <LoaderCircle size={15} className="animate-spin" />}
-          {saving ? 'Saving…' : product ? 'Save product' : 'Create product'}
-        </button>
-        <button type="button" onClick={onCancel} className={secondaryButton}>Cancel</button>
-      </div>
-    </form>
-  )
-}
-
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return <label className="block text-xs font-medium text-[#55544e]">{label}<div className="mt-1.5">{children}</div></label>
 }
@@ -372,8 +291,6 @@ function ProductWorkspace({ canEdit }: { canEdit: boolean }) {
   const [message, setMessage] = useState('')
   const [messageTone, setMessageTone] = useState<'error' | 'info'>('error')
   const [busyId, setBusyId] = useState('')
-  const [importPage, setImportPage] = useState(0)
-  const [syncingCategories, setSyncingCategories] = useState(false)
 
   const filtered = useMemo(() => products.filter((product) => `${product.name} ${product.category} ${product.slug}`.toLowerCase().includes(query.toLowerCase())), [products, query])
   const visibleProducts = filtered.slice(offset, offset + 20)
@@ -399,7 +316,7 @@ function ProductWorkspace({ canEdit }: { canEdit: boolean }) {
   }
 
   async function archive(product: AdminProduct) {
-    if (!window.confirm(`Archive ${product.name}? It will no longer appear in the storefront.`)) return
+    if (!window.confirm(`Permanently delete ${product.name}, its options and media? Past orders are kept.`)) return
     setBusyId(product.id)
     setMessage('')
     try {
@@ -412,115 +329,15 @@ function ProductWorkspace({ canEdit }: { canEdit: boolean }) {
     }
   }
 
-  async function importCatalog() {
-    if (!window.confirm(
-      `Replace all ${products.length} products in the connected catalog with a fresh ISK Lenses import? ` +
-      'Products will be recreated as drafts with zero stock; customer, order, admin, and audit history will remain.',
-    )) return
-    setImportPage(1)
-    setMessage('')
-    setMessageTone('error')
-    try {
-      const startResponse = await fetch('/api/admin/products/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'begin' }),
-      })
-      const startBody: unknown = await startResponse.json()
-      if (startResponse.status === 401) window.dispatchEvent(new Event('admin-session-expired'))
-      if (!startResponse.ok || !isRecord(startBody) || !isRecord(startBody.data) ||
-          typeof startBody.data.runId !== 'string') {
-        throw new Error(isRecord(startBody) && typeof startBody.error === 'string' ? startBody.error : 'The catalog import could not be started.')
-      }
-      const runId = startBody.data.runId
-      let page = 1
-      let finalResult: { imported: number; deleted: number; mediaCleanupFailures: number } | undefined
-      for (; page <= 100; page += 1) {
-        setImportPage(page)
-        const response = await fetch('/api/admin/products/import', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'page', runId, page }),
-        })
-        const body: unknown = await response.json()
-        if (response.status === 401) window.dispatchEvent(new Event('admin-session-expired'))
-        if (!response.ok || !isRecord(body) || !isRecord(body.data)) {
-          const detail = isRecord(body) && typeof body.error === 'string' ? body.error : 'The catalog import failed.'
-          throw new Error(detail)
-        }
-        const result = body.data
-        if (typeof result.imported !== 'number' || typeof result.deleted !== 'number' ||
-            typeof result.hasMore !== 'boolean' || typeof result.page !== 'number' ||
-            typeof result.mediaCleanupFailures !== 'number') {
-          throw new Error('The catalog import returned an invalid result.')
-        }
-        if (result.page !== page) throw new Error('The catalog importer returned an unexpected page number.')
-        if (!result.hasMore) {
-          finalResult = {
-            imported: result.imported,
-            deleted: result.deleted,
-            mediaCleanupFailures: result.mediaCleanupFailures,
-          }
-          break
-        }
-      }
-      if (!finalResult) throw new Error('The source catalog exceeds the 5,000-product safety limit; the existing catalog was not changed.')
-      await refresh()
-      setMessageTone(finalResult.mediaCleanupFailures ? 'error' : 'info')
-      setMessage(
-        `Replaced ${finalResult.deleted} products with ${finalResult.imported} draft listings. ` +
-        'Source descriptions and media files were not copied; review the saved facts and source links before publishing.' +
-        (finalResult.mediaCleanupFailures ? ` ${finalResult.mediaCleanupFailures} old Blob files need manual cleanup.` : ''),
-      )
-    } catch (importError) {
-      setMessageTone('error')
-      setMessage(errorMessage(importError))
-    } finally {
-      setImportPage(0)
-    }
-  }
-
-  async function syncCategories() {
-    setSyncingCategories(true)
-    setMessage('')
-    try {
-      const response = await fetch('/api/admin/product-categories/sync', { method: 'POST' })
-      const body: unknown = await response.json()
-      if (response.status === 401) window.dispatchEvent(new Event('admin-session-expired'))
-      if (!response.ok || !isRecord(body) || !isRecord(body.data) || typeof body.data.synchronized !== 'number') {
-        throw new Error(isRecord(body) && typeof body.error === 'string' ? body.error : 'Source categories could not be synchronized.')
-      }
-      await globalMutate('/api/product-categories')
-      setMessageTone('info')
-      setMessage(`Synchronized ${body.data.synchronized} categories from ISK Lenses, including their parent relationships.`)
-    } catch (syncError) {
-      setMessageTone('error')
-      setMessage(errorMessage(syncError))
-    } finally {
-      setSyncingCategories(false)
-    }
-  }
-
   return (
     <section className="min-w-0 flex-1">
       <PanelHeading
         title="Products"
-        description="Manage published listings, review ISK Lenses source imports, and maintain the shared catalog."
+        description="Every product belongs to a category. Manage listings, lens options and media here."
         action={<div className="flex flex-wrap gap-2">
-          {canEdit && <button type="button" disabled={syncingCategories || Boolean(importPage)} onClick={() => void syncCategories()} className={secondaryButton}>
-            {syncingCategories ? <LoaderCircle size={15} className="animate-spin" /> : <Tags size={15} />}
-            {syncingCategories ? 'Syncing categories…' : 'Sync source categories'}
-          </button>}
-          {canEdit && <button type="button" disabled={Boolean(importPage) || isLoading || isError} onClick={() => void importCatalog()} className={secondaryButton}>
-            {importPage ? <LoaderCircle size={15} className="animate-spin" /> : <Download size={15} />}
-            {importPage ? `Importing page ${importPage}…` : 'Replace with ISK catalogue'}
-          </button>}
           {canEdit && <button type="button" onClick={() => { setEditing(undefined); setCreating(true) }} className={primaryButton}><Plus size={16} /> Add product</button>}
         </div>}
       />
-      <p className="mb-4 max-w-3xl border border-[#1c1c1a]/12 bg-white/60 px-3 py-2 text-xs leading-5 text-[#55544e]">
-        A full import replaces existing products with draft listings and zero stock after every source page validates. Structured prices, categories, availability, options, specifications, and media links are retained; authored description text and media files are not copied. Verify every listing before publishing.
-      </p>
       {(message || isError) && <div className="mb-4"><Notice tone={message ? messageTone : 'error'}>{message || errorMessage(error)}</Notice></div>}
       {(creating || editing) && <div className="mb-5"><ProductEditor product={editing} onSaved={() => void refresh()} onCancel={() => { setCreating(false); setEditing(undefined) }} /></div>}
       <div className="mb-4 flex items-center gap-2 rounded-xl border border-[#1c1c1a]/10 bg-white px-3">
@@ -529,7 +346,7 @@ function ProductWorkspace({ canEdit }: { canEdit: boolean }) {
       </div>
       {isLoading ? <LoadingRows label="Loading products" /> : isError ? null : filtered.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-[#1c1c1a]/20 bg-white/60 px-5 py-10 text-center text-sm text-[#68675f]">
-          {products.length ? 'No products match this filter.' : 'No products are in the catalog yet. Import source listings as drafts or add a product.'}
+          {products.length ? 'No products match this filter.' : 'No products are in the catalog yet. Create a category first, then add a product.'}
         </div>
       ) : (
         <div className="space-y-3">
@@ -572,52 +389,9 @@ function ProductRow({
   const [quantity, setQuantity] = useState(String(product.stockQuantity))
   const [mediaExpanded, setMediaExpanded] = useState(false)
   const [variantsExpanded, setVariantsExpanded] = useState(false)
-  const [sourceExpanded, setSourceExpanded] = useState(false)
-  const [sourceLoading, setSourceLoading] = useState(false)
-  const [sourceError, setSourceError] = useState('')
-  const [sourceData, setSourceData] = useState<{
-    sourceUrl: string | null
-    sourceContentHash: string | null
-    sourcePayload: Record<string, unknown> | null
-  }>()
   const [assetMessage, setAssetMessage] = useState('')
   const [uploading, setUploading] = useState(false)
   const { mutate: globalMutate } = useSWRConfig()
-
-  async function toggleSource() {
-    if (sourceExpanded) {
-      setSourceExpanded(false)
-      return
-    }
-    setSourceExpanded(true)
-    if (sourceData || sourceLoading) return
-    setSourceLoading(true)
-    setSourceError('')
-    try {
-      const response = await fetch(`/api/admin/products/${product.id}/source`, { cache: 'no-store' })
-      const body: unknown = await response.json()
-      if (response.status === 401) window.dispatchEvent(new Event('admin-session-expired'))
-      if (!response.ok || typeof body !== 'object' || body === null || !('data' in body) ||
-          typeof body.data !== 'object' || body.data === null) {
-        const detail = typeof body === 'object' && body !== null && 'error' in body && typeof body.error === 'string'
-          ? body.error
-          : 'The source product details could not be loaded.'
-        throw new Error(detail)
-      }
-      const data = body.data
-      setSourceData({
-        sourceUrl: 'sourceUrl' in data && typeof data.sourceUrl === 'string' ? data.sourceUrl : null,
-        sourceContentHash: 'sourceContentHash' in data && typeof data.sourceContentHash === 'string' ? data.sourceContentHash : null,
-        sourcePayload: isRecord(data) && isRecord(data.sourcePayload)
-          ? data.sourcePayload
-          : null,
-      })
-    } catch (loadError) {
-      setSourceError(errorMessage(loadError))
-    } finally {
-      setSourceLoading(false)
-    }
-  }
 
   async function upload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -668,15 +442,6 @@ function ProductRow({
 
   const activeVariants = product.variants.some((variant) => variant.isActive !== false)
   const previewImage = getProductImageSources(product)[0]
-  const sourceMedia = sourceData?.sourcePayload?.mediaReferences
-  const sourceImages = isRecord(sourceMedia) && Array.isArray(sourceMedia.images)
-    ? sourceMedia.images.filter((item): item is Record<string, unknown> & { src: string } =>
-        isRecord(item) && typeof item.src === 'string',
-      )
-    : []
-  const sourceVideos = isRecord(sourceMedia) && Array.isArray(sourceMedia.videos)
-    ? sourceMedia.videos.filter((item): item is string => typeof item === 'string')
-    : []
 
   return (
     <article className="rounded-2xl border border-[#1c1c1a]/10 bg-white p-4 sm:p-5">
@@ -687,9 +452,6 @@ function ProductRow({
             <h2 className="truncate text-sm font-medium">{product.name}</h2>
             <p className="mt-1 text-xs text-[#68675f]">{product.category} · {product.slug}</p>
             <p className="mt-1 text-xs text-[#68675f]">{currencyLabel(product.price, product.currency)} · <span className="capitalize">{product.status}</span></p>
-            {product.sourceProductId !== null && product.sourceUrl && (
-              <p className="mt-1 text-xs text-[#68675f]">Imported source #{product.sourceProductId}</p>
-            )}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -700,7 +462,7 @@ function ProductRow({
           </>}
           {canEdit && <>
             <button type="button" disabled={busy} onClick={onEdit} className={secondaryButton}>Edit</button>
-            {product.status !== 'archived' && <button type="button" disabled={busy} onClick={onArchive} className="rounded-full border border-[#9b4a36]/30 px-4 py-2.5 text-sm text-[#753b2d] hover:bg-[#f8eeeb] disabled:opacity-60">Archive</button>}
+            <button type="button" disabled={busy} onClick={onArchive} className="rounded-full border border-[#9b4a36]/30 px-4 py-2.5 text-sm text-[#753b2d] hover:bg-[#f8eeeb] disabled:opacity-60">Delete</button>
           </>}
         </div>
       </div>
@@ -711,39 +473,7 @@ function ProductRow({
         <button type="button" aria-expanded={mediaExpanded} onClick={() => setMediaExpanded((value) => !value)} className="text-xs underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-[#1c1c1a]">
           {mediaExpanded ? 'Hide product media' : `Manage product media (${product.assets.length})`}
         </button>
-        {product.sourceProductId !== null && <button type="button" aria-expanded={sourceExpanded} onClick={() => void toggleSource()} className="text-xs underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-[#1c1c1a]">
-          {sourceExpanded ? 'Hide source record' : 'Review source record'}
-        </button>}
       </div>
-      {sourceExpanded && (
-        <div className="mt-4 border-t border-[#1c1c1a]/10 pt-4">
-          {sourceLoading && <p role="status" className="text-xs text-[#68675f]">Loading source metadata…</p>}
-          {sourceError && <p role="alert" className="text-xs text-[#753b2d]">{sourceError}</p>}
-          {sourceData && (
-            <div className="space-y-3">
-              <p className="text-xs leading-5 text-[#55544e]">
-                Imported source text and media files are not copied. The saved record contains structured catalog facts and source media links; verify details on the original listing before publication.
-              </p>
-              {sourceData.sourceUrl && <a href={sourceData.sourceUrl} target="_blank" rel="noreferrer" className="inline-block text-xs font-medium underline underline-offset-4">Open original product listing</a>}
-              {sourceData.sourcePayload && (
-                <>
-                  {(sourceImages.length > 0 || sourceVideos.length > 0) && (
-                    <div className="flex flex-wrap gap-3 text-xs">
-                      {sourceImages.map((image, index) => <a key={`${image.src}-${index}`} href={image.src} target="_blank" rel="noreferrer" className="underline underline-offset-4">Open source image {index + 1}</a>)}
-                      {sourceVideos.map((url, index) => <a key={`${url}-${index}`} href={url} target="_blank" rel="noreferrer" className="underline underline-offset-4">Open source video {index + 1}</a>)}
-                    </div>
-                  )}
-                  <details className="border border-[#1c1c1a]/10 bg-[#f8f8f5]">
-                    <summary className="cursor-pointer px-3 py-2 text-xs font-medium">Structured source catalog data</summary>
-                    <pre className="max-h-80 overflow-auto border-t border-[#1c1c1a]/10 p-3 text-xs leading-5 text-[#41403a]">{JSON.stringify(sourceData.sourcePayload, null, 2)}</pre>
-                  </details>
-                  {sourceData.sourceContentHash && <p className="break-all text-xs text-[#77756e]">Description change fingerprint: {sourceData.sourceContentHash}</p>}
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      )}
       {variantsExpanded && <ProductVariantManager product={product} canEdit={canEdit} onChanged={onRefresh} />}
       {mediaExpanded && (
         <div className="mt-4 border-t border-[#1c1c1a]/10 pt-4">
@@ -1336,6 +1066,8 @@ export function AdminWorkspace() {
 
   const content = {
     overview: <AdminOverview onNavigate={setSection} />,
+    categories: <CategoryManager canEdit={session.role === 'owner' || session.role === 'admin'} />,
+    'catalog-settings': <CatalogSettings canEdit={session.role === 'owner' || session.role === 'admin'} />,
     products: <ProductWorkspace canEdit={session.role === 'owner' || session.role === 'admin'} />,
     orders: <OrdersWorkspace canEdit={session.role === 'owner' || session.role === 'admin'} />,
     customers: <CustomersWorkspace />,

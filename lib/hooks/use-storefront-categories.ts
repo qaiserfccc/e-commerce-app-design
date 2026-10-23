@@ -1,14 +1,9 @@
 'use client'
 
 import useSWR from 'swr'
+import type { CategoryNode } from '@/lib/catalog-types'
 
-export interface ProductCategory {
-  sourceCategoryId: number
-  name: string
-  slug: string
-  parentSourceCategoryId: number
-  sourceProductCount: number
-}
+export type ProductCategory = CategoryNode
 
 async function fetchCategories(url: string) {
   const response = await fetch(url, { cache: 'no-store' })
@@ -21,7 +16,7 @@ export function useStorefrontCategories() {
   const { data, error, isLoading, mutate } = useSWR<{ data: ProductCategory[] }>(
     '/api/product-categories',
     fetchCategories,
-    { revalidateOnFocus: true, revalidateOnReconnect: true, dedupingInterval: 300_000 },
+    { revalidateOnFocus: true, revalidateOnReconnect: true, dedupingInterval: 60_000 },
   )
   return { categories: data?.data ?? [], isLoading, isError: Boolean(error), error, mutate }
 }

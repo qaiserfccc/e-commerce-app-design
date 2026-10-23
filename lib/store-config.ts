@@ -35,19 +35,18 @@ export function isAvailable(product: Product) {
     : product.stockQuantity > 0
 }
 
-export function categoryHref(category: Pick<ProductCategory, 'slug'>) {
-  return `/product-category/${category.slug}`
+export function categoryHref(category: Pick<ProductCategory, 'path'>) {
+  return `/product-category/${category.path}`
 }
 
+/** Children keyed by parent id ('root' for top level); menu-hidden categories are skipped. */
 export function categoryTree(categories: ProductCategory[]) {
-  const children = new Map<number, ProductCategory[]>()
+  const children = new Map<string, ProductCategory[]>()
   for (const category of categories) {
-    if (category.slug === 'all-products') continue
-    const siblings = children.get(category.parentSourceCategoryId) ?? []
-    siblings.push(category)
-    children.set(category.parentSourceCategoryId, siblings)
+    if (!category.showInMenu) continue
+    const key = category.parentId ?? 'root'
+    children.set(key, [...(children.get(key) ?? []), category])
   }
-  for (const siblings of children.values()) siblings.sort((a, b) => a.name.localeCompare(b.name))
   return children
 }
 

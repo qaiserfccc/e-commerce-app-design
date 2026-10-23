@@ -5,16 +5,16 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { SlidersHorizontal } from 'lucide-react'
 import { ProductCard, ProductGridSkeleton } from '@/components/storefront/product-card'
-import { categoryBranchIds, productsInCategory } from '@/components/storefront/category-navigation'
+import { descendantIds } from '@/lib/catalog-types'
 import { useProducts } from '@/lib/hooks/use-storefront-data'
 import { useStorefrontCart } from '@/lib/hooks/use-storefront-cart'
-import { useStorefrontCategories } from '@/lib/hooks/use-storefront-categories'
+import { useStorefrontCategories, type ProductCategory } from '@/lib/hooks/use-storefront-categories'
 import { categoryHref, categoryTree, isAvailable, lowestPrice, titleCase } from '@/lib/store-config'
 
 const PAGE_SIZE = 24
 type Sort = 'default' | 'price-asc' | 'price-desc' | 'name'
 
-export function CatalogView({ categorySlug }: { categorySlug?: string }) {
+export function CatalogView({ categoryPath }: { categoryPath?: string }) {
   const searchParams = useSearchParams()
   const query = searchParams.get('q')?.trim().slice(0, 100) ?? ''
   const { products, isLoading, isError, error, mutate } = useProducts(undefined, query)
@@ -26,48 +26,46 @@ export function CatalogView({ categorySlug }: { categorySlug?: string }) {
   const [filtersOpen, setFiltersOpen] = useState(false)
 
   const tree = useMemo(() => categoryTree(categories), [categories])
-  const category = categorySlug ? categories.find((item) => item.slug === categorySlug) ?? null : null
-  const categoryId = category?.sourceCategoryId ?? null
-  const branch = useMemo(() => categoryBranchIds(categories, categoryId), [categories, categoryId])
-  const parent = category ? categories.find((item) => item.sourceCategoryId === category.parentSourceCategoryId) : null
-  const siblings = category ? tree.get(category.sourceCategoryId) ?? [] : tree.get(0) ?? []
-
+  const category = categoryPath ? categories.find((item) => item.path === categoryPath) ?? null : null
+  const categoryId = category?.id ?? null
+  const branch = useMemo(() => (categoryId ? descendantIds(categories, categoryId) : null), [categories, categoryId])
+  const ancestors = useMemo(() => {
+    const chain: ProductCategory[] = []
+    let current = category
+    while (current?.parentId) {
+      const parent = categories.find((item) => item.id === current!.parentId)
+      if (!parent) break
+      chain.unshift(parent)
+      current = parent
+    }
+    return chain
+  }, [categories, category])
+  const parent = ancestors[ancestors.length - 1] ?? null
+  const siblings = category ? tree.get(category.id) ?? [] : tree.get('root') ?? []
   useEffect(() => {
     if (!isLoading && !isError && !query) syncProducts(products)
   }, [isError, isLoading, products, query, syncProducts])
 
-  useEffect(() => setVisible(PAGE_SIZE), [categorySlug, query, sort, inStockOnly])
+  useEffect(() => setVisible(PAGE_SIZE), [categoryPath, query, sort, inStockOnly])
 
   const filtered = useMemo(() => {
-    const result = products.filter((product) => productsInCategory(product, categoryId, branch) && (!inStockOnly || isAvailable(product)))
+    const result = products.filter((product) => (!branch || (product.categoryId !== undefined && branch.has(product.categoryId))) && (!inStockOnly || isAvailable(product)))
     const price = (product: (typeof result)[number]) => Number(lowestPrice(product).price)
     if (sort === 'price-asc') result.sort((a, b) => price(a) - price(b))
     else if (sort === 'price-desc') result.sort((a, b) => price(b) - price(a))
     else if (sort === 'name') result.sort((a, b) => a.name.localeCompare(b.name))
     return result
-  }, [branch, categoryId, inStockOnly, products, sort])
+  }, [branch, inStockOnly, products, sort])
 
-  const missingCategory = Boolean(categorySlug) && !categoriesLoading && !category
+  const missingCategory = Boolean(categoryPath) && !categoriesLoading && !category
   const heading = query ? `Search results for “${query}”` : category ? titleCase(category.name) : 'Shop'
 
   const sidebar = (
     <nav aria-label="Categories">
-      <h2 className="text-sm font-bold uppercase tracking-widest text-[#033473]">{category ? 'Collections' : 'Categories'}</h2>
-      <ul className="mt-3 space-y-1 text-sm">
-        {category && (
-          <li>
-            <Link href={parent ? categoryHref(parent) : '/shop'} className="inline-block py-1.5 font-medium text-[#4a5568] hover:text-[#033473]">← {parent ? titleCase(parent.name) : 'All products'}</Link>
-          </li>
-        )}
-        {siblings.map((item) => (
-          <li key={item.sourceCategoryId}>
-            <Link href={categoryHref(item)} className="flex items-center justify-between rounded-lg px-3 py-2 font-medium hover:bg-[#eef3fa] hover:text-[#033473]">
-              <span>{titleCase(item.name)}</span>
-              <span className="text-xs text-[#4a5568]">{item.sourceProductCount}</span>
-            </Link>
-          </li>
-        ))}
-        {!siblings.length && category && <li className="px-3 py-2 text-[#4a5568]">No sub-collections.</li>}
+      <h2 className="text-sm font-bold uppercase tracking-widest text-[#033473]">Categories</h2>
+      <ul className="mt-3 space-y-0.5 text-sm">
+        <li><Link href="/shop" className={`block rounded-lg px-3 py-2 font-medium hover:bg-[#eef3fa] ${!category ? 'text-[#033473]' : 'text-[#4a5568]'}`}>All products</Link></li>
+        {(tree.get('root') ?? []).map((root) => <SidebarNode key={root.id} node={root} tree={tree} activeId={categoryId} activeBranch={new Set([...ancestors.map((item) => item.id), ...(categoryId ? [categoryId] : [])])} />)}
       </ul>
     </nav>
   )
@@ -76,17 +74,23 @@ export function CatalogView({ categorySlug }: { categorySlug?: string }) {
     <main className="mx-auto max-w-[1320px] px-4 pb-8 pt-6 sm:px-6">
       <nav aria-label="Breadcrumb" className="text-xs text-[#4a5568]">
         <Link href="/" className="hover:underline">Home</Link> / <Link href="/shop" className="hover:underline">Shop</Link>
-        {parent && <> / <Link href={categoryHref(parent)} className="hover:underline">{titleCase(parent.name)}</Link></>}
+        {ancestors.map((item) => <span key={item.id}> / <Link href={categoryHref(item)} className="hover:underline">{titleCase(item.name)}</Link></span>)}
         {category && <> / <span className="font-semibold text-[#0a0a0a]">{titleCase(category.name)}</span></>}
       </nav>
       <div className="mt-4 flex flex-wrap items-end justify-between gap-4 border-b border-[#033473]/15 pb-5">
         <h1 className="text-3xl font-bold tracking-tight text-[#033473] sm:text-4xl">{heading}</h1>
+        {category?.description && <p className="w-full max-w-3xl text-sm leading-6 text-[#4a5568]">{category.description}</p>}
         <p className="text-sm text-[#4a5568]" aria-live="polite">{isLoading ? 'Loading…' : `${filtered.length} ${filtered.length === 1 ? 'product' : 'products'}`}</p>
       </div>
 
       <div className="mt-6 grid gap-8 lg:grid-cols-[250px_1fr]">
         <aside className="hidden lg:block">{sidebar}</aside>
         <section>
+          {category && siblings.length > 0 && (
+            <ul className="mb-6 flex flex-wrap gap-2" aria-label="Subcategories">
+              {siblings.map((item) => <li key={item.id}><Link href={categoryHref(item)} className="inline-block rounded-full border border-[#033473]/30 px-4 py-2 text-sm font-semibold text-[#033473] hover:bg-[#033473] hover:text-white">{titleCase(item.name)} <span className="opacity-60">({item.productCount})</span></Link></li>)}
+            </ul>
+          )}
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
             <button type="button" onClick={() => setFiltersOpen((open) => !open)} aria-expanded={filtersOpen} className="inline-flex items-center gap-2 rounded-full border border-[#033473]/30 px-4 py-2 text-sm font-semibold lg:hidden">
               <SlidersHorizontal size={16} aria-hidden="true" /> Categories
@@ -144,5 +148,18 @@ function EmptyState({ title, body }: { title: string; body: string }) {
       <p className="mt-2 text-sm text-[#4a5568]">{body}</p>
       <Link href="/shop" className="mt-5 inline-block rounded-full bg-[#033473] px-6 py-3 text-sm font-semibold text-white hover:bg-[#0a4fa3]">Browse all products</Link>
     </div>
+  )
+}
+
+function SidebarNode({ node, tree, activeId, activeBranch }: { node: ProductCategory; tree: ReturnType<typeof categoryTree>; activeId: string | null; activeBranch: Set<string> }) {
+  const kids = tree.get(node.id) ?? []
+  const open = activeBranch.has(node.id)
+  return (
+    <li>
+      <Link href={categoryHref(node)} aria-current={node.id === activeId ? 'page' : undefined} className={`flex items-center justify-between rounded-lg px-3 py-2 font-medium hover:bg-[#eef3fa] hover:text-[#033473] ${node.id === activeId ? 'bg-[#eef3fa] text-[#033473]' : ''}`}>
+        <span>{titleCase(node.name)}</span><span className="text-xs text-[#4a5568]">{node.productCount}</span>
+      </Link>
+      {open && kids.length > 0 && <ul className="ml-3 border-l border-[#033473]/15 pl-2">{kids.map((kid) => <SidebarNode key={kid.id} node={kid} tree={tree} activeId={activeId} activeBranch={activeBranch} />)}</ul>}
+    </li>
   )
 }
