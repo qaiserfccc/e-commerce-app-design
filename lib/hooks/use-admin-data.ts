@@ -56,9 +56,9 @@ export interface AdminCustomer {
 export interface AdminProduct extends Product {
   assets: ProductAsset[]
   variants: ProductVariant[]
-  sourceProductId: number | null
-  sourceUrl: string | null
-  sourceImageUrl: string | null
+  relatedProductIds: string[]
+  seoTitle?: string | null
+  seoDescription?: string | null
 }
 
 export interface AdminActivity {

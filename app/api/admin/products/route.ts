@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { getAllProductAssets, getAllProductVariants, getAllProducts } from '@/app/actions/admin'
+import { getAllProductAssets, getAllProductVariants } from '@/app/actions/admin'
+import { getAdminProducts as getAllProducts } from '@/app/actions/catalog-admin'
 import { adminApiError } from '@/lib/auth/admin-api'
 
 export const dynamic = 'force-dynamic'

@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import { del, put } from '@vercel/blob'
 import { NextRequest, NextResponse } from 'next/server'
-import { addProductAsset, getAdminProduct } from '@/app/actions/admin'
+import { addProductAsset } from '@/app/actions/admin'
+import { getAdminProduct } from '@/app/actions/catalog-admin'
 import { requireAdminSession } from '@/lib/auth/admin'
 import { adminApiError } from '@/lib/auth/admin-api'
 

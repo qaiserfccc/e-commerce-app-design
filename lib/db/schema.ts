@@ -1,28 +1,74 @@
 import { bigint, boolean, index, integer, jsonb, numeric, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 
+export const storeCategories = pgTable('store_categories', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  parentId: uuid('parent_id'),
+  name: text('name').notNull(),
+  slug: text('slug').notNull().unique(),
+  description: text('description'),
+  imageUrl: text('image_url'),
+  sortOrder: integer('sort_order').notNull().default(0),
+  isActive: boolean('is_active').notNull().default(true),
+  showInMenu: boolean('show_in_menu').notNull().default(true),
+  seoTitle: text('seo_title'),
+  seoDescription: text('seo_description'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
 export const storeProducts = pgTable('store_products', {
   id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull(),
   slug: text('slug').notNull().unique(),
   description: text('description'),
-  category: text('category').notNull(),
+  categoryId: uuid('category_id').notNull().references(() => storeCategories.id, { onDelete: 'restrict' }),
+  brand: text('brand'),
+  sku: text('sku'),
+  shortDescription: text('short_description'),
   price: numeric('price', { precision: 12, scale: 2 }).notNull(),
+  compareAtPrice: numeric('compare_at_price', { precision: 12, scale: 2 }),
   currency: text('currency').notNull().default('PKR'),
   status: text('status').notNull().default('active'),
   stockQuantity: integer('stock_quantity').notNull().default(0),
   heroImageUrl: text('hero_image_url'),
-  sourceProductId: integer('source_product_id'),
-  sourceUrl: text('source_url'),
-  sourceImageUrl: text('source_image_url'),
-  sourcePayload: jsonb('source_payload').$type<Record<string, unknown> | null>(),
-  sourceContentHash: text('source_content_hash'),
+  colors: jsonb('colors').$type<{ name: string; hex: string }[]>().notNull().default([]),
+  diameterMm: numeric('diameter_mm', { precision: 4, scale: 2 }),
+  baseCurve: numeric('base_curve', { precision: 4, scale: 2 }),
+  waterContent: text('water_content'),
+  material: text('material'),
+  wearDuration: text('wear_duration'),
+  packContents: text('pack_contents'),
+  powerType: text('power_type'),
+  powerRange: text('power_range'),
+  uvProtection: boolean('uv_protection').notNull().default(false),
+  features: jsonb('features').$type<string[]>().notNull().default([]),
+  specs: jsonb('specs').$type<{ label: string; value: string }[]>().notNull().default([]),
+  usageInstructions: text('usage_instructions'),
+  isFeatured: boolean('is_featured').notNull().default(false),
+  seoTitle: text('seo_title'),
+  seoDescription: text('seo_description'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const storeProductReviews = pgTable('store_product_reviews', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  productId: uuid('product_id').notNull().references(() => storeProducts.id, { onDelete: 'cascade' }),
+  author: text('author').notNull(),
+  rating: integer('rating').notNull(),
+  title: text('title'),
+  body: text('body').notNull(),
+  isApproved: boolean('is_approved').notNull().default(false),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const storeProductRelations = pgTable('store_product_relations', {
+  productId: uuid('product_id').notNull().references(() => storeProducts.id, { onDelete: 'cascade' }),
+  relatedProductId: uuid('related_product_id').notNull().references(() => storeProducts.id, { onDelete: 'cascade' }),
+  sortOrder: integer('sort_order').notNull().default(0),
 }, (table) => ({
-  sourceProductUnique: uniqueIndex('store_products_source_product_id_unique')
-    .on(table.sourceProductId)
-    .where(sql`${table.sourceProductId} IS NOT NULL`),
+  pk: primaryKey({ columns: [table.productId, table.relatedProductId] }),
 }))
 
 export const storeCustomers = pgTable('store_customers', {
@@ -89,16 +135,6 @@ export const storeProductAssets = pgTable('store_product_assets', {
     .on(table.productId, table.blobPathname),
 }))
 
-export const storeProductCategories = pgTable('store_product_categories', {
-  sourceCategoryId: integer('source_category_id').primaryKey(),
-  name: text('name').notNull(),
-  slug: text('slug').notNull().unique(),
-  parentSourceCategoryId: integer('parent_source_category_id').notNull().default(0),
-  sourceProductCount: integer('source_product_count').notNull().default(0),
-  isActive: boolean('is_active').notNull().default(true),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-})
-
 export const storeProductVariants = pgTable('store_product_variants', {
   id: uuid('id').defaultRandom().primaryKey(),
   productId: uuid('product_id').notNull().references(() => storeProducts.id, { onDelete: 'cascade' }),
@@ -117,24 +153,6 @@ export const storeProductVariants = pgTable('store_product_variants', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   skuUnique: uniqueIndex('store_product_variants_sku_unique').on(table.sku).where(sql`${table.sku} IS NOT NULL`),
-}))
-
-export const storeProductImportRuns = pgTable('store_product_import_runs', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  nextPage: integer('next_page').notNull().default(1),
-  importedCount: integer('imported_count').notNull().default(0),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-})
-
-export const storeProductImportItems = pgTable('store_product_import_items', {
-  runId: uuid('run_id').notNull().references(() => storeProductImportRuns.id, { onDelete: 'cascade' }),
-  sourceProductId: integer('source_product_id').notNull(),
-  slug: text('slug').notNull(),
-  payload: jsonb('payload').$type<Record<string, unknown>>().notNull(),
-}, (table) => ({
-  sourceProductPrimary: primaryKey({ columns: [table.runId, table.sourceProductId] }),
-  slugUnique: unique('store_product_import_items_run_slug_unique').on(table.runId, table.slug),
 }))
 
 export const storeActivityEvents = pgTable('store_activity_events', {

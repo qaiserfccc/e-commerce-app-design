@@ -14,13 +14,34 @@ export interface Product {
   name: string
   slug: string
   description: string | null
+  shortDescription?: string | null
   category: string
+  categoryId?: string
+  categoryPath?: string
+  brand?: string | null
+  sku?: string | null
   price: string
+  compareAtPrice?: string | null
   currency: string
   status: string
   stockQuantity: number
   heroImageUrl: string | null
-  sourceCategoryIds?: number[]
+  colors?: { name: string; hex: string }[]
+  diameterMm?: string | null
+  baseCurve?: string | null
+  waterContent?: string | null
+  material?: string | null
+  wearDuration?: string | null
+  packContents?: string | null
+  powerType?: string | null
+  powerRange?: string | null
+  uvProtection?: boolean
+  features?: string[]
+  specs?: { label: string; value: string }[]
+  usageInstructions?: string | null
+  isFeatured?: boolean
+  ratingAvg?: number | null
+  ratingCount?: number
   createdAt: string
   updatedAt: string
   assets?: ProductAsset[]
