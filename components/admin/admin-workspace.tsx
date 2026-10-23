@@ -397,17 +397,25 @@ function ProductRow({
     event.preventDefault()
     const formElement = event.currentTarget
     const form = new FormData(formElement)
-    if (!(form.get('file') instanceof File)) return
+    const files = form.getAll('file').filter((value): value is File => value instanceof File && value.size > 0)
+    if (files.length === 0) return
+    const altText = String(form.get('altText') ?? '')
     setUploading(true)
     setAssetMessage('')
     try {
-      const response = await fetch(`/api/admin/products/${product.id}/assets`, { method: 'POST', body: form })
-      const result = await response.json()
-      if (response.status === 401) window.dispatchEvent(new Event('admin-session-expired'))
-      if (!response.ok) throw new Error(result.error || 'Product media upload failed.')
+      for (const file of files) {
+        const fileForm = new FormData()
+        fileForm.append('file', file)
+        fileForm.append('altText', altText)
+        const response = await fetch(`/api/admin/products/${product.id}/assets`, { method: 'POST', body: fileForm })
+        const result = await response.json()
+        if (response.status === 401) window.dispatchEvent(new Event('admin-session-expired'))
+        if (!response.ok) throw new Error(result.error || `Product media upload failed for ${file.name}.`)
+      }
       await Promise.all([globalMutate('/api/admin/products'), globalMutate('/api/products'), globalMutate(`/api/products/${product.slug}`)])
       formElement.reset()
       onRefresh()
+      setAssetMessage(`${files.length} ${files.length === 1 ? 'file' : 'files'} uploaded successfully.`)
     } catch (uploadError) {
       setAssetMessage(errorMessage(uploadError))
     } finally {
@@ -479,7 +487,7 @@ function ProductRow({
         <div className="mt-4 border-t border-[#1c1c1a]/10 pt-4">
           {assetMessage && <div className="mb-3"><Notice>{assetMessage}</Notice></div>}
           {canEdit && <form onSubmit={upload} className="flex flex-wrap items-end gap-3">
-            <Field label="Image or video file"><input name="file" type="file" required accept="image/jpeg,image/png,image/webp,image/avif,video/mp4,video/webm" className="max-w-full text-xs file:mr-3 file:rounded-full file:border-0 file:bg-[#f2f1ed] file:px-3 file:py-2" /></Field>
+            <Field label="Images or videos"><input name="file" type="file" required multiple accept="image/jpeg,image/png,image/webp,image/avif,video/mp4,video/webm" className="max-w-full text-xs file:mr-3 file:rounded-full file:border-0 file:bg-[#f2f1ed] file:px-3 file:py-2" /></Field>
             <Field label="Alternative text or caption"><input name="altText" maxLength={500} placeholder={product.name} className={`${inputClass} min-w-48`} /></Field>
             <button type="submit" disabled={uploading} className={primaryButton}>{uploading && <LoaderCircle size={15} className="animate-spin" />}{uploading ? 'Uploading…' : 'Upload media'}</button>
           </form>}
