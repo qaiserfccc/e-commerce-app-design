@@ -10,6 +10,7 @@ import {
   storeOrders,
   storeProductVariants,
   storeProducts,
+  storeSettings,
 } from '@/lib/db/schema'
 import { CustomerAuthError, getCustomerSession, getOrderReceipt, type StoreCustomerSession } from '@/lib/auth/store-customer'
 
@@ -81,6 +82,13 @@ function parseMoneyCents(value: unknown, field: string) {
 
 function moneyString(cents: number) {
   return `${Math.floor(cents / 100)}.${String(cents % 100).padStart(2, '0')}`
+}
+
+async function getDeliveryFeeCents(subtotalCents: number) {
+  const [row] = await db.select().from(storeSettings).where(eq(storeSettings.key, 'delivery_rules')).limit(1)
+  const rules = Array.isArray(row?.value) ? row.value as Array<{ minSubtotal: string; maxSubtotal: string | null; fee: string }> : []
+  const match = rules.find((rule) => subtotalCents >= parseMoneyCents(rule.minSubtotal, 'Delivery minimum') && (!rule.maxSubtotal || subtotalCents <= parseMoneyCents(rule.maxSubtotal, 'Delivery maximum')))
+  return match ? parseMoneyCents(match.fee, 'Delivery fee') : 0
 }
 
 function parseOrderInput(value: unknown) {
@@ -317,6 +325,8 @@ async function submitCodOrderImpl(value: unknown) {
         }
       }
 
+      const shippingCents = await getDeliveryFeeCents(subtotalCents)
+      if (subtotalCents > maxMoneyCents - shippingCents) throw new CheckoutError('The order total is outside the supported range.')
       const [order] = await tx
         .insert(storeOrders)
         .values({
@@ -327,9 +337,9 @@ async function submitCodOrderImpl(value: unknown) {
           paymentMethod: 'cash_on_delivery',
           shippingFeeConfirmed: false,
           subtotal: moneyString(subtotalCents),
-          shippingTotal: '0.00',
+          shippingTotal: moneyString(shippingCents),
           taxTotal: '0.00',
-          total: moneyString(subtotalCents),
+          total: moneyString(subtotalCents + shippingCents),
           currency,
           shippingAddress: input.shippingAddress,
         })
