@@ -30,7 +30,7 @@ export function CartPage() {
   }
 
   return (
-    <main className="mx-auto max-w-[1320px] px-4 py-10 sm:px-6">
+    <main className="w-full py-10">
       <h1 className="text-3xl font-bold tracking-tight text-[#033473] sm:text-4xl">Cart</h1>
       <div className="mt-8 grid items-start gap-10 lg:grid-cols-[1fr_380px]">
         <ul className="divide-y divide-[#033473]/10 border-y border-[#033473]/10">

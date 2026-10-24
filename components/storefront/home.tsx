@@ -53,11 +53,11 @@ export async function Home() {
   return (
     <main className="overflow-hidden bg-[#fbfdff] text-slate-950">
       {hero.length > 0 && (
-        <section aria-label="Promotions" className="mx-auto max-w-[1280px] px-4 pt-4 sm:px-8 sm:pt-6">
-          <div className="relative overflow-hidden rounded-[1.5rem] bg-slate-950 shadow-[0_25px_70px_-35px_rgba(6,182,212,.8)]">
+        <section aria-label="Promotions" className="w-full pt-4 sm:pt-6">
+          <div className="relative w-full overflow-hidden bg-slate-950 shadow-[0_25px_70px_-35px_rgba(6,182,212,.8)]">
             <div className="pointer-events-none absolute -right-20 -top-32 size-80 rounded-full bg-sky-400/30 blur-3xl" />
             <Slider label="Promotional banners" autoPlayMs={6000} dots>
-              {hero.map((banner) => <Link key={banner.id} href={banner.href ?? '/shop'} className="block"><Img src={banner.imageUrl} alt={banner.title} className="mx-auto h-auto max-h-[420px] w-full object-contain" /></Link>)}
+              {hero.map((banner) => <Link key={banner.id} href={banner.href ?? '/shop'} className="block"><Img src={banner.imageUrl} alt={banner.title} className="block h-auto max-h-[min(62vw,560px)] w-full object-contain" /></Link>)}
             </Slider>
           </div>
         </section>
