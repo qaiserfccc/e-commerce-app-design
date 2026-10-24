@@ -71,7 +71,7 @@ export function CatalogView({ categoryPath }: { categoryPath?: string }) {
   )
 
   return (
-    <main className="w-full pb-16 pt-8 lg:pt-12">
+    <main className="mx-auto max-w-[1320px] px-4 pb-16 pt-8 sm:px-6 lg:pt-12">
       <nav aria-label="Breadcrumb" className="text-xs text-[#4a5568]">
         <Link href="/" className="hover:underline">Home</Link> / <Link href="/shop" className="hover:underline">Shop</Link>
         {ancestors.map((item) => <span key={item.id}> / <Link href={categoryHref(item)} className="hover:underline">{titleCase(item.name)}</Link></span>)}

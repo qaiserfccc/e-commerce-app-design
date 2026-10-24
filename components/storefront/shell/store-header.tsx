@@ -67,7 +67,7 @@ export function StoreHeader({ chrome }: { chrome: SiteChrome }) {
   return (
     <header className="sticky top-0 z-40 border-b border-[#080b10]/10 bg-white/90 shadow-[0_8px_30px_rgba(8,11,16,0.08)] backdrop-blur-xl">
       <div className="bg-[#075985] text-white">
-        <div className="flex h-9 w-full items-center justify-between gap-4 px-4 text-xs sm:px-6">
+        <div className="mx-auto flex h-9 max-w-[1320px] items-center justify-between gap-4 px-4 text-xs sm:px-6">
           <p className="hidden min-w-0 items-center gap-2 truncate sm:flex" aria-live="off">
             {headerPhone && <a href={`tel:${headerPhone.replace(/[^\d+]/g, '')}`} className="inline-flex items-center gap-1.5 hover:underline"><Phone size={12} aria-hidden="true" />{headerPhone}</a>}
             {headerEmail && <a href={`mailto:${headerEmail}`} className="ml-3 hover:underline">{headerEmail}</a>}
@@ -77,7 +77,7 @@ export function StoreHeader({ chrome }: { chrome: SiteChrome }) {
         </div>
       </div>
 
-      <div className="flex h-16 w-full items-center gap-3 px-4 sm:px-6">
+      <div className="mx-auto flex h-16 max-w-[1320px] items-center gap-3 px-4 sm:px-6">
         <button type="button" aria-label="Open menu" aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)} className="grid size-10 place-items-center rounded-full hover:bg-[#e0f2fe] lg:hidden">
           <Menu size={22} aria-hidden="true" />
         </button>
@@ -102,7 +102,7 @@ export function StoreHeader({ chrome }: { chrome: SiteChrome }) {
       {searchOpen && <div className="border-t border-[#033473]/10 px-4 py-3 lg:hidden">{searchForm}</div>}
 
       <nav aria-label="Main" className="hidden border-t border-[#033473]/10 lg:block">
-        <ul className="flex w-full items-center gap-1 px-6 text-sm font-semibold">
+        <ul className="mx-auto flex max-w-[1320px] items-center gap-1 px-6 text-sm font-semibold">
           <li><Link href="/" className="block px-3 py-3 hover:text-[#0a4fa3]">Home</Link></li>
           <li><Link href="/shop" className="block px-3 py-3 hover:text-[#0a4fa3]">Shop all</Link></li>
           {roots.slice(0, 8).map((root) => <DesktopItem key={root.id} node={root} tree={tree} top />)}

@@ -114,7 +114,7 @@ export function StorefrontProductDetail({
   }
 
   return (
-    <main className="storefront-sky min-h-[calc(100vh-72px)] w-full bg-white pb-24 text-[#152a52]">
+    <main className="storefront-sky mx-auto min-h-[calc(100vh-72px)] max-w-[1320px] bg-white px-5 pb-24 text-[#152a52] sm:px-8 lg:px-12">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#152a52]/20 py-4">
         <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1 text-xs">
           <Link href="/" className="hover:underline">Home</Link> /

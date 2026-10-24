@@ -23,7 +23,7 @@ export function StoreFooter({ chrome }: { chrome: SiteChrome }) {
   const facebook = storeContact.facebook || contact.facebook || ''
   return (
     <footer className="mt-24 border-t border-[#79d8ff]/30 bg-[#080b10] text-white shadow-[0_-18px_50px_rgba(8,11,16,0.16)]">
-      <div className="grid w-full gap-10 px-4 py-14 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
+      <div className="mx-auto grid max-w-[1320px] gap-10 px-4 py-14 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
         {footer.brands?.length ? <LinkColumn title="Brands" links={footer.brands.map((name) => [name, `/product-category/${slug(name)}`])} /> : null}
         <div className="space-y-10">
           {footer.collections?.length ? <LinkColumn title="More collections" links={footer.collections.map((name) => [name, `/product-category/${slug(name)}`])} /> : null}
@@ -45,7 +45,7 @@ export function StoreFooter({ chrome }: { chrome: SiteChrome }) {
         </div>
       </div>
       <div className="border-t border-white/15">
-        <p className="w-full px-4 py-5 text-xs text-white/70 sm:px-6">
+        <p className="mx-auto max-w-[1320px] px-4 py-5 text-xs text-white/70 sm:px-6">
           Copyright {new Date().getFullYear()} © {STORE_NAME} All Rights Reserved. Contact lenses are medical devices; follow the guidance of your eye-care professional.
         </p>
       </div>
