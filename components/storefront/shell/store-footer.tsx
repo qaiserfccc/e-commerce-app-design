@@ -8,7 +8,7 @@ const slug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').re
 function LinkColumn({ title, links }: { title: string; links: string[][] }) {
   return (
     <nav aria-label={title}>
-      <h2 className="text-sm font-bold uppercase tracking-widest">{title}</h2>
+      <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-[#79d8ff]">{title}</h2>
       <ul className="mt-4 space-y-2.5 text-sm text-white/80">
         {links.map(([label, href]) => <li key={label}><Link href={href} className="hover:text-white hover:underline">{label}</Link></li>)}
       </ul>
@@ -22,7 +22,7 @@ export function StoreFooter({ chrome }: { chrome: SiteChrome }) {
   const email = storeContact.email || contact.email || ''
   const facebook = storeContact.facebook || contact.facebook || ''
   return (
-    <footer className="mt-20 border-t border-cyan-200/60 bg-gradient-to-br from-[#075985] via-[#0e7490] to-[#164e63] text-white shadow-[0_-12px_40px_rgba(8,145,178,0.12)]">
+    <footer className="mt-24 border-t border-[#79d8ff]/30 bg-[#080b10] text-white shadow-[0_-18px_50px_rgba(8,11,16,0.16)]">
       <div className="mx-auto grid max-w-[1320px] gap-10 px-4 py-14 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
         {footer.brands?.length ? <LinkColumn title="Brands" links={footer.brands.map((name) => [name, `/product-category/${slug(name)}`])} /> : null}
         <div className="space-y-10">

@@ -65,7 +65,7 @@ export function CartPage() {
             )
           })}
         </ul>
-        <aside className="rounded-2xl bg-[#eef3fa] p-6">
+        <aside className="rounded-2xl border border-[#080b10]/10 bg-[#edf8fc] p-6 shadow-[var(--storefront-shadow)] lg:sticky lg:top-32">
           <h2 className="text-lg font-bold text-[#033473]">Cart totals</h2>
           <dl className="mt-5 space-y-3 text-sm">
             <div className="flex justify-between"><dt>Items</dt><dd>{count}</dd></div>

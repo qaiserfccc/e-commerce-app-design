@@ -156,24 +156,24 @@
 /* ISK Lenses colour system stays light for consistent product-color reproduction. */
 :root {
   color-scheme: light;
-  --background: #f5fbff;
-  --foreground: #102a43;
-  --card: rgba(255, 255, 255, 0.82);
-  --card-foreground: #123b5d;
-  --popover: rgba(255, 255, 255, 0.96);
-  --popover-foreground: #123b5d;
-  --primary: #0891b2;
+  --background: #f6fbff;
+  --foreground: #080b10;
+  --card: #ffffff;
+  --card-foreground: #080b10;
+  --popover: #ffffff;
+  --popover-foreground: #080b10;
+  --primary: #080b10;
   --primary-foreground: #ffffff;
-  --secondary: #dff7ff;
+  --secondary: #dff5ff;
   --secondary-foreground: #075985;
-  --muted: #eaf8fd;
-  --muted-foreground: #58758a;
-  --accent: #f59e0b;
-  --accent-foreground: #713f12;
+  --muted: #edf8fc;
+  --muted-foreground: #587080;
+  --accent: #79d8ff;
+  --accent-foreground: #06283a;
   --destructive: #dc4b5c;
-  --border: #b8e4f2;
-  --input: #a9d9e8;
-  --ring: #22c1dc;
+  --border: #c5e7f3;
+  --input: #acd8e7;
+  --ring: #35b9ee;
   --chart-1: #0ea5e9;
   --chart-2: #38bdf8;
   --chart-3: #fb7185;
@@ -274,13 +274,14 @@
   color-scheme: light;
   color: #0a0a0a;
   background-color: #ffffff !important;
-  --isk-sky-ink: #033473;
-  --isk-sky: #033473;
-  --isk-sky-bright: #dce8f8;
+  --isk-sky-ink: #080b10;
+  --isk-sky: #075985;
+  --isk-sky-bright: #79d8ff;
   --isk-sky-paper: #ffffff;
-  --isk-sky-mist: #eef3fa;
-  --isk-sky-muted: #4a5568;
-  --isk-sky-line: #b8c7dc;
+  --isk-sky-mist: #edf8fc;
+  --isk-sky-muted: #526b79;
+  --isk-sky-line: #b8deec;
+  --storefront-shadow: 0 18px 50px rgba(8, 11, 16, 0.09);
 }
 
 .storefront-sky [class~="bg-[#edf4ef]"] { background-color: var(--isk-sky-paper) !important; }

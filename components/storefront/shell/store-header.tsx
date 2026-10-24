@@ -65,14 +65,14 @@ export function StoreHeader({ chrome }: { chrome: SiteChrome }) {
   )
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/70 bg-white/75 shadow-[0_8px_30px_rgba(8,145,178,0.10)] backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-[#080b10]/10 bg-white/90 shadow-[0_8px_30px_rgba(8,11,16,0.08)] backdrop-blur-xl">
       <div className="bg-[#075985] text-white">
         <div className="mx-auto flex h-9 max-w-[1320px] items-center justify-between gap-4 px-4 text-xs sm:px-6">
           <p className="hidden min-w-0 items-center gap-2 truncate sm:flex" aria-live="off">
             {headerPhone && <a href={`tel:${headerPhone.replace(/[^\d+]/g, '')}`} className="inline-flex items-center gap-1.5 hover:underline"><Phone size={12} aria-hidden="true" />{headerPhone}</a>}
             {headerEmail && <a href={`mailto:${headerEmail}`} className="ml-3 hover:underline">{headerEmail}</a>}
           </p>
-          <p className="flex-1 truncate text-center font-medium">{announcements.length > 0 && `⚡ ${announcements[announcement % announcements.length]}`}</p>
+          <p className="flex-1 truncate text-center font-semibold tracking-wide">{announcements.length > 0 && announcements[announcement % announcements.length]}</p>
           <Link href="/contact-us" className="hidden shrink-0 hover:underline sm:inline">Contact us</Link>
         </div>
       </div>
