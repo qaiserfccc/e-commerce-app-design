@@ -14,7 +14,7 @@ export function ProductCard({ product }: { product: Product }) {
   const href = `/product/${product.slug}`
 
   return (
-    <article className="group flex min-w-0 flex-col">
+    <article className="group flex min-w-0 flex-col rounded-2xl border border-[#080b10]/10 bg-white p-2 shadow-[0_10px_30px_rgba(8,11,16,0.05)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_42px_rgba(8,11,16,0.12)]">
       <Link href={href} aria-label={`View ${product.name}`} className="relative block overflow-hidden rounded-xl bg-[#eef3fa]">
         <StorefrontProductImage
           sources={getProductImageSources(product)}
