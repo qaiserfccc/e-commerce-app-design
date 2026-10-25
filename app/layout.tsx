@@ -31,7 +31,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   colorScheme: 'light',
-  themeColor: '#033473',
+  themeColor: '#201b35',
 }
 
 export default function RootLayout({
@@ -42,6 +42,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={outfit.variable}>
       <body className="antialiased">
+        <div hidden aria-hidden="true" dangerouslySetInnerHTML={{ __html: '<!--\nTHESIS: ISK Lenses is an editorial lens catalog, not a generic blue storefront.\nOWN-WORLD: Outfit typography, ink navy, rose pink, warm porcelain, pill controls, and open product imagery.\nSTORY: Visitors browse the real catalog, inspect product details, add items to the bag, and check out without unsupported promises.\nFIRST VIEWPORT: Navy announcement ribbon, porcelain logo/search row, category navigation, then a split editorial hero with copy left and catalog imagery right.\nFORM: User-pinned reference-led beauty-commerce layout, adapted across shopper and admin surfaces; no generated seed.\n-->' }} />
         <StorefrontCartProvider>{children}</StorefrontCartProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

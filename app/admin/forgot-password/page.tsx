@@ -5,7 +5,7 @@ export const metadata: Metadata = { title: 'Reset admin password', robots: { ind
 
 export default function ForgotPasswordPage() {
   return (
-    <main className="grid min-h-screen place-items-center bg-[#f7f6f2] px-4 py-10">
+    <main className="admin-theme grid min-h-screen place-items-center bg-[#fffaf8] px-4 py-10">
       <ForgotPasswordForm />
     </main>
   )
