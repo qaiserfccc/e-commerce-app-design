@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react'
 
 interface SliderProps {
   label: string
@@ -17,6 +17,7 @@ export function Slider({ label, children, autoPlayMs = 0, dots = false, arrows =
   const track = useRef<HTMLUListElement>(null)
   const paused = useRef(false)
   const [index, setIndex] = useState(0)
+  const [isPlaying, setIsPlaying] = useState(autoPlayMs > 0)
   const count = children.length
 
   function go(next: number) {
@@ -29,12 +30,12 @@ export function Slider({ label, children, autoPlayMs = 0, dots = false, arrows =
   }
 
   useEffect(() => {
-    if (!autoPlayMs || count < 2) return
+    if (!autoPlayMs || count < 2 || !isPlaying) return
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (reduce) return
     const id = window.setInterval(() => { if (!paused.current) go(index + 1) }, autoPlayMs)
     return () => window.clearInterval(id)
-  })
+  }, [autoPlayMs, count, index, isPlaying])
 
   function onScroll() {
     const el = track.current
@@ -71,6 +72,16 @@ export function Slider({ label, children, autoPlayMs = 0, dots = false, arrows =
             <button key={i} type="button" aria-label={`Go to slide ${i + 1}`} aria-current={i === index} onClick={() => go(i)} className={`size-2.5 rounded-full ${i === index ? 'bg-white' : 'bg-white/50'}`} />
           ))}
         </div>
+      )}
+      {autoPlayMs > 0 && count > 1 && (
+        <button
+          type="button"
+          aria-label={isPlaying ? 'Pause autoplay' : 'Resume autoplay'}
+          onClick={() => setIsPlaying((playing) => !playing)}
+          className="absolute bottom-1.5 right-3 grid size-9 place-items-center rounded-full bg-white/90 text-[#201b35] shadow-sm transition hover:bg-white sm:bottom-2 sm:right-5"
+        >
+          {isPlaying ? <Pause size={15} aria-hidden="true" /> : <Play size={15} aria-hidden="true" />}
+        </button>
       )}
     </div>
   )
