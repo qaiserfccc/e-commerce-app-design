@@ -4,7 +4,6 @@ import { Slider } from '@/components/storefront/home/slider'
 import { SectionProgress } from '@/components/storefront/home/section-progress'
 import { TrendingProducts } from '@/components/storefront/home/trending-products'
 import { StoreFooter } from '@/components/storefront/shell/store-footer'
-import { getProductImageSources } from '@/lib/storefront/product-image-sources'
 import type { BannerContent, HomeContent, SiteChrome } from '@/lib/content-types'
 import { getCatalog } from '@/lib/data/catalog'
 import { getHomeContent } from '@/lib/data/site-content'
@@ -55,8 +54,19 @@ function Heading({
 
 const demoSlides = [
   {
+    image: '/isk-home/banner-deals.webp',
+    alt: 'Sample portrait wearing hazel-gray contact lenses',
+    label: 'EXPLORE COLOR LENSES',
+    title: 'Find your shade',
+    accent: 'Own the mood.',
+    body: 'Browse colored lens listings and review the details shown for each product.',
+    action: 'Browse color lenses',
+    href: '/shop?q=colored',
+    tone: 'light',
+  },
+  {
     image: '/isk-home/banner-featured.webp',
-    alt: 'Illustrative contact lens packaging and case on a stone pedestal',
+    alt: 'Sample contact lens packaging and case on a stone pedestal',
     label: 'FEATURED COLLECTION',
     title: 'Bella Elite',
     accent: 'Glow Collection',
@@ -66,19 +76,8 @@ const demoSlides = [
     tone: 'light',
   },
   {
-    image: '/isk-home/banner-deals.webp',
-    alt: 'Illustrative portrait artwork for colored contact lenses',
-    label: 'COLOR COLLECTION',
-    title: 'Find a shade',
-    accent: 'that feels like you.',
-    body: 'Browse lens listings by color, brand, and the details that matter to you.',
-    action: 'Browse the catalog',
-    href: '/shop',
-    tone: 'light',
-  },
-  {
     image: '/isk-home/banner-news.webp',
-    alt: 'Illustrative portrait with green-colored contact lenses',
+    alt: 'Sample portrait wearing green contact lenses',
     label: 'EXPLORE THE CATALOG',
     title: 'A different look',
     accent: 'starts here.',
@@ -98,12 +97,12 @@ const demoMoods = [
 ]
 
 const demoShades = [
-  { name: 'Gray', image: '/isk-home/eye-gray.webp' },
-  { name: 'Hazel', image: '/isk-home/eye-hazel.webp' },
-  { name: 'Brown', image: '/isk-home/eye-brown.webp' },
-  { name: 'Green', image: '/isk-home/eye-green.webp' },
-  { name: 'Blue', image: '/isk-home/eye-blue.webp' },
-  { name: 'Violet', image: '/isk-home/eye-violet.webp' },
+  { name: 'Gray', image: '/isk-home/eye-gray.webp', color: '#a3abb3' },
+  { name: 'Hazel', image: '/isk-home/eye-hazel.webp', color: '#b39150' },
+  { name: 'Brown', image: '/isk-home/eye-brown.webp', color: '#96613a' },
+  { name: 'Green', image: '/isk-home/eye-green.webp', color: '#43885c' },
+  { name: 'Blue', image: '/isk-home/eye-blue.webp', color: '#6aa8d3' },
+  { name: 'Violet', image: '/isk-home/eye-violet.webp', color: '#9478bc' },
 ]
 
 const demoBrands = ['Bella', 'Hydrocor', 'Dahab', 'FreshLook', 'Solotica', 'Desio', 'Anesthesia', 'Lenseme', 'Acuvue', 'Bausch+Lomb', 'Air Optix', 'Victoria']
@@ -134,28 +133,15 @@ async function loadHome(): Promise<{ content: HomeContent | null; products: Prod
   }
 }
 
-function Hero({ banners }: { banners: BannerContent[] }) {
-  const slides = banners.length > 0 ? banners : demoSlides
+function Hero() {
   return (
     <section id="hero" aria-label="Featured lens collections" className="isk-home-section relative h-full min-h-full snap-start snap-always">
       <Slider label="Featured lens collections" autoPlayMs={5500} dots arrows editorialControls fullHeight>
-        {slides.map((slide, index) => {
-          const demo = 'label' in slide
-          const image = demo ? slide.image : slide.imageUrl
-          const alt = demo ? slide.alt : slide.title
-          const title = demo ? slide.title : slide.title
-          const accent = demo ? slide.accent : undefined
-          const body = slide.body
-          const href = slide.href ?? '/shop'
-          const dark = demo && slide.tone === 'dark'
+        {demoSlides.map((slide, index) => {
+          const dark = slide.tone === 'dark'
           return (
-            <div key={demo ? slide.image : slide.id} className="relative h-full min-h-full overflow-hidden bg-[#f7e8ed]">
-              <Img
-                src={image}
-                alt={alt}
-                priority={index === 0}
-                className="absolute inset-0 size-full object-cover object-[68%_center]"
-              />
+            <div key={slide.image} className="relative h-full min-h-full overflow-hidden bg-[#f7e8ed]">
+              <Img src={slide.image} alt={slide.alt} priority={index === 0} className="absolute inset-0 size-full object-cover object-[68%_center]" />
               <div
                 aria-hidden="true"
                 className="absolute inset-0"
@@ -169,23 +155,23 @@ function Hero({ banners }: { banners: BannerContent[] }) {
                 <div className={`max-w-[650px] ${dark ? 'text-white' : 'text-[#201b35]'}`}>
                   <span className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold uppercase tracking-[0.15em] ${dark ? 'bg-white/15 text-white' : 'bg-[#fae9ef] text-[#b83f6b]'}`}>
                     <span className="size-2 rounded-full bg-[#d45782]" aria-hidden="true" />
-                    {demo ? slide.label : 'FEATURED COLLECTION'}
+                    {slide.label}
                   </span>
                   <h1 className="mt-7 text-balance text-[clamp(3.5rem,7.6vw,7rem)] font-extrabold leading-[0.91] tracking-[-0.065em]">
-                    {title}
-                    {accent && <span className={`mt-2 block font-serif text-[.76em] font-normal italic leading-[1.02] tracking-[-0.04em] ${dark ? 'text-[#f3b4c9]' : 'text-[#e84f88]'}`}>{accent}</span>}
+                    {slide.title}
+                    <span className={`mt-2 block font-serif text-[.76em] font-normal italic leading-[1.02] tracking-[-0.04em] ${dark ? 'text-[#f3b4c9]' : 'text-[#e84f88]'}`}>{slide.accent}</span>
                   </h1>
-                  {body && <p className={`mt-6 max-w-xl text-lg leading-8 sm:text-xl ${dark ? 'text-white/85' : 'text-[#686371]'}`}>{body}</p>}
+                  <p className={`mt-6 max-w-xl text-lg leading-8 sm:text-xl ${dark ? 'text-white/85' : 'text-[#686371]'}`}>{slide.body}</p>
                   <div className="mt-8 flex flex-wrap items-center gap-3">
-                    <Link href={href} className="group inline-flex min-h-14 items-center gap-3 rounded-full bg-[#b83f6b] px-7 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-[#201b35]">
-                      {demo ? slide.action : 'Explore this collection'}
+                    <Link href={slide.href} className="group inline-flex min-h-14 items-center gap-3 rounded-full bg-[#b83f6b] px-7 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-[#201b35]">
+                      {slide.action}
                       <ArrowRight className="transition-transform group-hover:translate-x-1" size={18} aria-hidden="true" />
                     </Link>
                     <Link href="#brands" className={`inline-flex min-h-14 items-center rounded-full border px-7 text-sm font-bold transition ${dark ? 'border-white/35 text-white hover:bg-white/10' : 'border-[#201b35]/25 text-[#201b35] hover:bg-white/70'}`}>
                       Compare options
                     </Link>
                   </div>
-                  {demo && <p className={`mt-5 text-xs ${dark ? 'text-white/75' : 'text-[#686371]'}`}>Illustrative campaign image · sample homepage content</p>}
+                  <p className={`mt-5 text-xs ${dark ? 'text-white/75' : 'text-[#686371]'}`}>Sample campaign content · illustrative image</p>
                 </div>
               </div>
             </div>
@@ -204,10 +190,6 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
   const { content, products } = await loadHome()
   const banners = (placement: BannerContent['placement']) => content?.banners.filter((banner) => banner.placement === placement) ?? []
   const h = content?.headings ?? {}
-  const heroBanners = banners('hero')
-  const moodBanners = banners('promo')
-  const brandBanners = banners('brand')
-  const whyBanners = banners('why_choose')
   const serviceBanners = banners('service')
   const brandNames = [...new Set(products.map((product) => product.brand?.trim()).filter((brand): brand is string => Boolean(brand)))]
   const hasRealProducts = products.length > 0
@@ -219,11 +201,9 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
     { id: 'sample-3', body: 'Use this space for genuine feedback from shoppers.', author: 'Preview content' },
     { id: 'sample-4', body: 'Reviews are not included in this design preview.', author: 'Preview content' },
   ]
-  const contactImage = products[0] ? getProductImageSources(products[0])[0] : undefined
-
   return (
     <main id="isk-home-scroll" tabIndex={0} aria-label="Homepage sections, scroll to explore" className="isk-home snap-y snap-mandatory overflow-x-hidden overflow-y-auto overscroll-y-contain scroll-smooth bg-[#fffaf8] text-[#201b35]">
-      <Hero banners={heroBanners} />
+      <Hero />
       <SectionProgress />
 
       <section id="bloom" aria-labelledby="bloom-heading" className="isk-home-section min-h-full snap-start snap-always bg-[#fbefe5] py-8 sm:py-10 lg:flex lg:items-center">
@@ -244,15 +224,13 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
           </div>
           <ul className="grid grid-cols-2 items-center gap-x-3 gap-y-5 sm:grid-cols-3 lg:grid-cols-5 lg:gap-4">
             {demoMoods.map((mood, index) => {
-              const banner = moodBanners[index]
-              const image = banner?.imageUrl ?? mood.image
               return (
-                <li key={banner?.id ?? mood.name} className={index % 2 ? 'lg:translate-y-12' : ''}>
-                  <Link href={banner?.href ?? `/shop?q=${encodeURIComponent(mood.name)}`} className="group block text-center">
+                <li key={mood.name} className={index % 2 ? 'lg:translate-y-12' : ''}>
+                  <Link href={`/shop?q=${encodeURIComponent(mood.name)}`} className="group block text-center">
                     <span className="relative block overflow-hidden rounded-[50%] bg-[#e9d8cf]">
-                      <Img src={image} alt={banner?.title ?? `Sample ${mood.name.toLowerCase()} lens look`} className="aspect-[.68/1] w-full object-cover transition duration-500 group-hover:scale-[1.04]" />
+                      <Img src={mood.image} alt={`Sample ${mood.name.toLowerCase()} lens look`} className="aspect-[.68/1] w-full object-cover transition duration-500 group-hover:scale-[1.04]" />
                     </span>
-                    <span className={`mt-3 block text-base font-bold ${index === 0 ? 'text-[#d45782]' : 'text-[#201b35]'}`}>{banner?.title ?? mood.name}</span>
+                    <span className={`mt-3 block text-base font-bold ${index === 0 ? 'text-[#d45782]' : 'text-[#201b35]'}`}>{mood.name}</span>
                   </Link>
                 </li>
               )
@@ -261,7 +239,7 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
         </div>
       </section>
 
-      <section id="brands" aria-labelledby="brands-heading" className="isk-home-section min-h-full snap-start snap-always bg-[#fae9ef] py-8 sm:py-10 lg:flex lg:items-center">
+      <section id="brands" aria-labelledby="brands-heading" className="isk-home-section min-h-full snap-start snap-always bg-[#fffaf8] py-8 sm:py-10 lg:flex lg:items-center">
         <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-8 lg:px-12">
           <Heading
             id="brands-heading"
@@ -272,18 +250,10 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
             href="/shop"
             hrefLabel="View all brands"
           />
-          <ul className="mt-8 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-            {brandBanners.length > 0 ? brandBanners.slice(0, 12).map((brand) => (
-              <li key={brand.id}>
-                <Link href={brand.href ?? `/shop?q=${encodeURIComponent(brand.title)}`} className="group flex min-h-28 flex-col justify-center rounded-3xl border border-[#201b35]/10 bg-[#fffaf8]/65 px-4 py-3 transition-colors hover:border-[#d45782] hover:bg-white sm:min-h-32">
-                  <Img src={brand.imageUrl} alt="" className="mb-2 h-8 max-w-32 object-contain object-left" />
-                  <span className={`text-lg text-[#201b35] group-hover:text-[#b83f6b] ${brandWordmarkClass(brand.title)}`}>{brand.title}</span>
-                  {brand.body && <span className="mt-1 line-clamp-1 text-xs text-[#686371]">{brand.body}</span>}
-                </Link>
-              </li>
-            )) : (brandNames.length ? brandNames : demoBrands).slice(0, 12).map((brand) => (
+          <ul className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 lg:gap-4">
+            {(brandNames.length ? brandNames : demoBrands).slice(0, 12).map((brand) => (
               <li key={brand}>
-                <Link href={`/shop?q=${encodeURIComponent(brand)}`} className="group flex min-h-28 flex-col justify-center rounded-3xl border border-[#201b35]/10 bg-[#fffaf8]/65 px-4 py-3 transition-colors hover:border-[#d45782] hover:bg-white sm:min-h-32">
+                <Link href={`/shop?q=${encodeURIComponent(brand)}`} className="group flex min-h-28 flex-col justify-center rounded-3xl border border-[#e6dce1] bg-white px-4 py-3 transition-colors hover:border-[#d45782] sm:min-h-32">
                   <span className={`text-lg text-[#201b35] group-hover:text-[#b83f6b] ${brandWordmarkClass(brand)}`}>{brand}</span>
                   <span className="mt-1 text-xs text-[#686371]">Browse listings</span>
                 </Link>
@@ -293,7 +263,7 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
         </div>
       </section>
 
-      <section id="shades" aria-labelledby="shades-heading" className="isk-home-section min-h-full snap-start snap-always bg-[#fffaf8] py-8 sm:py-10 lg:flex lg:items-center">
+      <section id="shades" aria-labelledby="shades-heading" className="isk-home-section min-h-full snap-start snap-always bg-[#f6eeea] py-8 sm:py-10 lg:flex lg:items-center">
         <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-8 lg:px-12">
           <Heading
             id="shades-heading"
@@ -308,10 +278,14 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
             {demoShades.map((shade) => (
               <li key={shade.name}>
                 <Link href={`/shop?q=${encodeURIComponent(shade.name)}`} className="group block text-center">
-                  <span className="relative block overflow-hidden rounded-full bg-[#fae9ef]">
-                    <Img src={shade.image} alt={`Illustrative ${shade.name.toLowerCase()} eye image`} className="aspect-square w-full object-cover transition duration-500 group-hover:scale-105" />
-                    <span className="absolute inset-x-2 bottom-2 rounded-full bg-white/95 px-2 py-1.5 text-center text-xs font-semibold text-[#201b35] sm:inset-x-3 sm:bottom-3 sm:py-2 sm:text-sm">{shade.name}</span>
+                  <span className="block overflow-hidden rounded-full border-[5px] border-white bg-white shadow-[0_3px_8px_rgba(32,27,53,0.12)]">
+                    <Img src={shade.image} alt={`Sample close-up of a ${shade.name.toLowerCase()} contact lens`} className="aspect-square w-full object-cover transition duration-500 group-hover:scale-105" />
                   </span>
+                  <span className="mt-4 flex items-center justify-center gap-2 text-base font-bold text-[#201b35] sm:text-lg">
+                    <span aria-hidden="true" className="size-3 rounded-full ring-2 ring-white" style={{ backgroundColor: shade.color }} />
+                    {shade.name}
+                  </span>
+                  <span className="mt-1 block text-sm text-[#686371]">Explore shade</span>
                 </Link>
               </li>
             ))}
@@ -355,18 +329,19 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
           </div>
           <ul className="grid grid-cols-2 gap-x-5 sm:grid-cols-3">
             {[
-              ['Colored lenses', 'Explore color listings', 'colored'],
-              ['Transparent', 'Browse clear lens listings', 'transparent'],
-              ['Toric', 'Browse toric listings', 'toric'],
-              ['Daily wear', 'Check product wear details', 'daily'],
-              ['Monthly wear', 'Check product wear details', 'monthly'],
+              ['Colored lenses', 'Explore color lens listings', 'colored'],
+              ['Daily disposable', 'Browse lens listings', 'daily'],
+              ['Monthly', 'Browse lens listings', 'monthly'],
+              ['3 & 6 months', 'Browse lens listings', 'extended-wear'],
+              ['Yearly', 'Browse lens listings', 'yearly'],
+              ['Toric', 'Explore toric lens listings', 'toric'],
               ['Solutions & care', 'Browse care information', 'solutions'],
             ].map(([title, body, query], index) => (
-              <li key={title} className={index === 0 ? 'col-span-2 sm:col-span-1 sm:row-span-2' : ''}>
+              <li key={title} className={index === 0 ? 'col-span-2 sm:col-span-1 sm:row-span-3' : ''}>
                 {index === 0 ? (
                   <Link href={`/shop?q=${encodeURIComponent(query)}`} className="group relative flex min-h-64 h-full flex-col justify-end overflow-hidden rounded-3xl bg-[#201b35] p-6 text-white sm:min-h-0">
-                    <Img src="/isk-home/mood-hazel.webp" alt="" className="absolute inset-0 size-full object-cover opacity-55 transition duration-500 group-hover:scale-105" />
-                    <span className="absolute inset-0 bg-gradient-to-t from-[#201b35] via-[#201b35]/20 to-transparent" />
+                    <Img src="/isk-home/mood-hazel.webp" alt="" priority className="absolute inset-0 size-full object-cover opacity-65 transition duration-500 group-hover:scale-105" />
+                    <span aria-hidden="true" className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(32,27,53,.96), rgba(32,27,53,.22) 48%, transparent)' }} />
                     <span className="relative text-xs font-bold uppercase tracking-[0.16em] text-[#f3b4c9]">Featured category</span>
                     <span className="relative mt-2 text-2xl font-bold">{title}</span>
                     <span className="relative mt-1 text-sm text-white/85">{body}</span>
@@ -413,12 +388,6 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
                 </li>
               )
             })}
-            {whyBanners.map((item) => (
-              <li key={item.id} className="flex gap-4 bg-[#201b35] p-4 sm:p-5">
-                <Img src={item.imageUrl} alt="" className="size-12 shrink-0 object-contain" />
-                <div><h3 className="font-semibold text-white">{item.title}</h3>{item.body && <p className="mt-1 text-sm leading-6 text-white/70">{item.body}</p>}</div>
-              </li>
-            ))}
           </ul>
         </div>
       </section>
@@ -432,14 +401,17 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
             accent={h.reviews ? undefined : 'the community'}
             description={h.reviewsIntro ?? (hasRealReviews ? undefined : 'Sample cards show where customer feedback can appear. They are not real reviews.')}
           />
-          <div className="mt-8 space-y-4">
+          <div className="isk-review-rows mt-8 space-y-4">
             {[0, 1].map((row) => (
               <div key={row} className="isk-review-track group flex w-max gap-4 py-1" dir={row ? 'rtl' : 'ltr'}>
                 {[...reviewCards, ...reviewCards].map((review, index) => (
-                  <figure key={`${row}-${review.id}-${index}`} dir="ltr" className="flex w-[min(78vw,360px)] flex-col justify-between rounded-2xl bg-[#fffaf8] p-5 sm:w-[360px] sm:p-6">
+                  <figure key={`${row}-${review.id}-${index}`} dir="ltr" className="flex min-h-56 w-[min(84vw,440px)] flex-col rounded-[2rem] border border-[#e6dce1] bg-white p-5 sm:w-[440px] sm:p-6">
                     {!hasRealReviews && <span className="text-xs font-bold uppercase tracking-[0.16em] text-[#b83f6b]">Sample content</span>}
-                    <blockquote className="mt-3 font-serif text-xl leading-snug text-[#201b35] sm:text-2xl">“{review.body}”</blockquote>
-                    <figcaption className="mt-5 text-sm font-semibold text-[#686371]">{hasRealReviews ? review.author : 'Preview card · not a customer review'}</figcaption>
+                    <blockquote className="mt-5 flex-1 text-lg leading-8 text-[#201b35] sm:text-xl">“{review.body}”</blockquote>
+                    <figcaption className="mt-5 flex items-center gap-3 border-t border-[#e6dce1] pt-4 text-sm font-semibold text-[#686371]">
+                      <span aria-hidden="true" className="grid size-10 shrink-0 place-items-center rounded-full bg-[#fbefe5] font-bold text-[#b83f6b]">{hasRealReviews ? review.author.slice(0, 1) : 'S'}</span>
+                      <span>{hasRealReviews ? review.author : 'Sample preview · not a customer review'}</span>
+                    </figcaption>
                   </figure>
                 ))}
               </div>
@@ -448,33 +420,33 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
         </div>
       </section>
 
-      <section id="contact" aria-labelledby="contact-heading" className="isk-home-section min-h-full snap-start snap-always bg-[#fffaf8] pt-8 sm:pt-10 lg:flex lg:flex-col lg:justify-center">
+      <section id="contact" aria-labelledby="contact-heading" className="isk-home-contact-section isk-home-section min-h-full snap-start snap-always bg-[#fffaf8] pt-8 sm:pt-10 lg:flex lg:flex-col lg:justify-center">
         <div className="mx-auto flex w-full max-w-[1440px] flex-col px-4 sm:px-8 lg:px-12">
-          <div className="relative grid flex-1 items-center overflow-hidden rounded-[2rem] bg-[#fae9ef] md:grid-cols-[1.4fr_1fr]">
-            <div className="relative z-10 p-6 sm:p-9 lg:p-12">
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#b83f6b]">ISK Lenses · Contact</p>
-              <h2 id="contact-heading" className="mt-4 max-w-2xl text-4xl font-extrabold leading-[0.96] tracking-[-0.055em] sm:text-5xl">
-                {h.serviceTitle ?? 'Not sure which shade suits you?'}{!h.serviceTitle && <><br /><em className="font-serif font-normal text-[#d45782]">Ask us.</em></>}
+          <div className="isk-home-contact-card relative grid min-h-[390px] flex-1 items-center gap-2 overflow-hidden rounded-[2rem] bg-[#d45782] md:grid-cols-[1.3fr_1fr]">
+            <div className="isk-home-contact-copy relative z-10 p-6 sm:p-9 lg:p-12">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/80">ISK Lenses · Contact</p>
+              <h2 id="contact-heading" className="isk-home-contact-heading mt-4 max-w-2xl text-4xl font-extrabold leading-[0.96] tracking-[-0.055em] text-white sm:text-5xl">
+                {h.serviceTitle ?? 'Not sure which shade suits you?'}{!h.serviceTitle && <><br /><em className="font-serif font-normal text-white">Ask our team.</em></>}
               </h2>
-              <p className="mt-4 max-w-xl text-base leading-7 text-[#686371]">
+              <p className="isk-home-contact-body mt-4 max-w-xl text-base leading-7 text-white/90">
                 {h.serviceBody ?? 'Contact the ISK Lenses team with questions about the catalog or an order. For lens suitability and fit, consult your eye-care professional.'}
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <Link href="/contact-us" className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#d45782] px-6 text-sm font-bold text-white transition hover:bg-[#b83f6b]">
+                <Link href="/contact-us" className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#201b35] px-6 text-sm font-bold text-white transition hover:bg-white hover:text-[#201b35]">
                   Contact the store <ArrowRight size={17} aria-hidden="true" />
                 </Link>
                 {serviceBanners.slice(1, 3).map((item) => (
-                  <Link key={item.id} href={item.href ?? '/contact-us'} className="inline-flex min-h-12 items-center rounded-full border border-[#201b35]/20 px-5 text-sm font-semibold text-[#201b35] hover:bg-white">{item.title}</Link>
+                  <Link key={item.id} href={item.href ?? '/contact-us'} className="inline-flex min-h-12 items-center rounded-full border border-white/60 px-5 text-sm font-semibold text-white transition hover:bg-white/15">{item.title}</Link>
                 ))}
               </div>
             </div>
-            <div className="relative min-h-48 md:absolute md:inset-y-0 md:right-0 md:w-[42%]">
+            <div className="relative z-10 flex min-h-[260px] items-center justify-center px-6 pb-6 md:min-h-0 md:px-8 md:py-10">
               <Img
-                src={serviceBanners[0]?.imageUrl ?? contactImage ?? '/isk-home/mood-gray.webp'}
-                alt={serviceBanners[0]?.title ?? products[0]?.name ?? 'Illustrative contact lens image'}
-                className="absolute inset-0 size-full object-cover"
+                src="/isk-home/mood-gray.webp"
+                alt="Sample portrait holding contact lens packaging"
+                className="isk-home-contact-portrait aspect-[1.05/1] w-full max-w-[400px] rounded-[50%] object-cover object-top"
               />
-              {!serviceBanners[0] && !contactImage && <SampleNotice />}
+              <SampleNotice />
             </div>
           </div>
           <StoreFooter chrome={chrome} homepage />

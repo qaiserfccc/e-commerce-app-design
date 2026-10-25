@@ -9,7 +9,7 @@ function LinkColumn({ title, links, homepage = false }: { title: string; links: 
   return (
     <nav aria-label={title}>
       <h2 className={`text-xs font-bold uppercase tracking-[0.2em] ${homepage ? 'text-[#b83f6b]' : 'text-[#f3b4c9]'}`}>{title}</h2>
-        <ul className={`mt-4 space-y-2.5 text-sm ${homepage ? 'text-[#686371]' : 'text-white/75'}`}>
+        <ul className={`mt-4 space-y-2.5 text-sm ${homepage ? 'isk-home-footer-links text-[#686371]' : 'text-white/75'}`}>
           {links.map(([label, href]) => <li key={label}><Link href={href} className={`transition-colors hover:underline ${homepage ? 'hover:text-[#201b35]' : 'hover:text-white'}`}>{label}</Link></li>)}
       </ul>
     </nav>
@@ -35,7 +35,7 @@ export function StoreFooter({ chrome, homepage = false }: { chrome: SiteChrome; 
       ['Shipping & returns', '/shipping-returns'],
     ]
     return (
-      <footer className="mt-6 border-t border-[#e6dce1] bg-[#fffaf8] text-[#201b35]">
+      <footer className="isk-home-footer mt-6 border-t border-[#e6dce1] bg-[#fffaf8] text-[#201b35]">
         <div className="grid gap-7 py-6 sm:grid-cols-2 md:grid-cols-4">
           <div className="sm:col-span-2 md:col-span-1">
             <span className="isk-reference-brand text-xl font-extrabold">ISK <em>Lenses</em></span>

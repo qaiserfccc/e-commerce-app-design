@@ -251,6 +251,116 @@
   .isk-review-track { animation: none; }
 }
 
+@media (max-height: 800px) and (min-width: 768px) {
+  #trending,
+  #reviews {
+    padding-block: 1rem !important;
+  }
+
+  #trending .mb-8 {
+    margin-bottom: 0.75rem;
+  }
+
+  #trending h2 {
+    font-size: clamp(2rem, 4vh, 2.5rem);
+  }
+
+  #trending [role='tablist'] {
+    margin-bottom: 0.75rem;
+  }
+
+  #trending .isk-trending-image {
+    height: min(34svh, 220px);
+    min-height: 0;
+  }
+
+  #trending .isk-trending-image > img {
+    height: 100%;
+    aspect-ratio: auto;
+  }
+
+  #trending .isk-trending-image-inner {
+    height: 100%;
+    aspect-ratio: auto;
+  }
+
+  #reviews .isk-review-rows {
+    margin-top: 1rem;
+  }
+
+  #reviews .isk-review-rows > div {
+    gap: 0.5rem;
+    padding-block: 0;
+  }
+
+  #reviews figure {
+    height: clamp(155px, 28svh, 190px);
+    min-height: 0;
+    padding: 1rem;
+  }
+
+  #reviews blockquote {
+    margin-top: 0.65rem;
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+
+  #reviews figcaption {
+    margin-top: 0.65rem;
+    padding-top: 0.65rem;
+  }
+
+  .isk-home-contact-section {
+    padding-top: 0.5rem !important;
+  }
+
+  .isk-home-contact-card {
+    height: clamp(290px, 45svh, 350px);
+    min-height: 0 !important;
+  }
+
+  .isk-home-contact-copy {
+    padding: 1.5rem !important;
+  }
+
+  .isk-home-contact-heading {
+    margin-top: 0.75rem;
+    font-size: clamp(2rem, 3.2svh, 2.5rem);
+  }
+
+  .isk-home-contact-body {
+    margin-top: 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.35rem;
+  }
+
+  .isk-home-contact-copy > div {
+    margin-top: 0.75rem;
+  }
+
+  .isk-home-contact-portrait {
+    width: min(26svh, 260px);
+    max-width: 260px;
+  }
+
+  .isk-home-footer {
+    margin-top: 0.75rem !important;
+  }
+
+  .isk-home-footer > div:first-child {
+    gap: 1rem;
+    padding-block: 1rem;
+  }
+
+  .isk-home-footer nav ul {
+    margin-top: 0.5rem;
+  }
+
+  .isk-home-footer-links > li + li {
+    margin-top: 0.25rem !important;
+  }
+}
+
 .display-type {
   font-family: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
   font-weight: 700;

@@ -10,8 +10,8 @@ import { formatPrice, isAvailable, lowestPrice } from '@/lib/store-config'
 
 const sampleProducts = [
   { name: 'Sterling Gray', image: '/isk-home/eye-gray.webp', query: 'gray' },
-  { name: 'Mel Honey', image: '/isk-home/eye-hazel.webp', query: 'honey' },
-  { name: 'Hazel Gold', image: '/isk-home/eye-brown.webp', query: 'hazel' },
+  { name: 'Mel Honey', image: '/isk-home/eye-brown.webp', query: 'honey' },
+  { name: 'Hazel Gold', image: '/isk-home/eye-hazel.webp', query: 'hazel' },
   { name: 'Hidrocor Verde', image: '/isk-home/eye-green.webp', query: 'green' },
 ]
 
@@ -62,7 +62,7 @@ export function TrendingProducts({ products }: { products: Product[] }) {
         <ul role="tabpanel" className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4 lg:gap-x-6">
           {sampleProducts.map((product) => (
             <li key={product.name} className="group min-w-0">
-              <Link href={`/shop?q=${encodeURIComponent(product.query)}`} aria-label={`Browse sample ${product.name} lenses`} className="relative block overflow-hidden rounded-2xl bg-[#fae9ef]">
+              <Link href={`/shop?q=${encodeURIComponent(product.query)}`} aria-label={`Browse sample ${product.name} lenses`} className="isk-trending-image relative block overflow-hidden rounded-2xl bg-[#fae9ef]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={product.image} alt={`Illustrative ${product.name} eye image`} loading="lazy" decoding="async" className="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
                 <span className="absolute left-3 top-3 rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold text-[#201b35]">Sample item</span>
@@ -90,11 +90,11 @@ function CatalogProduct({ product }: { product: Product }) {
 
   return (
     <li className="group min-w-0">
-      <Link href={href} aria-label={`View ${product.name}`} className="relative block overflow-hidden rounded-2xl bg-[#fae9ef]">
+      <Link href={href} aria-label={`View ${product.name}`} className="isk-trending-image relative block overflow-hidden rounded-2xl bg-[#fae9ef]">
         <StorefrontProductImage
           sources={getProductImageSources(product)}
           alt={product.name}
-          className="aspect-square"
+          className="isk-trending-image-inner aspect-square"
           imageClassName="size-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
           fallback={<div role="img" aria-label={`No product image is available for ${product.name}`} className="product-placeholder size-full" />}
         />
