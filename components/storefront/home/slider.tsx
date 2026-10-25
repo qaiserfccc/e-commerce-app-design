@@ -11,10 +11,11 @@ interface SliderProps {
   arrows?: boolean
   perView?: string
   editorialControls?: boolean
+  fullHeight?: boolean
 }
 
 // Scroll-snap carousel with optional autoplay, arrows and dots.
-export function Slider({ label, children, autoPlayMs = 0, dots = false, arrows = true, perView = 'basis-full', editorialControls = false }: SliderProps) {
+export function Slider({ label, children, autoPlayMs = 0, dots = false, arrows = true, perView = 'basis-full', editorialControls = false, fullHeight = false }: SliderProps) {
   const track = useRef<HTMLUListElement>(null)
   const paused = useRef(false)
   const [index, setIndex] = useState(0)
@@ -47,7 +48,7 @@ export function Slider({ label, children, autoPlayMs = 0, dots = false, arrows =
 
   return (
     <div
-      className="relative"
+      className={`relative ${fullHeight ? 'h-full' : ''}`}
       role="region"
       aria-roledescription="carousel"
       aria-label={label}
@@ -56,9 +57,9 @@ export function Slider({ label, children, autoPlayMs = 0, dots = false, arrows =
       onFocus={() => { paused.current = true }}
       onBlur={() => { paused.current = false }}
     >
-      <ul ref={track} onScroll={onScroll} className="flex snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <ul ref={track} onScroll={onScroll} className={`flex snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${fullHeight ? 'h-full' : ''}`}>
         {children.map((child, i) => (
-          <li key={i} className={`${perView} shrink-0 snap-start`} aria-roledescription="slide" aria-label={`${i + 1} of ${count}`}>{child}</li>
+          <li key={i} className={`${perView} ${fullHeight ? 'h-full' : ''} shrink-0 snap-start`} aria-roledescription="slide" aria-label={`${i + 1} of ${count}`}>{child}</li>
         ))}
       </ul>
       {arrows && count > 1 && (

@@ -29,7 +29,7 @@ export function TrendingProducts({ products }: { products: Product[] }) {
     <div>
       <div className="mb-7 flex flex-wrap gap-2 border-b border-[#e6dce1]" role="tablist" aria-label="Filter products">
         {([
-          ['catalog', 'All lenses'],
+          ['catalog', 'Featured'],
           ['new', 'New arrivals'],
           ['reduced', 'On sale'],
         ] as const).map(([value, label]) => (

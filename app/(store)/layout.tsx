@@ -1,5 +1,6 @@
 import { getSiteChrome } from '@/lib/data/site-content'
 import { StoreFooter } from '@/components/storefront/shell/store-footer'
+import { StoreFooterRoute } from '@/components/storefront/shell/store-footer-route'
 import { StoreHeader } from '@/components/storefront/shell/store-header'
 
 export default async function StoreLayout({ children }: { children: React.ReactNode }) {
@@ -9,7 +10,7 @@ export default async function StoreLayout({ children }: { children: React.ReactN
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-white focus:px-4 focus:py-2">Skip to content</a>
       <StoreHeader chrome={chrome} />
       <div id="main">{children}</div>
-      <StoreFooter chrome={chrome} />
+      <StoreFooterRoute><StoreFooter chrome={chrome} /></StoreFooterRoute>
     </div>
   )
 }

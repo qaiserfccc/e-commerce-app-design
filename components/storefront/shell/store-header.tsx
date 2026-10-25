@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { ChevronDown, Menu, Phone, Search, ShoppingBag, User, X } from 'lucide-react'
@@ -25,6 +25,7 @@ export function StoreHeader({ chrome }: { chrome: SiteChrome }) {
   const [query, setQuery] = useState('')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [announcement, setAnnouncement] = useState(0)
+  const headerRef = useRef<HTMLElement>(null)
   const announcementText = announcements.length > 0
     ? announcements[announcement % announcements.length]
     : 'Explore the ISK Lenses catalog'
@@ -45,6 +46,21 @@ export function StoreHeader({ chrome }: { chrome: SiteChrome }) {
     const id = window.setInterval(() => setAnnouncement((value) => (value + 1) % Math.max(announcements.length, 1)), 4000)
     return () => window.clearInterval(id)
   }, [announcements.length])
+
+  useEffect(() => {
+    const header = headerRef.current
+    if (!header) return
+    const updateHeight = () => {
+      document.documentElement.style.setProperty('--isk-header-height', `${header.getBoundingClientRect().height}px`)
+    }
+    updateHeight()
+    const observer = new ResizeObserver(updateHeight)
+    observer.observe(header)
+    return () => {
+      observer.disconnect()
+      document.documentElement.style.removeProperty('--isk-header-height')
+    }
+  }, [])
 
   function submitSearch(event: FormEvent) {
     event.preventDefault()
@@ -72,7 +88,7 @@ export function StoreHeader({ chrome }: { chrome: SiteChrome }) {
   )
 
   return (
-    <header className="sticky top-0 z-40 border-b border-[#e6dce1] bg-[#fffaf8]/95 shadow-[0_8px_30px_rgba(32,27,53,0.07)] backdrop-blur-xl">
+    <header ref={headerRef} className="sticky top-0 z-40 border-b border-[#e6dce1] bg-[#fffaf8]/95 shadow-[0_8px_30px_rgba(32,27,53,0.07)] backdrop-blur-xl">
       <div className="bg-[#201b35] text-white">
         {isHome ? (
           <div className="overflow-hidden">

@@ -216,8 +216,39 @@
   animation-play-state: paused;
 }
 
+@keyframes isk-review-marquee {
+  to { transform: translateX(-50%); }
+}
+
+.isk-home {
+  height: calc(100svh - var(--isk-header-height, 133px));
+  scrollbar-width: none;
+}
+
+.isk-home::-webkit-scrollbar {
+  display: none;
+}
+
+.isk-home-section {
+  scroll-margin: 0;
+}
+
+.isk-review-track {
+  animation: isk-review-marquee 56s linear infinite;
+}
+
+.isk-review-track[dir='rtl'] {
+  animation-direction: reverse;
+}
+
+.isk-review-track:hover,
+.isk-review-track:focus-within {
+  animation-play-state: paused;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .isk-marquee { animation: none; }
+  .isk-review-track { animation: none; }
 }
 
 .display-type {
