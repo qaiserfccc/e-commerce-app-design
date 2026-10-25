@@ -10,10 +10,11 @@ interface SliderProps {
   dots?: boolean
   arrows?: boolean
   perView?: string
+  editorialControls?: boolean
 }
 
 // Scroll-snap carousel with optional autoplay, arrows and dots.
-export function Slider({ label, children, autoPlayMs = 0, dots = false, arrows = true, perView = 'basis-full' }: SliderProps) {
+export function Slider({ label, children, autoPlayMs = 0, dots = false, arrows = true, perView = 'basis-full', editorialControls = false }: SliderProps) {
   const track = useRef<HTMLUListElement>(null)
   const paused = useRef(false)
   const [index, setIndex] = useState(0)
@@ -61,14 +62,26 @@ export function Slider({ label, children, autoPlayMs = 0, dots = false, arrows =
         ))}
       </ul>
       {arrows && count > 1 && (
-        <>
-          <button type="button" aria-label="Previous" onClick={() => go(index - 1)} className="absolute left-3 top-1/2 hidden size-11 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-[#033473] shadow hover:bg-white sm:grid"><ChevronLeft size={22} aria-hidden="true" /></button>
-          <button type="button" aria-label="Next" onClick={() => go(index + 1)} className="absolute right-3 top-1/2 hidden size-11 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-[#033473] shadow hover:bg-white sm:grid"><ChevronRight size={22} aria-hidden="true" /></button>
-        </>
+        editorialControls ? (
+          <div className="absolute bottom-6 right-5 flex items-center gap-3 sm:bottom-8 sm:right-8">
+            <button type="button" aria-label="Previous slide" onClick={() => go(index - 1)} className="grid size-11 place-items-center rounded-full border border-[#201b35]/30 text-[#201b35] transition hover:bg-white/80"><ChevronLeft size={20} aria-hidden="true" /></button>
+            <button type="button" aria-label="Next slide" onClick={() => go(index + 1)} className="grid size-11 place-items-center rounded-full border border-[#201b35]/30 text-[#201b35] transition hover:bg-white/80"><ChevronRight size={20} aria-hidden="true" /></button>
+          </div>
+        ) : (
+          <>
+            <button type="button" aria-label="Previous" onClick={() => go(index - 1)} className="absolute left-3 top-1/2 hidden size-11 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-[#033473] shadow hover:bg-white sm:grid"><ChevronLeft size={22} aria-hidden="true" /></button>
+            <button type="button" aria-label="Next" onClick={() => go(index + 1)} className="absolute right-3 top-1/2 hidden size-11 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-[#033473] shadow hover:bg-white sm:grid"><ChevronRight size={22} aria-hidden="true" /></button>
+          </>
+        )
       )}
       {dots && count > 1 && (
-        <div className="absolute inset-x-0 bottom-3 flex justify-center gap-2">
-          {children.map((_, i) => (
+        <div className={editorialControls ? 'absolute bottom-6 left-5 flex gap-4 sm:bottom-8 sm:left-8' : 'absolute inset-x-0 bottom-3 flex justify-center gap-2'}>
+          {children.map((_, i) => editorialControls ? (
+            <button key={i} type="button" aria-label={`Show slide ${i + 1}`} aria-current={i === index} onClick={() => go(i)} className="group flex flex-col items-start gap-2 py-1">
+              <span className={`relative block h-0.5 w-12 overflow-hidden rounded-full sm:w-16 ${i === index ? 'bg-[#e84f88]' : 'bg-[#201b35]/25'}`} />
+              <span className="text-xs font-medium text-[#201b35]/70">{String(i + 1).padStart(2, '0')}</span>
+            </button>
+          ) : (
             <button key={i} type="button" aria-label={`Go to slide ${i + 1}`} aria-current={i === index} onClick={() => go(i)} className={`size-2.5 rounded-full ${i === index ? 'bg-white' : 'bg-white/50'}`} />
           ))}
         </div>
@@ -78,7 +91,7 @@ export function Slider({ label, children, autoPlayMs = 0, dots = false, arrows =
           type="button"
           aria-label={isPlaying ? 'Pause autoplay' : 'Resume autoplay'}
           onClick={() => setIsPlaying((playing) => !playing)}
-          className="absolute bottom-1.5 right-3 grid size-9 place-items-center rounded-full bg-white/90 text-[#201b35] shadow-sm transition hover:bg-white sm:bottom-2 sm:right-5"
+          className={`absolute grid size-9 place-items-center rounded-full text-[#201b35] shadow-sm transition hover:bg-white ${editorialControls ? 'bottom-7 right-[7.25rem] sm:bottom-9 sm:right-[8.25rem]' : 'bottom-1.5 right-3 bg-white/90 sm:bottom-2 sm:right-5'}`}
         >
           {isPlaying ? <Pause size={15} aria-hidden="true" /> : <Play size={15} aria-hidden="true" />}
         </button>

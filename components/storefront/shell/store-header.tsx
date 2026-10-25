@@ -16,6 +16,7 @@ export function StoreHeader({ chrome }: { chrome: SiteChrome }) {
   const headerEmail = storeContact.email || chrome.contact.email || ''
   const router = useRouter()
   const pathname = usePathname()
+  const isHome = pathname === '/'
   const { count } = useStorefrontCart()
   const { categories } = useStorefrontCategories()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -27,6 +28,9 @@ export function StoreHeader({ chrome }: { chrome: SiteChrome }) {
   const announcementText = announcements.length > 0
     ? announcements[announcement % announcements.length]
     : 'Explore the ISK Lenses catalog'
+  const marqueeItems = announcements.length > 0
+    ? announcements
+    : ['Explore the ISK Lenses catalog', 'Browse lenses by brand and shade', 'Review product details before choosing']
 
   const tree = useMemo(() => categoryTree(categories), [categories])
   const roots = tree.get('root') ?? []
@@ -70,17 +74,33 @@ export function StoreHeader({ chrome }: { chrome: SiteChrome }) {
   return (
     <header className="sticky top-0 z-40 border-b border-[#e6dce1] bg-[#fffaf8]/95 shadow-[0_8px_30px_rgba(32,27,53,0.07)] backdrop-blur-xl">
       <div className="bg-[#201b35] text-white">
-        <div className="mx-auto flex h-9 max-w-[1440px] items-center justify-between gap-4 px-4 text-xs sm:px-6">
-          <p className="hidden min-w-0 items-center gap-2 truncate text-white/80 sm:flex" aria-live="off">
-            {headerPhone && <a href={`tel:${headerPhone.replace(/[^\d+]/g, '')}`} className="inline-flex items-center gap-1.5 hover:underline"><Phone size={12} aria-hidden="true" />{headerPhone}</a>}
-            {headerEmail && <a href={`mailto:${headerEmail}`} className="ml-3 hover:underline">{headerEmail}</a>}
-          </p>
-          <p className="flex-1 truncate text-center font-semibold tracking-wide" aria-live="off">{announcementText}</p>
-          <Link href="/contact-us" className="hidden shrink-0 text-white/80 hover:text-white hover:underline sm:inline">Contact us</Link>
-        </div>
+        {isHome ? (
+          <div className="overflow-hidden">
+            <div role="region" aria-label={`Store announcements: ${marqueeItems.join(' · ')}`} className="isk-marquee flex h-9 w-max items-center text-xs font-medium tracking-wide">
+              {[0, 1, 2].map((copy) => (
+                <div key={copy} aria-hidden={copy > 0} className="flex shrink-0 items-center">
+                  {marqueeItems.map((item, index) => (
+                    <span key={`${copy}-${index}`} className="flex h-9 items-center gap-8 px-8">
+                      {item}<span aria-hidden="true" className="size-1.5 rotate-45 bg-[#e84f88]" />
+                    </span>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="mx-auto flex h-9 max-w-[1440px] items-center justify-between gap-4 px-4 text-xs sm:px-6">
+            <p className="hidden min-w-0 items-center gap-2 truncate text-white/80 sm:flex" aria-live="off">
+              {headerPhone && <a href={`tel:${headerPhone.replace(/[^\d+]/g, '')}`} className="inline-flex items-center gap-1.5 hover:underline"><Phone size={12} aria-hidden="true" />{headerPhone}</a>}
+              {headerEmail && <a href={`mailto:${headerEmail}`} className="ml-3 hover:underline">{headerEmail}</a>}
+            </p>
+            <p className="flex-1 truncate text-center font-semibold tracking-wide" aria-live="off">{announcementText}</p>
+            <Link href="/contact-us" className="hidden shrink-0 text-white/80 hover:text-white hover:underline sm:inline">Contact us</Link>
+          </div>
+        )}
       </div>
 
-      <div className="mx-auto flex h-[76px] max-w-[1440px] items-center gap-3 px-4 sm:px-6">
+      <div className={`mx-auto flex max-w-[1440px] items-center gap-3 px-4 sm:px-6 ${isHome ? 'min-h-[76px] lg:min-h-[96px]' : 'h-[76px]'}`}>
         <button type="button" aria-label="Open menu" aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)} className="grid size-10 place-items-center rounded-full text-[#201b35] hover:bg-[#fae9ef] lg:hidden">
           <Menu size={22} aria-hidden="true" />
         </button>
@@ -90,9 +110,27 @@ export function StoreHeader({ chrome }: { chrome: SiteChrome }) {
           </span>
           <span className="isk-reference-brand text-2xl font-extrabold leading-none">ISK <em>Lenses</em></span>
         </Link>
-        <div className="mx-8 hidden max-w-xl flex-1 lg:block">{searchForm}</div>
+        <div className={`mx-8 max-w-xl flex-1 ${isHome ? 'hidden' : 'hidden lg:block'}`}>{searchForm}</div>
+        {isHome && (
+          <nav aria-label="Featured categories" className="mx-auto hidden lg:block">
+            <ul className="flex items-center gap-5 xl:gap-7">
+              {[
+                ['Colored Lenses', '/shop?q=colored'],
+                ['Brands', '#brands'],
+                ['Transparent', '/shop?q=transparent'],
+                ['Toric', '/shop?q=toric'],
+                ['Solutions', '/faq'],
+                ['Catalog', '/shop'],
+              ].map(([label, href], index) => (
+                <li key={label}>
+                  <Link href={href} className={`text-sm font-medium transition-colors hover:text-[#b83f6b] ${index === 5 ? 'text-[#d45782]' : 'text-[#201b35]'}`}>{label}</Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        )}
         <div className="ml-auto flex items-center gap-1.5">
-          <button type="button" aria-label="Search" aria-expanded={searchOpen} onClick={() => setSearchOpen((open) => !open)} className="grid size-10 place-items-center rounded-full text-[#201b35] hover:bg-[#fae9ef] lg:hidden">
+          <button type="button" aria-label="Search" aria-expanded={searchOpen} onClick={() => setSearchOpen((open) => !open)} className={`grid size-10 place-items-center rounded-full text-[#201b35] hover:bg-[#fae9ef] ${isHome ? '' : 'lg:hidden'}`}>
             <Search size={20} aria-hidden="true" />
           </button>
           <Link href="/my-account" aria-label="My account" className="grid size-10 place-items-center rounded-full text-[#201b35] hover:bg-[#fae9ef]">
@@ -106,14 +144,14 @@ export function StoreHeader({ chrome }: { chrome: SiteChrome }) {
       </div>
       {searchOpen && <div className="border-t border-[#e6dce1] px-4 py-3 lg:hidden">{searchForm}</div>}
 
-      <nav aria-label="Main" className="hidden border-t border-[#e6dce1] lg:block">
+      {!isHome && <nav aria-label="Main" className="hidden border-t border-[#e6dce1] lg:block">
         <ul className="mx-auto flex max-w-[1440px] items-center gap-1 px-6 text-xs font-semibold uppercase tracking-[0.12em]">
           <li><Link href="/" className="block px-3 py-3 hover:text-[#b83f6b]">Home</Link></li>
           <li><Link href="/shop" className="block px-3 py-3 hover:text-[#b83f6b]">Shop all</Link></li>
           {roots.slice(0, 8).map((root) => <DesktopItem key={root.id} node={root} tree={tree} top />)}
           <li className="ml-auto"><Link href="/blogs" className="block px-3 py-3 hover:text-[#b83f6b]">Blogs</Link></li>
         </ul>
-      </nav>
+      </nav>}
 
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">

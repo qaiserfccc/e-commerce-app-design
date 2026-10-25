@@ -203,6 +203,23 @@
   }
 }
 
+@keyframes isk-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-33.333%); }
+}
+
+.isk-marquee {
+  animation: isk-marquee 48s linear infinite;
+}
+
+.isk-marquee:hover {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .isk-marquee { animation: none; }
+}
+
 .display-type {
   font-family: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
   font-weight: 700;
