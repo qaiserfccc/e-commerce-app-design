@@ -1,33 +1,9 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
-import type { Product } from '@/lib/hooks/use-storefront-data'
+import { getProductImageSources } from '@/lib/storefront/product-image-sources'
 
-function trustedBlobUrl(blobUrl: string | null | undefined) {
-  if (!blobUrl) return null
-  try {
-    const url = new URL(blobUrl)
-    if (
-      url.protocol === 'https:' &&
-      (url.hostname.endsWith('.public.blob.vercel-storage.com') ||
-        url.hostname.endsWith('.blob.vercel-storage.com'))
-    ) {
-      return url.toString()
-    }
-  } catch {
-    return null
-  }
-  return null
-}
-
-export function getProductImageSources(product: Pick<Product, 'heroImageUrl' | 'assets'>) {
-  return [...new Set([
-    trustedBlobUrl(product.heroImageUrl),
-    ...(product.assets ?? [])
-      .filter((asset) => asset.mediaType === 'image')
-      .map((asset) => trustedBlobUrl(asset.blobUrl)),
-  ].filter((source): source is string => Boolean(source)))]
-}
+export { getProductImageSources }
 
 export function StorefrontProductImage({
   sources,
