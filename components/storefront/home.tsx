@@ -147,8 +147,8 @@ function Hero() {
                 className="absolute inset-0"
                 style={{
                   background: dark
-                    ? 'linear-gradient(90deg, rgba(32,27,53,.96) 0%, rgba(32,27,53,.80) 40%, rgba(32,27,53,.05) 100%)'
-                    : 'linear-gradient(90deg, rgba(255,250,248,.98) 0%, rgba(255,250,248,.88) 36%, rgba(255,250,248,.12) 76%, rgba(255,250,248,0) 100%)',
+                    ? 'linear-gradient(90deg, rgba(8,123,165,.96) 0%, rgba(8,123,165,.82) 40%, rgba(8,123,165,.05) 100%)'
+                    : 'linear-gradient(90deg, rgba(247,252,255,.98) 0%, rgba(247,252,255,.88) 36%, rgba(247,252,255,.12) 76%, rgba(247,252,255,0) 100%)',
                 }}
               />
               <div className="relative mx-auto flex h-full min-h-full max-w-[1440px] items-center px-5 pb-28 pt-12 sm:px-10 lg:px-12">
@@ -341,7 +341,7 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
                 {index === 0 ? (
                   <Link href={`/shop?q=${encodeURIComponent(query)}`} className="group relative flex min-h-64 h-full flex-col justify-end overflow-hidden rounded-3xl bg-[#201b35] p-6 text-white sm:min-h-0">
                     <Img src="/isk-home/mood-hazel.webp" alt="" priority className="absolute inset-0 size-full object-cover opacity-65 transition duration-500 group-hover:scale-105" />
-                    <span aria-hidden="true" className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(32,27,53,.96), rgba(32,27,53,.22) 48%, transparent)' }} />
+                    <span aria-hidden="true" className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(8,123,165,.96), rgba(8,123,165,.3) 48%, transparent)' }} />
                     <span className="relative text-xs font-bold uppercase tracking-[0.16em] text-[#f3b4c9]">Featured category</span>
                     <span className="relative mt-2 text-2xl font-bold">{title}</span>
                     <span className="relative mt-1 text-sm text-white/85">{body}</span>

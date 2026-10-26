@@ -1,72 +1,198 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-09T16:15:45.256Z",
+  "generatedAt": "2026-10-26T15:11:28.109Z",
   "title": "Design System: ISK Lenses",
   "extensions": {
     "colorMeta": {
       "ink-blue": {
         "role": "primary",
         "displayName": "Ink Blue",
-        "canonical": "oklch(29.2% 0.078 261.9)",
-        "tonalRamp": ["oklch(15% 0.078 261.9)", "oklch(25% 0.078 261.9)", "oklch(35% 0.078 261.9)", "oklch(45% 0.078 261.9)", "oklch(55% 0.078 261.9)", "oklch(65% 0.078 261.9)", "oklch(80% 0.078 261.9)", "oklch(95% 0.078 261.9)"]
+        "canonical": "oklch(33% 0.04 230)",
+        "tonalRamp": [
+          "oklch(15% 0.04 230)",
+          "oklch(25% 0.04 230)",
+          "oklch(35% 0.04 230)",
+          "oklch(45% 0.04 230)",
+          "oklch(55% 0.04 230)",
+          "oklch(65% 0.04 230)",
+          "oklch(80% 0.04 230)",
+          "oklch(95% 0.04 230)"
+        ]
       },
-      "optic-blue": {
+      "sky-blue": {
         "role": "secondary",
-        "displayName": "Optic Blue",
-        "canonical": "oklch(40.3% 0.124 258.1)",
-        "tonalRamp": ["oklch(15% 0.124 258.1)", "oklch(25% 0.124 258.1)", "oklch(35% 0.124 258.1)", "oklch(45% 0.124 258.1)", "oklch(55% 0.124 258.1)", "oklch(65% 0.124 258.1)", "oklch(80% 0.124 258.1)", "oklch(95% 0.124 258.1)"]
+        "displayName": "Sky Blue",
+        "canonical": "oklch(55% 0.11 230)",
+        "tonalRamp": [
+          "oklch(15% 0.11 230)",
+          "oklch(25% 0.11 230)",
+          "oklch(35% 0.11 230)",
+          "oklch(45% 0.11 230)",
+          "oklch(55% 0.11 230)",
+          "oklch(65% 0.11 230)",
+          "oklch(80% 0.11 230)",
+          "oklch(95% 0.11 230)"
+        ]
       },
-      "signal-chartreuse": {
-        "role": "tertiary",
-        "displayName": "Signal Chartreuse",
-        "canonical": "oklch(93.8% 0.205 122.4)",
-        "tonalRamp": ["oklch(15% 0.205 122.4)", "oklch(25% 0.205 122.4)", "oklch(35% 0.205 122.4)", "oklch(45% 0.205 122.4)", "oklch(55% 0.205 122.4)", "oklch(65% 0.205 122.4)", "oklch(80% 0.205 122.4)", "oklch(95% 0.205 122.4)"]
+      "deep-blue": {
+        "role": "action",
+        "displayName": "Deep Blue",
+        "canonical": "oklch(50% 0.11 230)",
+        "tonalRamp": [
+          "oklch(15% 0.11 230)",
+          "oklch(25% 0.11 230)",
+          "oklch(35% 0.11 230)",
+          "oklch(45% 0.11 230)",
+          "oklch(55% 0.11 230)",
+          "oklch(65% 0.11 230)",
+          "oklch(80% 0.11 230)",
+          "oklch(95% 0.11 230)"
+        ]
       },
-      "leaf-paper": {
-        "role": "neutral",
-        "displayName": "Leaf Paper",
-        "canonical": "oklch(96.0% 0.010 155.1)",
-        "tonalRamp": ["oklch(15% 0.010 155.1)", "oklch(25% 0.010 155.1)", "oklch(35% 0.010 155.1)", "oklch(45% 0.010 155.1)", "oklch(55% 0.010 155.1)", "oklch(65% 0.010 155.1)", "oklch(80% 0.010 155.1)", "oklch(95% 0.010 155.1)"]
+      "light-blue": {
+        "role": "accent",
+        "displayName": "Light Blue",
+        "canonical": "oklch(90% 0.045 220)",
+        "tonalRamp": [
+          "oklch(15% 0.045 220)",
+          "oklch(25% 0.045 220)",
+          "oklch(35% 0.045 220)",
+          "oklch(45% 0.045 220)",
+          "oklch(55% 0.045 220)",
+          "oklch(65% 0.045 220)",
+          "oklch(80% 0.045 220)",
+          "oklch(95% 0.045 220)"
+        ]
       },
-      "mist-green": {
-        "role": "neutral",
-        "displayName": "Mist Green",
-        "canonical": "oklch(91.7% 0.015 164.7)",
-        "tonalRamp": ["oklch(15% 0.015 164.7)", "oklch(25% 0.015 164.7)", "oklch(35% 0.015 164.7)", "oklch(45% 0.015 164.7)", "oklch(55% 0.015 164.7)", "oklch(65% 0.015 164.7)", "oklch(80% 0.015 164.7)", "oklch(95% 0.015 164.7)"]
+      "sky-surface": {
+        "role": "surface",
+        "displayName": "Sky Surface",
+        "canonical": "oklch(97% 0.015 220)",
+        "tonalRamp": [
+          "oklch(15% 0.015 220)",
+          "oklch(25% 0.015 220)",
+          "oklch(35% 0.015 220)",
+          "oklch(45% 0.015 220)",
+          "oklch(55% 0.015 220)",
+          "oklch(65% 0.015 220)",
+          "oklch(80% 0.015 220)",
+          "oklch(95% 0.015 220)"
+        ]
       },
-      "blue-gray": {
-        "role": "neutral",
-        "displayName": "Blue Gray",
-        "canonical": "oklch(40.0% 0.052 249.3)",
-        "tonalRamp": ["oklch(15% 0.052 249.3)", "oklch(25% 0.052 249.3)", "oklch(35% 0.052 249.3)", "oklch(45% 0.052 249.3)", "oklch(55% 0.052 249.3)", "oklch(65% 0.052 249.3)", "oklch(80% 0.052 249.3)", "oklch(95% 0.052 249.3)"]
+      "cool-paper": {
+        "role": "surface",
+        "displayName": "Cool Paper",
+        "canonical": "oklch(99% 0.008 220)",
+        "tonalRamp": [
+          "oklch(15% 0.008 220)",
+          "oklch(25% 0.008 220)",
+          "oklch(35% 0.008 220)",
+          "oklch(45% 0.008 220)",
+          "oklch(55% 0.008 220)",
+          "oklch(65% 0.008 220)",
+          "oklch(80% 0.008 220)",
+          "oklch(95% 0.008 220)"
+        ]
       },
-      "sage-line": {
-        "role": "neutral",
-        "displayName": "Sage Line",
-        "canonical": "oklch(82.3% 0.018 183.4)",
-        "tonalRamp": ["oklch(15% 0.018 183.4)", "oklch(25% 0.018 183.4)", "oklch(35% 0.018 183.4)", "oklch(45% 0.018 183.4)", "oklch(55% 0.018 183.4)", "oklch(65% 0.018 183.4)", "oklch(80% 0.018 183.4)", "oklch(95% 0.018 183.4)"]
+      "muted-copy": {
+        "role": "text-secondary",
+        "displayName": "Muted Copy",
+        "canonical": "oklch(50% 0.03 230)",
+        "tonalRamp": [
+          "oklch(15% 0.03 230)",
+          "oklch(25% 0.03 230)",
+          "oklch(35% 0.03 230)",
+          "oklch(45% 0.03 230)",
+          "oklch(55% 0.03 230)",
+          "oklch(65% 0.03 230)",
+          "oklch(80% 0.03 230)",
+          "oklch(95% 0.03 230)"
+        ]
       },
-      "alert-red": {
+      "rule": {
+        "role": "border",
+        "displayName": "Rule",
+        "canonical": "oklch(91% 0.02 220)",
+        "tonalRamp": [
+          "oklch(15% 0.02 220)",
+          "oklch(25% 0.02 220)",
+          "oklch(35% 0.02 220)",
+          "oklch(45% 0.02 220)",
+          "oklch(55% 0.02 220)",
+          "oklch(65% 0.02 220)",
+          "oklch(80% 0.02 220)",
+          "oklch(95% 0.02 220)"
+        ]
+      },
+      "input-border": {
+        "role": "border",
+        "displayName": "Input Border",
+        "canonical": "oklch(85% 0.025 220)",
+        "tonalRamp": [
+          "oklch(15% 0.025 220)",
+          "oklch(25% 0.025 220)",
+          "oklch(35% 0.025 220)",
+          "oklch(45% 0.025 220)",
+          "oklch(55% 0.025 220)",
+          "oklch(65% 0.025 220)",
+          "oklch(80% 0.025 220)",
+          "oklch(95% 0.025 220)"
+        ]
+      },
+      "error": {
         "role": "error",
-        "displayName": "Alert Red",
-        "canonical": "oklch(48.7% 0.155 18.3)",
-        "tonalRamp": ["oklch(15% 0.155 18.3)", "oklch(25% 0.155 18.3)", "oklch(35% 0.155 18.3)", "oklch(45% 0.155 18.3)", "oklch(55% 0.155 18.3)", "oklch(65% 0.155 18.3)", "oklch(80% 0.155 18.3)", "oklch(95% 0.155 18.3)"]
+        "displayName": "Error",
+        "canonical": "oklch(49% 0.155 18)",
+        "tonalRamp": [
+          "oklch(15% 0.155 18)",
+          "oklch(25% 0.155 18)",
+          "oklch(35% 0.155 18)",
+          "oklch(45% 0.155 18)",
+          "oklch(55% 0.155 18)",
+          "oklch(65% 0.155 18)",
+          "oklch(80% 0.155 18)",
+          "oklch(95% 0.155 18)"
+        ]
+      },
+      "rating": {
+        "role": "rating",
+        "displayName": "Rating",
+        "canonical": "oklch(58% 0.12 55)",
+        "tonalRamp": [
+          "oklch(15% 0.12 55)",
+          "oklch(25% 0.12 55)",
+          "oklch(35% 0.12 55)",
+          "oklch(45% 0.12 55)",
+          "oklch(55% 0.12 55)",
+          "oklch(65% 0.12 55)",
+          "oklch(80% 0.12 55)",
+          "oklch(95% 0.12 55)"
+        ]
       },
       "white": {
-        "role": "neutral",
+        "role": "surface",
         "displayName": "White",
-        "canonical": "oklch(100% 0.000 89.9)",
-        "tonalRamp": ["oklch(15% 0.000 89.9)", "oklch(25% 0.000 89.9)", "oklch(35% 0.000 89.9)", "oklch(45% 0.000 89.9)", "oklch(55% 0.000 89.9)", "oklch(65% 0.000 89.9)", "oklch(80% 0.000 89.9)", "oklch(95% 0.000 89.9)"]
+        "canonical": "oklch(100% 0 0)",
+        "tonalRamp": [
+          "oklch(15% 0 220)",
+          "oklch(25% 0 220)",
+          "oklch(35% 0 220)",
+          "oklch(45% 0 220)",
+          "oklch(55% 0 220)",
+          "oklch(65% 0 220)",
+          "oklch(80% 0 220)",
+          "oklch(95% 0 220)"
+        ]
       }
     },
     "typographyMeta": {
       "display": {
-        "displayName": "Compressed Display",
+        "displayName": "Editorial Display",
         "purpose": "Storefront proposition and major catalog headings."
       },
       "label": {
-        "displayName": "Index Label",
-        "purpose": "Measurements, availability, and compact navigation metadata."
+        "displayName": "Compact UI Label",
+        "purpose": "Availability, navigation metadata, and short product labels."
       }
     },
     "shadows": [],
@@ -90,7 +216,46 @@
         "name": "lg",
         "value": "1024px"
       }
-    ]
+    ],
+    "narrative": {
+      "northStar": "The Clear-Sky Lens Index",
+      "overview": "ISK Lenses pairs the live reference site’s cyan-blue product banners with a cool-white catalog that keeps real lens photography legible and color-accurate. Deep blue carries navigation and primary actions; sky blue owns selected page fields and image framing. Outfit headlines and an italic serif accent preserve the existing brand voice, while product names, prices, options, and availability remain factual and easy to scan. The admin workspace inherits the palette while retaining familiar, task-first operations.\n\nProduct images are never tinted. Abstract lens artwork is a graphic device, never product evidence. Real product media, prices, availability, and lens parameters appear only when operators add and verify them.",
+      "keyCharacteristics": [
+        "Cool sky-blue fields and high-contrast deep-blue actions",
+        "True-to-source lens photography framed by pale blue surfaces",
+        "Factual product details remain clear and easy to scan",
+        "Admin forms and tables keep familiar task-first controls"
+      ],
+      "rules": [
+        {
+          "name": "The Clear-Sky Field Rule",
+          "body": "Use broad sky-blue surfaces to give the storefront a coherent atmosphere; reserve deep blue for legible actions and navigation.",
+          "section": "colors"
+        },
+        {
+          "name": "The True-Color Photo Rule",
+          "body": "Keep product photographs and lens shades unfiltered; use blue in their framing, never as a tint over the product.",
+          "section": "imagery"
+        },
+        {
+          "name": "The Flat-By-Default Rule",
+          "body": "Use tonal fields and borders for structure; reserve inset light for the abstract optical study.",
+          "section": "elevation"
+        }
+      ],
+      "dos": [
+        "Do keep product claims and specifications tied to fields actually present in the catalog.",
+        "Do preserve visible keyboard focus and clearly named actions.",
+        "Do distinguish abstract illustration from real product media.",
+        "Do keep admin controls familiar and operationally clear."
+      ],
+      "donts": [
+        "Do not tint source product photography or imply a lens color that the photo does not show.",
+        "Do not use unverified source details as published product claims.",
+        "Do not imply the in-page bag can submit an order.",
+        "Do not use the optical study as evidence of a real product color or specification."
+      ]
+    }
   },
   "components": [
     {
@@ -99,7 +264,7 @@
       "refersTo": "button-primary",
       "description": "High-contrast browse or submit action.",
       "html": "<button class=\"ds-button-primary\">EXPLORE PRODUCTS</button>",
-      "css": ".ds-button-primary { background: #152a52; color: #d3ff48; padding: 16px 20px; border: 0; border-radius: 0; font: 700 12px/1.4 ui-sans-serif, system-ui, sans-serif; letter-spacing: .13em; text-transform: uppercase; transition: background-color 180ms ease-out; } .ds-button-primary:hover { background: #16468a; } .ds-button-primary:focus-visible { outline: 2px solid #16468a; outline-offset: 3px; }"
+      "css": ".ds-button-primary { background: #006f9b; color: #fff; padding: 16px 28px; border: 0; border-radius: 999px; font: 700 14px/1.4 ui-sans-serif, system-ui, sans-serif; transition: background-color 180ms ease-out; } .ds-button-primary:hover { background: #005b81; } .ds-button-primary:focus-visible { outline: 2px solid #087ba5; outline-offset: 3px; }"
     },
     {
       "name": "Search Field",
@@ -107,15 +272,15 @@
       "refersTo": "input-search",
       "description": "Search the live catalog by product name or category.",
       "html": "<label class=\"ds-search\"><span>Search lenses</span><input class=\"ds-input\" type=\"search\" placeholder=\"Search lenses\"></label>",
-      "css": ".ds-search { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #b9c9c6; padding: 10px 12px; color: #152a52; font: 12px/1.4 ui-sans-serif, system-ui, sans-serif; } .ds-input { min-width: 8rem; border: 0; background: transparent; color: #152a52; font: inherit; outline: 0; } .ds-search:focus-within { outline: 2px solid #16468a; outline-offset: 1px; }"
+      "css": ".ds-search { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #cfe2eb; padding: 10px 12px; color: #15384d; font: 14px/1.4 ui-sans-serif, system-ui, sans-serif; } .ds-input { min-width: 8rem; border: 0; background: transparent; color: #15384d; font: inherit; outline: 0; } .ds-search:focus-within { outline: 2px solid #087ba5; outline-offset: 1px; }"
     },
     {
       "name": "Selected Filter",
       "kind": "chip",
       "refersTo": "filter-selected",
       "description": "Marks the active product category.",
-      "html": "<button class=\"ds-filter\" aria-pressed=\"true\">ALL PRODUCTS</button>",
-      "css": ".ds-filter { background: #152a52; color: #d3ff48; padding: 8px 12px; border: 0; border-radius: 0; font: 700 10px/1.4 ui-sans-serif, system-ui, sans-serif; letter-spacing: .1em; text-transform: uppercase; } .ds-filter:focus-visible { outline: 2px solid #16468a; outline-offset: 2px; }"
+      "html": "<button class=\"ds-filter\" aria-pressed=\"true\">FEATURED</button>",
+      "css": ".ds-filter { background: #006f9b; color: #fff; padding: 8px 12px; border: 0; border-radius: 999px; font: 700 12px/1.4 ui-sans-serif, system-ui, sans-serif; } .ds-filter:focus-visible { outline: 2px solid #087ba5; outline-offset: 2px; }"
     },
     {
       "name": "Admin Work Surface",
@@ -123,14 +288,14 @@
       "refersTo": "admin-panel",
       "description": "Groups operational product and customer work.",
       "html": "<article class=\"ds-admin-panel\"><h2>Products</h2><p>Manage catalog listings.</p></article>",
-      "css": ".ds-admin-panel { background: #fff; color: #152a52; border: 1px solid #b9c9c6; border-radius: 16px; padding: 16px; font: 14px/1.5 ui-sans-serif, system-ui, sans-serif; } .ds-admin-panel h2 { margin: 0 0 8px; font-size: 16px; font-weight: 600; } .ds-admin-panel p { margin: 0; color: #314a63; }"
+      "css": ".ds-admin-panel { background: #fff; color: #15384d; border: 1px solid #cfe2eb; border-radius: 16px; padding: 24px; font: 14px/1.5 ui-sans-serif, system-ui, sans-serif; } .ds-admin-panel h2 { margin: 0 0 8px; font-size: 16px; font-weight: 600; } .ds-admin-panel p { margin: 0; color: #526b7b; }"
     },
     {
       "name": "Optical Study",
       "kind": "custom",
       "description": "Abstract catalog illustration that is explicitly not product photography.",
       "html": "<div class=\"ds-optical-study\" role=\"img\" aria-label=\"Abstract optical study\"><span class=\"ds-ring\"></span><span class=\"ds-center\"></span></div>",
-      "css": ".ds-optical-study { position: relative; display: grid; place-items: center; min-height: 260px; overflow: hidden; background: #152a52; } .ds-ring { width: 68%; aspect-ratio: 1; border: 1px solid rgba(211,255,72,.62); border-radius: 50%; } .ds-center { position: absolute; width: 34%; aspect-ratio: 1; border: 12px solid rgba(237,244,239,.8); border-radius: 50%; box-shadow: 0 0 0 2px #16468a, 0 0 0 13px rgba(211,255,72,.82), inset 10px 6px 24px rgba(255,255,255,.38); }"
+      "css": ".ds-optical-study { position: relative; display: grid; place-items: center; min-height: 260px; overflow: hidden; background: #15384d; } .ds-ring { width: 68%; aspect-ratio: 1; border: 1px solid rgba(184,232,245,.72); border-radius: 50%; } .ds-center { position: absolute; width: 34%; aspect-ratio: 1; border: 12px solid rgba(247,252,255,.88); border-radius: 50%; box-shadow: 0 0 0 2px #087ba5, 0 0 0 13px rgba(184,232,245,.78), inset 10px 6px 24px rgba(255,255,255,.38); }"
     }
   ],
   "narrative": {

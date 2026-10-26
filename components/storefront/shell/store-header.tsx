@@ -88,7 +88,7 @@ export function StoreHeader({ chrome }: { chrome: SiteChrome }) {
   )
 
   return (
-    <header ref={headerRef} className="sticky top-0 z-40 border-b border-[#e6dce1] bg-[#fffaf8]/95 shadow-[0_8px_30px_rgba(32,27,53,0.07)] backdrop-blur-xl">
+    <header ref={headerRef} className="sticky top-0 z-40 border-b border-[#e6dce1] bg-[#f7fcff]/95 shadow-[0_8px_30px_rgba(21,56,77,0.08)] backdrop-blur-xl">
       <div className="bg-[#201b35] text-white">
         {isHome ? (
           <div className="overflow-hidden">

@@ -1,16 +1,16 @@
 ---
 name: ISK Lenses
-description: An editorial lens-shopping experience with a warm porcelain, ink, and rose identity.
+description: A lens-shopping experience with clear sky-blue fields, deep blue actions, and true-to-source product photography.
 colors:
-  ink-navy: "#201b35"
-  rose: "#d45782"
-  rose-deep: "#b83f6b"
-  rose-light: "#f3b4c9"
-  blush: "#fae9ef"
-  warm-paper: "#fffaf8"
-  muted-copy: "#686371"
-  rule: "#e6dce1"
-  input-border: "#d8cbd2"
+  ink-blue: "#15384d"
+  sky-blue: "#087ba5"
+  deep-blue: "#006f9b"
+  light-blue: "#b8e8f5"
+  sky-surface: "#e8f6fb"
+  cool-paper: "#f7fcff"
+  muted-copy: "#526b7b"
+  rule: "#cfe2eb"
+  input-border: "#b8d4e0"
   error: "#b4233e"
   rating: "#b66b24"
   white: "#ffffff"
@@ -49,25 +49,25 @@ spacing:
   xl: "32px"
 components:
   button-primary:
-    backgroundColor: "{colors.rose-deep}"
+    backgroundColor: "{colors.deep-blue}"
     textColor: "{colors.white}"
     rounded: "{rounded.pill}"
     padding: "16px 28px"
   button-secondary:
     backgroundColor: "transparent"
-    textColor: "{colors.ink-navy}"
+    textColor: "{colors.ink-blue}"
     borderColor: "{colors.rule}"
     rounded: "{rounded.pill}"
     padding: "16px 28px"
   input-search:
     backgroundColor: "{colors.white}"
-    textColor: "{colors.ink-navy}"
+    textColor: "{colors.ink-blue}"
     borderColor: "{colors.rule}"
     rounded: "{rounded.pill}"
     padding: "10px 12px"
   admin-panel:
     backgroundColor: "{colors.white}"
-    textColor: "{colors.ink-navy}"
+    textColor: "{colors.ink-blue}"
     borderColor: "{colors.rule}"
     rounded: "{rounded.lg}"
     padding: "24px"
@@ -77,27 +77,27 @@ components:
 
 ## Overview
 
-**Creative North Star: "The Roseglass Edit"**
+**Creative North Star: "The Clear-Sky Lens Index"**
 
-ISK Lenses pairs the editorial polish of a beauty storefront with the clarity needed to compare real catalog listings. The shopper-facing site uses a dark ink announcement ribbon, a calm porcelain header, rose accents, and open product imagery. Large Outfit headlines and an italic serif accent carry the brand voice; product names, prices, options, and availability remain factual and easy to scan. The admin workspace inherits the same palette and typography while retaining familiar, task-first operations.
+ISK Lenses pairs the energy of the live site's cyan-blue product banners with a clear, cool-white catalog that keeps real lens photography legible and color-accurate. The shopper-facing site uses a sky-blue announcement strip, deep-blue actions, and product imagery framed by pale blue. Large Outfit headlines and an italic serif accent carry the existing brand voice; product names, prices, options, and availability remain factual and easy to scan. The admin workspace inherits the palette while retaining familiar, task-first operations.
 
 **Core characteristics**
-- Warm, light surfaces with ink-navy structure and rose-pink actions.
+- Cool white surfaces with deep blue structure and clear sky-blue actions.
 - Large editorial imagery and expressive type, with restrained supporting copy.
-- Product grids prioritize photos, names, prices, and real availability over decorative cards.
+- Product grids use pale sky-blue image wells but never tint the source photography.
 - Admin forms and tables keep clear labels, borders, and operational states.
 
-The requested reference's name and content are not copied: ISK Lenses remains the brand, and unverified delivery, certification, clinical, discount, or customer claims are not introduced.
+ISK Lenses remains the brand. The public reference informs the blue palette and image treatment only; unverified delivery, certification, clinical, discount, or customer claims are not introduced.
 
 ## Color
 
-- **Ink Navy** (`#201b35`) anchors the announcement bar, headlines, and strong controls.
-- **Rose** (`#d45782`) marks the italic display accent, decorative artwork, and non-text accents.
-- **Deep Rose** (`#b83f6b`) marks primary actions and text links; white-on-rose actions retain accessible contrast.
-- **Rose Light** (`#f3b4c9`) is reserved for accents on dark surfaces.
-- **Blush** (`#fae9ef`) carries large soft fields and selected states.
-- **Warm Paper** (`#fffaf8`) is the page background; white is reserved for fields and work surfaces.
-- **Muted Copy** (`#686371`) and **Rule** (`#e6dce1`) provide secondary text and boundaries.
+- **Ink Blue** (`#15384d`) anchors the announcement bar, headlines, and strong controls.
+- **Sky Blue** (`#087ba5`) marks large color fields, focus rings, and graphic accents.
+- **Deep Blue** (`#006f9b`) marks primary actions and text links; white-on-blue controls retain accessible contrast.
+- **Light Blue** (`#b8e8f5`) is reserved for accents on deep surfaces.
+- **Sky Surface** (`#e8f6fb`) carries soft fields, selected states, and product-image framing.
+- **Cool Paper** (`#f7fcff`) is the page background; white is reserved for fields and work surfaces.
+- **Muted Copy** (`#526b7b`) and **Rule** (`#cfe2eb`) provide secondary text and boundaries.
 - **Error** (`#b4233e`) and **Rating** (`#b66b24`) are semantic colors, not brand accents.
 
 ## Typography
@@ -106,21 +106,21 @@ Outfit is used for navigation, body copy, product data, and display type. Displa
 
 ## Layout and surfaces
 
-The storefront is centered on a wide canvas. A compact announcement ribbon leads into the logo, search, account, bag, and category navigation. The homepage opens with a split editorial hero: headline and catalog actions to the left, a real promotional or product image to the right. The lower page varies between open product grids, brand marks, category imagery, customer content, and quieter informational sections.
+The storefront is centered on a wide canvas. A compact deep-blue announcement ribbon leads into the logo, search, account, bag, and category navigation. The homepage opens with an image-led hero and a clear blue catalog action. The lower page varies between open product grids with pale blue photo wells, brand marks, category imagery, customer content, and quieter informational sections.
 
-The catalog, product details, cart, checkout, account, and content pages share the same warm palette, type, input states, and pill-shaped actions. Mobile navigation, filters, forms, and product media wrap or stack without horizontal page overflow. Product images remain sourced from the catalog; abstract lens artwork is explicitly labeled when no product photo exists.
+The catalog, product details, cart, checkout, account, and content pages share the same cool palette, type, input states, and pill-shaped actions. Mobile navigation, filters, forms, and product media wrap or stack without horizontal page overflow. Product images remain sourced from the catalog and are never color-tinted; abstract lens artwork is explicitly labeled when no product photo exists.
 
 The admin area uses the same color identity and rounded work surfaces but keeps dashboard navigation, forms, tables, and feedback states familiar and information-dense.
 
 ## Depth and shape
 
-Use thin rules, tonal fields, and open spacing before shadows. Product cards remain visually open; white panels are for grouped tasks, forms, and summaries. Primary and secondary actions are pill-shaped, while larger panels use a restrained radius. Focus rings remain visible in the rose accent.
+Use thin rules, tonal fields, and open spacing before shadows. Product cards remain visually open; white panels are for grouped tasks, forms, and summaries. Primary and secondary actions are pill-shaped, while larger panels use a restrained radius. Focus rings remain visible in sky blue.
 
 ## Components
 
 ### Navigation
 
-The announcement strip uses ink navy with light text. The main header stays warm-paper with the wordmark, search, account, and bag actions; category links remain directly available at desktop widths and in the mobile drawer.
+The announcement strip uses sky blue with light text. The main header stays cool-paper with the wordmark, search, account, and bag actions; category links remain directly available at desktop widths and in the mobile drawer.
 
 ### Catalog and product cards
 
@@ -138,7 +138,7 @@ Use restrained transitions for controls and carousel movement; honor reduced-mot
 
 ### Do
 - Keep ISK Lenses identity and existing routes, catalog data, and commerce behavior intact.
-- Use the same ink, rose, blush, and warm-paper roles across storefront and admin.
+- Use the same ink-blue, sky-blue, light-blue, and cool-paper roles across storefront and admin.
 - Let real product content and images lead.
 
 ### Don't
