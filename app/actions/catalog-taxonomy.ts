@@ -34,13 +34,26 @@ export async function getAdminBrands() {
   return db.select().from(storeBrands).orderBy(asc(storeBrands.name))
 }
 
-export async function saveBrand(input: { id?: string; name: unknown; isActive?: boolean }) {
+export async function saveBrand(input: { id?: string; name: unknown; logoUrl?: unknown; isActive?: boolean }) {
   await requireAdminSession('admin')
   const name = requiredText(input.name, 'Name', 100)
   const id = input.id ? assertId(input.id) : null
   const slug = slugify(name)
   if (!slug) throw new Error('Brand name must contain letters or numbers.')
-  const values = { name, slug, isActive: input.isActive !== false, updatedAt: new Date() }
+  const logoUrl = input.logoUrl == null || input.logoUrl === '' ? null : requiredText(input.logoUrl, 'Brand logo', 2048)
+  if (logoUrl) {
+    let parsed: URL
+    try {
+      parsed = new URL(logoUrl)
+    } catch {
+      throw new Error('Brand logo must be uploaded to Vercel Blob.')
+    }
+    if (parsed.protocol !== 'https:' || parsed.username || parsed.password ||
+        !/^[a-z0-9-]+\.public\.blob\.vercel-storage\.com$/i.test(parsed.hostname)) {
+      throw new Error('Brand logo must be uploaded to Vercel Blob.')
+    }
+  }
+  const values = { name, slug, logoUrl, isActive: input.isActive !== false, updatedAt: new Date() }
   try {
     if (id) {
       const [row] = await db.update(storeBrands).set(values).where(eq(storeBrands.id, id)).returning({ id: storeBrands.id })
@@ -73,9 +86,10 @@ export async function getAdminLensShades() {
 export async function saveLensShade(input: { id?: string; name: unknown; hex: unknown; isActive?: boolean }) {
   await requireAdminSession('admin')
   const name = requiredText(input.name, 'Name', 80)
-  if (typeof input.hex !== 'string' || !/^#[0-9a-f]{6}$/i.test(input.hex)) throw new Error('Choose a valid shade color.')
+  const hex = input.hex == null || input.hex === '' ? null : input.hex
+  if (hex !== null && (typeof hex !== 'string' || !/^#[0-9a-f]{6}$/i.test(hex))) throw new Error('Choose a valid shade color.')
   const id = input.id ? assertId(input.id) : null
-  const values = { name, hex: input.hex.toLowerCase(), isActive: input.isActive !== false, updatedAt: new Date() }
+  const values = { name, hex: typeof hex === 'string' ? hex.toLowerCase() : null, isActive: input.isActive !== false, updatedAt: new Date() }
   try {
     if (id) {
       const [row] = await db.update(storeLensShades).set(values).where(eq(storeLensShades.id, id)).returning({ id: storeLensShades.id })

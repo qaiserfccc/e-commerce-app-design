@@ -214,7 +214,7 @@ export function StorefrontProductDetail({
             <div className="mt-6">
               <p className="font-mono text-xs font-bold uppercase tracking-[.15em]">Lens shade</p>
               <ul className="mt-2 flex flex-wrap gap-3">
-                <li className="flex items-center gap-2 text-xs"><span className="size-6 rounded-full border border-black/15" style={{ backgroundColor: product.lensShade.hex }} aria-hidden="true" />{product.lensShade.name}</li>
+                <li className="flex items-center gap-2 text-xs">{product.lensShade.hex && <span className="size-6 rounded-full border border-black/15" style={{ backgroundColor: product.lensShade.hex }} aria-hidden="true" />}{product.lensShade.name}</li>
               </ul>
             </div>
           )}

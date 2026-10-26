@@ -15,13 +15,33 @@ type LensShade = Awaited<ReturnType<typeof getAdminLensShades>>[number]
 function BrandForm({ brand, onDone, onCancel }: { brand?: Brand; onDone: () => void; onCancel: () => void }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [logoUrl, setLogoUrl] = useState(brand?.logoUrl ?? '')
+
+  async function uploadLogo(file: File | undefined) {
+    if (!file) return
+    setBusy(true)
+    setError('')
+    try {
+      const form = new FormData()
+      form.set('file', file)
+      const response = await fetch('/api/admin/content/upload', { method: 'POST', body: form })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error ?? 'Brand logo upload failed.')
+      setLogoUrl(result.data.url)
+    } catch (uploadError) {
+      setError(reportError(uploadError, 'Brand logo could not be uploaded.'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setBusy(true)
     setError('')
     const form = new FormData(event.currentTarget)
     try {
-      await saveBrand({ id: brand?.id, name: form.get('name'), isActive: form.get('isActive') === 'on' })
+      await saveBrand({ id: brand?.id, name: form.get('name'), logoUrl, isActive: form.get('isActive') === 'on' })
       onDone()
     } catch (saveError) {
       setError(reportError(saveError, 'Brand could not be saved.'))
@@ -30,14 +50,27 @@ function BrandForm({ brand, onDone, onCancel }: { brand?: Brand; onDone: () => v
     }
   }
   return (
-    <form onSubmit={submit} className="mb-5 grid gap-4 rounded-2xl border border-[#1c1c1a]/10 bg-white p-5 sm:grid-cols-[1fr_auto_auto] sm:items-end">
+    <form onSubmit={submit} className="mb-5 grid gap-4 rounded-2xl border border-[#cfe2eb] bg-white p-5 sm:grid-cols-[1fr_minmax(220px,1.2fr)_auto_auto] sm:items-end">
       <Field label="Brand name" required><input name="name" required maxLength={100} defaultValue={brand?.name ?? ''} className={inputClass} /></Field>
+      <Field label="Brand logo (stored in Blob)">
+        <div className="flex items-center gap-3">
+          {logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logoUrl} alt={`${brand?.name ?? 'Brand'} logo preview`} className="size-11 shrink-0 rounded-lg border border-[#cfe2eb] bg-[#f7fcff] object-contain p-1" />
+          ) : <span className="grid size-11 shrink-0 place-items-center rounded-lg border border-dashed border-[#b8d4e0] bg-[#f7fcff] text-xs text-[#526b7b]">No logo</span>}
+          <div className="min-w-0 flex-1">
+            <input type="file" accept="image/avif,image/jpeg,image/png,image/webp" disabled={busy} onChange={(event) => void uploadLogo(event.target.files?.[0])} className="block w-full text-xs file:mr-2 file:rounded-full file:border-0 file:bg-[#e8f6fb] file:px-3 file:py-2 file:text-xs file:font-medium file:text-[#15384d] hover:file:bg-[#b8e8f5]" />
+            <p className="mt-1 text-xs leading-4 text-[#526b7b]">JPEG, PNG, WebP, or AVIF; max 4 MB. Uploaded to Vercel Blob.</p>
+          </div>
+          {logoUrl && <button type="button" onClick={() => setLogoUrl('')} className="rounded-full px-2 py-1 text-xs text-[#753b2d] hover:bg-[#f8eeeb]">Remove</button>}
+        </div>
+      </Field>
       <label className="flex items-center gap-2 pb-2 text-sm"><input name="isActive" type="checkbox" defaultChecked={brand?.isActive ?? true} /> Active</label>
       <div className="flex gap-2">
-        <button type="submit" disabled={busy} className={primaryButton}>{busy && <LoaderCircle size={15} className="animate-spin" />}{brand ? 'Save brand' : 'Create brand'}</button>
+        <button type="submit" disabled={busy} className={primaryButton}>{busy && <LoaderCircle size={15} className="animate-spin" />}{busy ? 'Uploading…' : brand ? 'Save brand' : 'Create brand'}</button>
         <button type="button" onClick={onCancel} className={secondaryButton}>Cancel</button>
       </div>
-      {error && <div className="sm:col-span-3"><Alert>{error}</Alert></div>}
+      {error && <div className="sm:col-span-4"><Alert>{error}</Alert></div>}
     </form>
   )
 }
@@ -62,7 +95,7 @@ function LensShadeForm({ shade, onDone, onCancel }: { shade?: LensShade; onDone:
   return (
     <form onSubmit={submit} className="mb-5 grid gap-4 rounded-2xl border border-[#1c1c1a]/10 bg-white p-5 sm:grid-cols-[1fr_140px_auto_auto] sm:items-end">
       <Field label="Shade name" required><input name="name" required maxLength={80} defaultValue={shade?.name ?? ''} className={inputClass} /></Field>
-      <Field label="Shade color" required><input name="hex" type="color" required defaultValue={shade?.hex ?? '#4b89c8'} className={`${inputClass} h-10 p-1`} /></Field>
+      <Field label="Display color (optional)"><input name="hex" maxLength={7} pattern="#[0-9a-fA-F]{6}" placeholder="e.g. #748b9f" defaultValue={shade?.hex ?? ''} className={inputClass} /></Field>
       <label className="flex items-center gap-2 pb-2 text-sm"><input name="isActive" type="checkbox" defaultChecked={shade?.isActive ?? true} /> Active</label>
       <div className="flex gap-2">
         <button type="submit" disabled={busy} className={primaryButton}>{busy && <LoaderCircle size={15} className="animate-spin" />}{shade ? 'Save shade' : 'Create shade'}</button>
@@ -92,7 +125,13 @@ export function BrandManager({ canEdit }: { canEdit: boolean }) {
       {editing && <BrandForm brand={editing === 'new' ? undefined : editing} onCancel={() => setEditing(null)} onDone={() => { setEditing(null); void mutate() }} />}
       {isLoading ? <p className="text-sm text-[#68675f]">Loading brands…</p> : !data?.length ? <p className="rounded-2xl border border-dashed border-[#1c1c1a]/20 bg-white/60 px-5 py-10 text-center text-sm text-[#68675f]">No brands yet. Add one to make it available in product forms.</p> : (
         <ul className="space-y-2">{data.map((brand) => <li key={brand.id} className="flex items-center justify-between gap-3 rounded-xl border border-[#1c1c1a]/10 bg-white px-4 py-3">
-          <p className="text-sm font-medium">{brand.name}{!brand.isActive && <span className="ml-2 text-xs text-[#68675f]">Inactive</span>}</p>
+          <div className="flex items-center gap-3">
+            {brand.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={brand.logoUrl} alt="" className="size-10 rounded-lg border border-[#cfe2eb] bg-[#f7fcff] object-contain p-1" />
+            ) : <span className="grid size-10 place-items-center rounded-lg border border-dashed border-[#b8d4e0] text-xs text-[#526b7b]">No logo</span>}
+            <p className="text-sm font-medium">{brand.name}{!brand.isActive && <span className="ml-2 text-xs text-[#68675f]">Inactive</span>}</p>
+          </div>
           {canEdit && <div className="flex">
             <button type="button" aria-label={`Edit ${brand.name}`} onClick={() => setEditing(brand)} className="grid size-9 place-items-center rounded-full hover:bg-[#f2f1ed]"><Pencil size={15} /></button>
             <button type="button" aria-label={`Delete ${brand.name}`} onClick={() => void remove(brand)} className="grid size-9 place-items-center rounded-full text-[#753b2d] hover:bg-[#f8eeeb]"><Trash2 size={15} /></button>
@@ -122,7 +161,10 @@ export function LensShadeManager({ canEdit }: { canEdit: boolean }) {
       {editing && <LensShadeForm shade={editing === 'new' ? undefined : editing} onCancel={() => setEditing(null)} onDone={() => { setEditing(null); void mutate() }} />}
       {isLoading ? <p className="text-sm text-[#68675f]">Loading lens shades…</p> : !data?.length ? <p className="rounded-2xl border border-dashed border-[#1c1c1a]/20 bg-white/60 px-5 py-10 text-center text-sm text-[#68675f]">No shades yet. Add a shade to make it available in product forms.</p> : (
         <ul className="space-y-2">{data.map((shade) => <li key={shade.id} className="flex items-center justify-between gap-3 rounded-xl border border-[#1c1c1a]/10 bg-white px-4 py-3">
-          <div className="flex items-center gap-3"><span className="size-8 rounded-full border border-black/15" style={{ backgroundColor: shade.hex }} /><p className="text-sm font-medium">{shade.name}<span className="ml-2 text-xs text-[#68675f]">{shade.hex}</span>{!shade.isActive && <span className="ml-2 text-xs text-[#68675f]">Inactive</span>}</p></div>
+          <div className="flex items-center gap-3">
+            {shade.hex ? <span className="size-8 rounded-full border border-black/15" style={{ backgroundColor: shade.hex }} /> : <span className="grid size-8 place-items-center rounded-full border border-dashed border-[#b8d4e0] text-xs text-[#526b7b]">N/A</span>}
+            <p className="text-sm font-medium">{shade.name}{shade.hex && <span className="ml-2 text-xs text-[#68675f]">{shade.hex}</span>}{!shade.isActive && <span className="ml-2 text-xs text-[#68675f]">Inactive</span>}</p>
+          </div>
           {canEdit && <div className="flex">
             <button type="button" aria-label={`Edit ${shade.name}`} onClick={() => setEditing(shade)} className="grid size-9 place-items-center rounded-full hover:bg-[#f2f1ed]"><Pencil size={15} /></button>
             <button type="button" aria-label={`Delete ${shade.name}`} onClick={() => void remove(shade)} className="grid size-9 place-items-center rounded-full text-[#753b2d] hover:bg-[#f8eeeb]"><Trash2 size={15} /></button>

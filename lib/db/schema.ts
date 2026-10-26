@@ -21,6 +21,7 @@ export const storeBrands = pgTable('store_brands', {
   id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull(),
   slug: text('slug').notNull().unique(),
+  logoUrl: text('logo_url'),
   isActive: boolean('is_active').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -31,7 +32,7 @@ export const storeBrands = pgTable('store_brands', {
 export const storeLensShades = pgTable('store_lens_shades', {
   id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull(),
-  hex: text('hex').notNull(),
+  hex: text('hex'),
   isActive: boolean('is_active').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

@@ -19,6 +19,7 @@ const FILES_TO_CHECK = [
   'db/migrations/0005_cod_checkout_and_customer_accounts.sql',
   'db/migrations/0009_category_tree_catalog.sql',
   'db/migrations/0011_catalog_taxonomy_and_error_logs.sql',
+  'db/migrations/0012_isk_reference_taxonomy_and_brand_logos.sql',
   'scripts/bootstrap-admin.mjs',
   'app/actions/catalog-admin.ts',
   'app/actions/catalog-taxonomy.ts',
