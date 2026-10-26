@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { createHash } from 'node:crypto'
-import { put, del } from '@vercel/blob'
+import { put } from '@vercel/blob'
 import { Pool } from 'pg'
 
 const databaseUrl = process.env.DATABASE_URL
@@ -118,7 +118,6 @@ try {
         failures.push({ product: row.product_name, reason: 'Invalid or disallowed source URL.' })
         continue
       }
-      let blobUrl
       try {
         const digest = createHash('sha256').update(sourceUrl.toString()).digest('hex')
         const pathnamePrefix = `products/${row.product_id}/catalog-${digest}`
@@ -158,7 +157,6 @@ try {
           contentType: downloaded.contentType,
           cacheControlMaxAge: 31_536_000,
         })
-        blobUrl = blob.url
         const client = await pool.connect()
         try {
           await client.query('BEGIN')
@@ -184,13 +182,6 @@ try {
           client.release()
         }
       } catch (error) {
-        if (blobUrl) {
-          try {
-            await del(blobUrl)
-          } catch (cleanupError) {
-            console.error('[source-media-sync] Orphan Blob cleanup failed', cleanupError instanceof Error ? cleanupError.name : 'UnknownError')
-          }
-        }
         failed += 1
         failures.push({
           product: row.product_name,

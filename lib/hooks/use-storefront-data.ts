@@ -23,7 +23,7 @@ export interface Product {
   brand?: string | null
   brandId?: string | null
   lensShadeId?: string | null
-  lensShade?: { id: string; name: string; hex: string | null } | null
+  lensShade?: { id: string; name: string; hex: string | null; imageUrl?: string | null } | null
   sku?: string | null
   price: string
   compareAtPrice?: string | null

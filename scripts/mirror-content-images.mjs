@@ -1,5 +1,6 @@
 // Downloads externally hosted storefront content images, uploads them to Vercel Blob and rewrites DB URLs.
 // Needs DATABASE_URL and BLOB_READ_WRITE_TOKEN. Idempotent: only rows still on a non-Blob host are processed.
+import { createHash } from 'node:crypto'
 import { put } from '@vercel/blob'
 import pg from 'pg'
 
@@ -15,8 +16,11 @@ async function mirror(url) {
   if (!res.ok) throw new Error(`${res.status} ${url}`)
   const type = res.headers.get('content-type')?.split(';')[0] || 'application/octet-stream'
   if (!type.startsWith('image/')) throw new Error(`not image ${url}`)
+  const bytes = Buffer.from(await res.arrayBuffer())
+  if (bytes.length > 12 * 1024 * 1024) throw new Error(`image exceeds 12 MB ${url}`)
   const name = new URL(url).pathname.split('/').pop().replace(/[^a-zA-Z0-9._-]/g, '_')
-  const blob = await put(`content/${name}`, Buffer.from(await res.arrayBuffer()), { access: 'public', contentType: type, addRandomSuffix: true })
+  const digest = createHash('sha256').update(url).digest('hex')
+  const blob = await put(`content/${digest}-${name}`, bytes, { access: 'public', contentType: type, addRandomSuffix: false })
   cache.set(url, blob.url)
   return blob.url
 }

@@ -39,9 +39,9 @@ const REQUIRED_TABLES = [
 
 const TABLE_SCHEMAS = {
   store_products: [
-    'id', 'name', 'slug', 'description', 'category_id', 'brand', 'brand_id', 'lens_shade_id', 'sku', 'short_description', 'price', 'compare_at_price',
+    'id', 'name', 'slug', 'description', 'category_id', 'brand', 'brand_id', 'lens_shade_id', 'source_product_id', 'source_url', 'source_payload', 'source_content_hash', 'source_image_url', 'sku', 'short_description', 'price', 'compare_at_price',
     'currency', 'status', 'stock_quantity', 'hero_image_url', 'colors', 'diameter_mm', 'base_curve', 'water_content',
-    'material', 'wear_duration', 'pack_contents', 'power_type', 'power_range', 'uv_protection', 'features', 'specs',
+    'material', 'wear_duration', 'pack_contents', 'power_type', 'power_range', 'uv_protection', 'fda_approved', 'features', 'specs',
     'usage_instructions', 'is_featured', 'seo_title', 'seo_description', 'created_at', 'updated_at',
   ],
   store_customers: [
@@ -87,7 +87,7 @@ const TABLE_SCHEMAS = {
     'created_at',
   ],
   store_product_assets: ['id', 'product_id', 'blob_pathname', 'blob_url', 'alt_text', 'media_type', 'sort_order', 'created_at'],
-  store_categories: ['id', 'parent_id', 'name', 'slug', 'description', 'image_url', 'sort_order', 'is_active', 'show_in_menu', 'seo_title', 'seo_description', 'created_at', 'updated_at'],
+  store_categories: ['id', 'parent_id', 'source_category_id', 'source_image_url', 'name', 'slug', 'description', 'image_url', 'sort_order', 'is_active', 'show_in_menu', 'seo_title', 'seo_description', 'created_at', 'updated_at'],
   store_product_reviews: ['id', 'product_id', 'author', 'rating', 'title', 'body', 'is_approved', 'created_at'],
   store_product_relations: ['product_id', 'related_product_id', 'sort_order'],
   store_product_variants: [
@@ -112,7 +112,7 @@ const TABLE_SCHEMAS = {
   store_reviews: ['id', 'author', 'body', 'sort_order', 'is_active', 'created_at', 'updated_at'],
   store_settings: ['key', 'value', 'updated_at'],
   store_brands: ['id', 'name', 'slug', 'logo_url', 'is_active', 'created_at', 'updated_at'],
-  store_lens_shades: ['id', 'name', 'hex', 'is_active', 'created_at', 'updated_at'],
+  store_lens_shades: ['id', 'name', 'hex', 'image_url', 'source_image_url', 'is_active', 'created_at', 'updated_at'],
   store_error_logs: ['id', 'source', 'error_name', 'message', 'stack', 'created_at'],
   store_admin_users: [
     'id',

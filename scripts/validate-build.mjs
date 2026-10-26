@@ -20,6 +20,7 @@ const FILES_TO_CHECK = [
   'db/migrations/0009_category_tree_catalog.sql',
   'db/migrations/0011_catalog_taxonomy_and_error_logs.sql',
   'db/migrations/0012_isk_reference_taxonomy_and_brand_logos.sql',
+  'db/migrations/0013_repeatable_catalog_sync.sql',
   'scripts/bootstrap-admin.mjs',
   'app/actions/catalog-admin.ts',
   'app/actions/catalog-taxonomy.ts',
@@ -59,6 +60,11 @@ const FILES_TO_CHECK = [
   'app/api/admin/product-categories/sync/route.ts',
   'lib/hooks/use-storefront-categories.ts',
   'scripts/rehost-source-product-images.mjs',
+  'scripts/import-isk-reference-taxonomy.mjs',
+  'scripts/sync-isk-catalog.mjs',
+  'lib/server/isk-catalog-sync.mjs',
+  'app/api/admin/catalog-sync/route.ts',
+  'components/admin/catalog-sync-manager.tsx',
 ]
 
 const REQUIRED_PACKAGES = ['drizzle-orm', 'pg', 'swr', 'next', '@vercel/blob']
@@ -100,6 +106,7 @@ try {
 
   const exportedTables = [
     'storeProducts',
+    'storeCategories',
     'storeCustomers',
     'storeOrders',
     'storeOrderItems',

@@ -6,6 +6,8 @@ export const storeCategories = pgTable('store_categories', {
   parentId: uuid('parent_id'),
   name: text('name').notNull(),
   slug: text('slug').notNull().unique(),
+  sourceCategoryId: integer('source_category_id'),
+  sourceImageUrl: text('source_image_url'),
   description: text('description'),
   imageUrl: text('image_url'),
   sortOrder: integer('sort_order').notNull().default(0),
@@ -15,7 +17,9 @@ export const storeCategories = pgTable('store_categories', {
   seoDescription: text('seo_description'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-})
+}, (table) => ({
+  sourceCategoryUnique: uniqueIndex('store_categories_source_category_id_unique').on(table.sourceCategoryId),
+}))
 
 export const storeBrands = pgTable('store_brands', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -33,6 +37,8 @@ export const storeLensShades = pgTable('store_lens_shades', {
   id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull(),
   hex: text('hex'),
+  imageUrl: text('image_url'),
+  sourceImageUrl: text('source_image_url'),
   isActive: boolean('is_active').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -48,6 +54,11 @@ export const storeProducts = pgTable('store_products', {
   categoryId: uuid('category_id').notNull().references(() => storeCategories.id, { onDelete: 'restrict' }),
   brandId: uuid('brand_id').references(() => storeBrands.id, { onDelete: 'set null' }),
   lensShadeId: uuid('lens_shade_id').references(() => storeLensShades.id, { onDelete: 'set null' }),
+  sourceProductId: integer('source_product_id'),
+  sourceUrl: text('source_url'),
+  sourcePayload: jsonb('source_payload').$type<Record<string, unknown> | null>(),
+  sourceContentHash: text('source_content_hash'),
+  sourceImageUrl: text('source_image_url'),
   brand: text('brand'),
   sku: text('sku'),
   shortDescription: text('short_description'),
@@ -76,7 +87,9 @@ export const storeProducts = pgTable('store_products', {
   seoDescription: text('seo_description'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-})
+}, (table) => ({
+  sourceProductUnique: uniqueIndex('store_products_source_product_id_unique').on(table.sourceProductId),
+}))
 
 export const storeProductCategories = pgTable('store_product_categories', {
   productId: uuid('product_id').notNull().references(() => storeProducts.id, { onDelete: 'cascade' }),

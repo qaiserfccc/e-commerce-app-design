@@ -162,7 +162,10 @@ export function LensShadeManager({ canEdit }: { canEdit: boolean }) {
       {isLoading ? <p className="text-sm text-[#68675f]">Loading lens shades…</p> : !data?.length ? <p className="rounded-2xl border border-dashed border-[#1c1c1a]/20 bg-white/60 px-5 py-10 text-center text-sm text-[#68675f]">No shades yet. Add a shade to make it available in product forms.</p> : (
         <ul className="space-y-2">{data.map((shade) => <li key={shade.id} className="flex items-center justify-between gap-3 rounded-xl border border-[#1c1c1a]/10 bg-white px-4 py-3">
           <div className="flex items-center gap-3">
-            {shade.hex ? <span className="size-8 rounded-full border border-black/15" style={{ backgroundColor: shade.hex }} /> : <span className="grid size-8 place-items-center rounded-full border border-dashed border-[#b8d4e0] text-xs text-[#526b7b]">N/A</span>}
+            {shade.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={shade.imageUrl} alt="" className="size-10 rounded-full border border-[#cfe2eb] object-cover" />
+            ) : shade.hex ? <span className="size-8 rounded-full border border-black/15" style={{ backgroundColor: shade.hex }} /> : <span className="grid size-8 place-items-center rounded-full border border-dashed border-[#b8d4e0] text-xs text-[#526b7b]">N/A</span>}
             <p className="text-sm font-medium">{shade.name}{shade.hex && <span className="ml-2 text-xs text-[#68675f]">{shade.hex}</span>}{!shade.isActive && <span className="ml-2 text-xs text-[#68675f]">Inactive</span>}</p>
           </div>
           {canEdit && <div className="flex">
