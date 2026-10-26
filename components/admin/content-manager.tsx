@@ -82,7 +82,7 @@ function BannerEditor({ banner, canEdit, onChanged, onError }: { banner?: Banner
         <label className="text-xs">Title / alt text<input disabled={!canEdit} value={title} maxLength={200} onChange={(e) => setTitle(e.target.value)} className={inputClass} /></label>
         <label className="text-xs">Body<input disabled={!canEdit} value={body} maxLength={500} onChange={(e) => setBody(e.target.value)} className={inputClass} /></label>
         <label className="text-xs">Link (/path or https)<input disabled={!canEdit} value={href} maxLength={500} onChange={(e) => setHref(e.target.value)} className={inputClass} /></label>
-        <label className="text-xs sm:col-span-2">Image URL<input disabled={!canEdit} required value={imageUrl} onChange={(e) => { setImageUrl(e.target.value); setBlobPathname('') }} className={inputClass} /></label>
+        <label className="text-xs sm:col-span-2">Image URL <span aria-hidden="true" className="text-red-600">*</span><input disabled={!canEdit} required value={imageUrl} onChange={(e) => { setImageUrl(e.target.value); setBlobPathname('') }} className={inputClass} /></label>
         <label className="text-xs">Upload to Blob (max 4 MB)<input disabled={!canEdit || busy} type="file" accept="image/avif,image/jpeg,image/png,image/webp" onChange={(e) => void upload(e.target.files?.[0])} className="block w-full text-xs" /></label>
         <div className="flex items-end gap-3">
           <label className="w-24 text-xs">Order<input disabled={!canEdit} type="number" min={0} value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} className={inputClass} /></label>
@@ -135,8 +135,8 @@ function ReviewEditor({ review, canEdit, onChanged, onError }: { review?: Conten
 
   return (
     <form onSubmit={submit} className="grid gap-2 rounded-2xl border border-[#e4e2d8] bg-white p-4 sm:grid-cols-[200px_1fr_80px]">
-      <label className="text-xs">Author<input disabled={!canEdit} required value={author} maxLength={120} onChange={(e) => setAuthor(e.target.value)} className={inputClass} /></label>
-      <label className="text-xs">Review<textarea disabled={!canEdit} required rows={2} value={body} maxLength={1000} onChange={(e) => setBody(e.target.value)} className={inputClass} /></label>
+      <label className="text-xs">Author <span aria-hidden="true" className="text-red-600">*</span><input disabled={!canEdit} required value={author} maxLength={120} onChange={(e) => setAuthor(e.target.value)} className={inputClass} /></label>
+      <label className="text-xs">Review <span aria-hidden="true" className="text-red-600">*</span><textarea disabled={!canEdit} required rows={2} value={body} maxLength={1000} onChange={(e) => setBody(e.target.value)} className={inputClass} /></label>
       <label className="text-xs">Order<input disabled={!canEdit} type="number" min={0} value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} className={inputClass} /></label>
       {canEdit && (
         <div className="flex items-center gap-3 sm:col-span-3">
@@ -171,7 +171,7 @@ function SettingEditor({ name, value, canEdit, onChanged, onError }: { name: Set
 
   return (
     <form onSubmit={submit} className="rounded-2xl border border-[#e4e2d8] bg-white p-4">
-      <label className="text-xs font-medium">{name}<textarea disabled={!canEdit} rows={8} spellCheck={false} value={draft} onChange={(e) => setDraft(e.target.value)} className={`${inputClass} mt-1 font-mono text-xs`} /></label>
+      <label className="text-xs font-medium">{name} <span aria-hidden="true" className="text-red-600">*</span><textarea disabled={!canEdit} required rows={8} spellCheck={false} value={draft} onChange={(e) => setDraft(e.target.value)} className={`${inputClass} mt-1 font-mono text-xs`} /></label>
       {canEdit && <button disabled={busy} className="mt-2 rounded-lg bg-[#1c1c1a] px-4 py-2 text-sm text-white disabled:opacity-60">Save {name}</button>}
     </form>
   )

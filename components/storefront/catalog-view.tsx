@@ -49,7 +49,7 @@ export function CatalogView({ categoryPath }: { categoryPath?: string }) {
   useEffect(() => setVisible(PAGE_SIZE), [categoryPath, query, sort, inStockOnly])
 
   const filtered = useMemo(() => {
-    const result = products.filter((product) => (!branch || (product.categoryId !== undefined && branch.has(product.categoryId))) && (!inStockOnly || isAvailable(product)))
+    const result = products.filter((product) => (!branch || (product.categoryIds ?? (product.categoryId ? [product.categoryId] : [])).some((id) => branch.has(id))) && (!inStockOnly || isAvailable(product)))
     const price = (product: (typeof result)[number]) => Number(lowestPrice(product).price)
     if (sort === 'price-asc') result.sort((a, b) => price(a) - price(b))
     else if (sort === 'price-desc') result.sort((a, b) => price(b) - price(a))

@@ -72,7 +72,7 @@ function CategoryForm({ category, defaultParentId, rows, onDone, onCancel }: { c
       <h2 className="mb-4 font-medium">{category ? `Edit ${category.name}` : 'Add a category'}</h2>
       {error && <div className="mb-4"><Alert>{error}</Alert></div>}
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Name"><input name="name" required maxLength={120} defaultValue={category?.name} className={inputClass} /></Field>
+        <Field label="Name" required><input name="name" required maxLength={120} defaultValue={category?.name} className={inputClass} /></Field>
         <Field label="Slug (blank = from name)"><input name="slug" maxLength={80} pattern="[a-z0-9]+(-[a-z0-9]+)*" defaultValue={category?.slug} className={inputClass} /></Field>
         <Field label="Parent category">
           <select name="parentId" defaultValue={category?.parentId ?? defaultParentId ?? ''} className={inputClass}>
@@ -119,7 +119,7 @@ export function CategoryManager({ canEdit }: { canEdit: boolean }) {
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-[-.04em]">Categories</h1>
-          <p className="mt-1 max-w-2xl text-sm text-[#68675f]">Nest categories to any depth. Products must belong to one category and also appear in every parent category above it.</p>
+          <p className="mt-1 max-w-2xl text-sm text-[#68675f]">Nest categories to any depth. Products can be assigned to several categories and appear in each category’s parent hierarchy.</p>
         </div>
         {canEdit && <button type="button" onClick={() => setEditing('new')} className={primaryButton}><Plus size={16} /> Add category</button>}
       </div>

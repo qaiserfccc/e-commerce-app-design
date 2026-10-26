@@ -210,13 +210,11 @@ export function StorefrontProductDetail({
               {stockQuantity > 0 ? `${stockQuantity} available` : 'Unavailable'}
             </p>
           </div>
-          {product.colors && product.colors.length > 0 && (
+          {product.lensShade && (
             <div className="mt-6">
-              <p className="font-mono text-xs font-bold uppercase tracking-[.15em]">Available colors</p>
+              <p className="font-mono text-xs font-bold uppercase tracking-[.15em]">Lens shade</p>
               <ul className="mt-2 flex flex-wrap gap-3">
-                {product.colors.map((color) => (
-                  <li key={color.name} className="flex items-center gap-2 text-xs"><span className="size-6 rounded-full border border-black/15" style={{ backgroundColor: color.hex }} aria-hidden="true" />{color.name}</li>
-                ))}
+                <li className="flex items-center gap-2 text-xs"><span className="size-6 rounded-full border border-black/15" style={{ backgroundColor: product.lensShade.hex }} aria-hidden="true" />{product.lensShade.name}</li>
               </ul>
             </div>
           )}

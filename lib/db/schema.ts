@@ -17,12 +17,36 @@ export const storeCategories = pgTable('store_categories', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
+export const storeBrands = pgTable('store_brands', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull().unique(),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  nameUnique: uniqueIndex('store_brands_lower_name_unique').on(sql`lower(${table.name})`),
+}))
+
+export const storeLensShades = pgTable('store_lens_shades', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: text('name').notNull(),
+  hex: text('hex').notNull(),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  nameColorUnique: uniqueIndex('store_lens_shades_lower_name_hex_unique').on(sql`lower(${table.name})`, table.hex),
+}))
+
 export const storeProducts = pgTable('store_products', {
   id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull(),
   slug: text('slug').notNull().unique(),
   description: text('description'),
   categoryId: uuid('category_id').notNull().references(() => storeCategories.id, { onDelete: 'restrict' }),
+  brandId: uuid('brand_id').references(() => storeBrands.id, { onDelete: 'set null' }),
+  lensShadeId: uuid('lens_shade_id').references(() => storeLensShades.id, { onDelete: 'set null' }),
   brand: text('brand'),
   sku: text('sku'),
   shortDescription: text('short_description'),
@@ -52,6 +76,14 @@ export const storeProducts = pgTable('store_products', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
+
+export const storeProductCategories = pgTable('store_product_categories', {
+  productId: uuid('product_id').notNull().references(() => storeProducts.id, { onDelete: 'cascade' }),
+  categoryId: uuid('category_id').notNull().references(() => storeCategories.id, { onDelete: 'restrict' }),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.productId, table.categoryId] }),
+  categoryIdx: index('store_product_categories_category_idx').on(table.categoryId, table.productId),
+}))
 
 export const storeProductReviews = pgTable('store_product_reviews', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -164,6 +196,17 @@ export const storeActivityEvents = pgTable('store_activity_events', {
   payload: jsonb('payload').notNull().default({}),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
+
+export const storeErrorLogs = pgTable('store_error_logs', {
+  id: bigint('id', { mode: 'number' }).generatedAlwaysAsIdentity().primaryKey(),
+  source: text('source').notNull(),
+  errorName: text('error_name').notNull(),
+  message: text('message').notNull(),
+  stack: text('stack'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  createdIdx: index('store_error_logs_created_at_idx').on(table.createdAt),
+}))
 
 export const storeAdminUsers = pgTable('store_admin_users', {
   id: uuid('id').defaultRandom().primaryKey(),

@@ -30,8 +30,23 @@ export function subscribeNotifications(subscriber: (notification: AppNotificatio
 }
 
 export function reportError(error: unknown, fallback = 'Something went wrong. Please try again.') {
-  if (error instanceof Error) console.error('[app] Operation failed', error)
-  const message = error instanceof Error && error.message.trim() ? error.message : fallback
+  const message = error instanceof Error && error.message.trim() ? error.message : typeof error === 'string' && error.trim() ? error : fallback
+  console.error('[app] Operation failed', error)
+  if (typeof window !== 'undefined') {
+    void fetch('/api/errors', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        source: window.location.pathname,
+        errorName: error instanceof Error ? error.name : 'Error',
+        message,
+        stack: error instanceof Error ? error.stack : undefined,
+      }),
+      keepalive: true,
+    }).catch((logError: unknown) => {
+      console.warn('[app] Error could not be sent to the central log', logError)
+    })
+  }
   notify('error', message)
   return message
 }

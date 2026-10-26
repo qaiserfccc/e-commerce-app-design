@@ -4,8 +4,8 @@ export const inputClass = 'w-full rounded-lg border border-[#1c1c1a]/15 bg-white
 export const primaryButton = 'inline-flex items-center justify-center gap-2 rounded-full bg-[#1c1c1a] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#353531] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1c1c1a] disabled:cursor-wait disabled:opacity-60'
 export const secondaryButton = 'rounded-full border border-[#1c1c1a]/15 bg-white px-4 py-2.5 text-sm hover:bg-[#f2f1ed] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1c1c1a] disabled:opacity-60'
 
-export function Field({ label, children }: { label: string; children: ReactNode }) {
-  return <label className="block text-xs font-medium text-[#55544e]">{label}<div className="mt-1.5">{children}</div></label>
+export function Field({ label, children, required = false }: { label: string; children: ReactNode; required?: boolean }) {
+  return <label className="block text-xs font-medium text-[#55544e]">{label}{required && <span aria-hidden="true" className="ml-1 text-red-600">*</span>}<div className="mt-1.5">{children}</div></label>
 }
 
 export function errorText(error: unknown) {

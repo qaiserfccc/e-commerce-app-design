@@ -3,7 +3,7 @@
 import { useDeferredValue, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import {
   Activity, ArrowDown, ArrowUp, BarChart3, ClipboardList, LayoutDashboard, LoaderCircle,
-  LogOut, Package, Plus, Search, ShoppingBag, ShieldCheck, Tags, Users, X,
+  AlertTriangle, LogOut, Package, Plus, Search, ShoppingBag, ShieldCheck, Tags, Users, X,
 } from 'lucide-react'
 import { useSWRConfig } from 'swr'
 import {
@@ -34,16 +34,20 @@ import { CategoryManager } from '@/components/admin/category-manager'
 import { CatalogSettings } from '@/components/admin/catalog-settings'
 import { ProductEditor } from '@/components/admin/product-editor'
 import { ContentManager } from '@/components/admin/content-manager'
+import { BrandManager, ErrorLogManager, LensShadeManager } from '@/components/admin/catalog-taxonomy-manager'
 import { ProjectKanban } from '@/components/admin/project-kanban'
 import { ProductVariantManager } from '@/components/admin/product-variant-manager'
 import { getProductImageSources } from '@/components/storefront/product-image'
 import { reportError } from '@/lib/ui/notifications'
 
-type Section = 'overview' | 'categories' | 'products' | 'catalog-settings' | 'orders' | 'customers' | 'analytics' | 'content' | 'system-users' | 'project-plan'
+type Section = 'overview' | 'categories' | 'brands' | 'lens-shades' | 'error-logs' | 'products' | 'catalog-settings' | 'orders' | 'customers' | 'analytics' | 'content' | 'system-users' | 'project-plan'
 
 const sections: Array<{ id: Section; label: string; icon: typeof LayoutDashboard }> = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'categories', label: 'Categories', icon: Tags },
+  { id: 'brands', label: 'Brands', icon: Tags },
+  { id: 'lens-shades', label: 'Lens shades', icon: Tags },
+  { id: 'error-logs', label: 'Error logs', icon: AlertTriangle },
   { id: 'products', label: 'Products', icon: Package },
   { id: 'catalog-settings', label: 'Reviews & product page', icon: ClipboardList },
   { id: 'orders', label: 'Orders', icon: ShoppingBag },
@@ -1077,6 +1081,9 @@ export function AdminWorkspace() {
   const content = {
     overview: <AdminOverview onNavigate={setSection} />,
     categories: <CategoryManager canEdit={session.role === 'owner' || session.role === 'admin'} />,
+    brands: <BrandManager canEdit={session.role === 'owner' || session.role === 'admin'} />,
+    'lens-shades': <LensShadeManager canEdit={session.role === 'owner' || session.role === 'admin'} />,
+    'error-logs': <ErrorLogManager />,
     'catalog-settings': <CatalogSettings canEdit={session.role === 'owner' || session.role === 'admin'} />,
     products: <ProductWorkspace canEdit={session.role === 'owner' || session.role === 'admin'} />,
     orders: <OrdersWorkspace canEdit={session.role === 'owner' || session.role === 'admin'} />,

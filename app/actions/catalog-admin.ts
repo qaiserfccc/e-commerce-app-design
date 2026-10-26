@@ -7,8 +7,11 @@ import { buildCategoryPaths, DEFAULT_PRODUCT_PAGE, descendantIds, SECTION_SOURCE
 import { db } from '@/lib/db'
 import {
   storeActivityEvents,
+  storeBrands,
   storeCategories,
+  storeLensShades,
   storeProductAssets,
+  storeProductCategories,
   storeProductRelations,
   storeProductReviews,
   storeProducts,
@@ -87,9 +90,10 @@ export async function getAdminCategories() {
   await requireAdminSession('staff')
   const rows = await db.select().from(storeCategories).orderBy(asc(storeCategories.sortOrder), asc(storeCategories.name))
   const counts = await db
-    .select({ id: storeProducts.categoryId, n: sql<number>`count(*)::int` })
-    .from(storeProducts)
-    .groupBy(storeProducts.categoryId)
+    .select({ id: storeProductCategories.categoryId, n: sql<number>`count(distinct ${storeProducts.id})::int` })
+    .from(storeProductCategories)
+    .innerJoin(storeProducts, eq(storeProducts.id, storeProductCategories.productId))
+    .groupBy(storeProductCategories.categoryId)
   const own = new Map(counts.map((row) => [row.id, row.n]))
   return buildCategoryPaths(rows).map((row) => ({
     ...row,
@@ -143,7 +147,7 @@ export async function deleteCategory(id: string) {
   uuid(id, 'Category')
   const [child] = await db.select({ id: storeCategories.id }).from(storeCategories).where(eq(storeCategories.parentId, id)).limit(1)
   if (child) throw new Error('Delete or move the sub-categories first.')
-  const [product] = await db.select({ id: storeProducts.id }).from(storeProducts).where(eq(storeProducts.categoryId, id)).limit(1)
+  const [product] = await db.select({ id: storeProductCategories.productId }).from(storeProductCategories).where(eq(storeProductCategories.categoryId, id)).limit(1)
   if (product) throw new Error('Move or delete the products in this category first.')
   await db.delete(storeCategories).where(eq(storeCategories.id, id))
   await log('category', id, 'deleted')
@@ -179,8 +183,9 @@ export async function moveCategory(id: string, direction: 'up' | 'down') {
 export type AdminProductInput = {
   name: unknown
   slug?: unknown
-  categoryId: unknown
-  brand?: unknown
+  categoryIds: unknown
+  brandId?: unknown
+  lensShadeId?: unknown
   sku?: unknown
   shortDescription?: unknown
   description?: unknown
@@ -188,7 +193,6 @@ export type AdminProductInput = {
   compareAtPrice?: unknown
   currency?: unknown
   status?: unknown
-  colors?: unknown
   diameterMm?: unknown
   baseCurve?: unknown
   waterContent?: unknown
@@ -230,12 +234,12 @@ function parseProduct(input: AdminProductInput) {
   if (!slugPattern.test(slug) || slug.length > 120) throw new Error('Slug may use lowercase letters, numbers and hyphens only.')
   const status = typeof input.status === 'string' ? input.status : 'active'
   if (!(productStatuses as readonly string[]).includes(status)) throw new Error('Invalid status.')
-  const colors = (Array.isArray(input.colors) ? input.colors : []).slice(0, 40).map((item) => {
-    const color = item as { name?: unknown; hex?: unknown }
-    const colorName = text(color.name, 60, 'Color name', true)!
-    const hex = typeof color.hex === 'string' && /^#[0-9a-f]{6}$/i.test(color.hex) ? color.hex : '#999999'
-    return { name: colorName, hex }
-  })
+  if (!Array.isArray(input.categoryIds) || input.categoryIds.length === 0 || input.categoryIds.length > 30) {
+    throw new Error('Select at least one category.')
+  }
+  const categoryIds = [...new Set(input.categoryIds.map((value) => uuid(value, 'Category')))]
+  const brandId = input.brandId ? uuid(input.brandId, 'Brand') : null
+  const lensShadeId = input.lensShadeId ? uuid(input.lensShadeId, 'Lens shade') : null
   const features = (Array.isArray(input.features) ? input.features : []).map((item) => text(item, 200, 'Feature')).filter((item): item is string => Boolean(item)).slice(0, 30)
   const specs = (Array.isArray(input.specs) ? input.specs : []).slice(0, 30).flatMap((item) => {
     const spec = item as { label?: unknown; value?: unknown }
@@ -247,8 +251,10 @@ function parseProduct(input: AdminProductInput) {
   return {
     name,
     slug,
-    categoryId: uuid(input.categoryId, 'Category'),
-    brand: text(input.brand, 100, 'Brand'),
+    categoryIds,
+    categoryId: categoryIds[0],
+    brandId,
+    lensShadeId,
     sku: text(input.sku, 80, 'SKU'),
     shortDescription: text(input.shortDescription, 400, 'Short description'),
     description: text(input.description, 10000, 'Description'),
@@ -256,7 +262,6 @@ function parseProduct(input: AdminProductInput) {
     compareAtPrice: money(input.compareAtPrice, 'Compare-at price', false),
     currency,
     status,
-    colors,
     diameterMm: decimal(input.diameterMm, 'Diameter'),
     baseCurve: decimal(input.baseCurve, 'Base curve'),
     waterContent: text(input.waterContent, 60, 'Water content'),
@@ -276,6 +281,17 @@ function parseProduct(input: AdminProductInput) {
   }
 }
 
+async function validateProductReferences(categoryIds: string[], brandId: string | null, lensShadeId: string | null) {
+  const [categories, brands, shades] = await Promise.all([
+    db.select({ id: storeCategories.id }).from(storeCategories).where(inArray(storeCategories.id, categoryIds)),
+    brandId ? db.select({ id: storeBrands.id }).from(storeBrands).where(eq(storeBrands.id, brandId)) : Promise.resolve([]),
+    lensShadeId ? db.select({ id: storeLensShades.id }).from(storeLensShades).where(eq(storeLensShades.id, lensShadeId)) : Promise.resolve([]),
+  ])
+  if (categories.length !== categoryIds.length) throw new Error('One or more selected categories no longer exist.')
+  if (brandId && !brands.length) throw new Error('Selected brand no longer exists.')
+  if (lensShadeId && !shades.length) throw new Error('Selected lens shade no longer exists.')
+}
+
 function duplicateMessage(error: unknown) {
   const code = String((error as { code?: string }).code)
   if (code === '23505') return 'Slug or SKU is already used by another product.'
@@ -291,11 +307,15 @@ export async function getAdminProducts() {
     .innerJoin(storeCategories, eq(storeCategories.id, storeProducts.categoryId))
     .orderBy(desc(storeProducts.createdAt))
   const relations = await db.select().from(storeProductRelations).orderBy(asc(storeProductRelations.sortOrder))
+  const categories = await db.select().from(storeProductCategories)
   const relatedBy = new Map<string, string[]>()
   for (const relation of relations) relatedBy.set(relation.productId, [...(relatedBy.get(relation.productId) ?? []), relation.relatedProductId])
+  const categoriesBy = new Map<string, string[]>()
+  for (const relation of categories) categoriesBy.set(relation.productId, [...(categoriesBy.get(relation.productId) ?? []), relation.categoryId])
   return rows.map(({ product, categoryName }) => ({
     ...product,
     category: categoryName,
+    categoryIds: categoriesBy.get(product.id) ?? [product.categoryId],
     relatedProductIds: relatedBy.get(product.id) ?? [],
     createdAt: product.createdAt.toISOString(),
     updatedAt: product.updatedAt.toISOString(),
@@ -313,7 +333,18 @@ export async function createProduct(input: AdminProductInput) {
   await requireAdminSession('admin')
   const values = parseProduct(input)
   try {
-    const [row] = await db.insert(storeProducts).values({ ...values, stockQuantity: 0 }).returning({ id: storeProducts.id })
+    await validateProductReferences(values.categoryIds, values.brandId, values.lensShadeId)
+    const [brand] = values.brandId ? await db.select({ name: storeBrands.name }).from(storeBrands).where(eq(storeBrands.id, values.brandId)) : []
+    const { categoryIds, ...productValues } = values
+    const [row] = await db.transaction(async (tx) => {
+      const [created] = await tx.insert(storeProducts).values({
+        ...productValues,
+        brand: brand?.name ?? null,
+        stockQuantity: 0,
+      }).returning({ id: storeProducts.id })
+      await tx.insert(storeProductCategories).values(categoryIds.map((categoryId) => ({ productId: created.id, categoryId })))
+      return [created]
+    })
     await log('product', row.id, 'created', { name: values.name })
     bust()
     return { id: row.id }
@@ -329,15 +360,23 @@ export async function updateProduct(id: string, input: AdminProductInput) {
   uuid(id, 'Product')
   const values = parseProduct(input)
   try {
+    await validateProductReferences(values.categoryIds, values.brandId, values.lensShadeId)
     const [hasVariants] = await db.select({ id: storeProductVariants.id }).from(storeProductVariants).where(eq(storeProductVariants.productId, id)).limit(1)
-    // Price and stock are derived from variants once any exist.
-    const { price, ...rest } = values
-    const [row] = await db
-      .update(storeProducts)
-      .set({ ...rest, ...(hasVariants ? {} : { price }), updatedAt: new Date() })
-      .where(eq(storeProducts.id, id))
-      .returning({ id: storeProducts.id })
-    if (!row) throw new Error('Product not found.')
+    const [brand] = values.brandId ? await db.select({ name: storeBrands.name }).from(storeBrands).where(eq(storeBrands.id, values.brandId)) : []
+    const { categoryIds, ...productValues } = values
+    const [row] = await db.transaction(async (tx) => {
+      // Price and stock are derived from variants once any exist.
+      const { price, ...rest } = productValues
+      const [updated] = await tx
+        .update(storeProducts)
+        .set({ ...rest, brand: brand?.name ?? null, ...(hasVariants ? {} : { price }), updatedAt: new Date() })
+        .where(eq(storeProducts.id, id))
+        .returning({ id: storeProducts.id })
+      if (!updated) throw new Error('Product not found.')
+      await tx.delete(storeProductCategories).where(eq(storeProductCategories.productId, id))
+      await tx.insert(storeProductCategories).values(categoryIds.map((categoryId) => ({ productId: id, categoryId })))
+      return [updated]
+    })
     await log('product', id, 'updated', { name: values.name })
     bust()
   } catch (error) {

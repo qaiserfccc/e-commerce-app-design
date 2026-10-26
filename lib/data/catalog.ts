@@ -5,9 +5,11 @@ import { cached } from '@/lib/cache'
 import { db } from '@/lib/db'
 import {
   storeCategories,
+  storeLensShades,
   storeOrderItems,
   storeOrders,
   storeProductAssets,
+  storeProductCategories,
   storeProductRelations,
   storeProductReviews,
   storeProducts,
@@ -29,10 +31,11 @@ async function loadCategories(): Promise<CategoryNode[]> {
   const [rows, counts] = await Promise.all([
     db.select().from(storeCategories).where(eq(storeCategories.isActive, true)).orderBy(asc(storeCategories.sortOrder), asc(storeCategories.name)),
     db
-      .select({ categoryId: storeProducts.categoryId, count: sql<number>`count(*)::int` })
-      .from(storeProducts)
+      .select({ categoryId: storeProductCategories.categoryId, count: sql<number>`count(distinct ${storeProducts.id})::int` })
+      .from(storeProductCategories)
+      .innerJoin(storeProducts, eq(storeProducts.id, storeProductCategories.productId))
       .where(eq(storeProducts.status, 'active'))
-      .groupBy(storeProducts.categoryId),
+      .groupBy(storeProductCategories.categoryId),
   ])
   const direct = new Map(counts.map((row) => [row.categoryId, row.count]))
   const nodes = buildCategoryPaths(rows.map((row) => ({
@@ -58,6 +61,8 @@ const productColumns = {
   description: storeProducts.description,
   shortDescription: storeProducts.shortDescription,
   categoryId: storeProducts.categoryId,
+  brandId: storeProducts.brandId,
+  lensShadeId: storeProducts.lensShadeId,
   category: storeCategories.name,
   brand: storeProducts.brand,
   sku: storeProducts.sku,
@@ -88,10 +93,10 @@ const productColumns = {
   updatedAt: storeProducts.updatedAt,
 }
 
-async function enrich<T extends { id: string; categoryId: string }>(products: T[]) {
+async function enrich<T extends { id: string; categoryId: string; lensShadeId: string | null }>(products: T[]) {
   const ids = products.map((product) => product.id)
   if (!ids.length) return []
-  const [assets, variants, ratings, categories] = await Promise.all([
+  const [assets, variants, ratings, categories, assignments, shades] = await Promise.all([
     db.select().from(storeProductAssets).where(inArray(storeProductAssets.productId, ids)).orderBy(asc(storeProductAssets.sortOrder), asc(storeProductAssets.createdAt)),
     db.select().from(storeProductVariants).where(and(inArray(storeProductVariants.productId, ids), eq(storeProductVariants.isActive, true))).orderBy(asc(storeProductVariants.price)),
     db
@@ -100,6 +105,11 @@ async function enrich<T extends { id: string; categoryId: string }>(products: T[
       .where(and(inArray(storeProductReviews.productId, ids), eq(storeProductReviews.isApproved, true)))
       .groupBy(storeProductReviews.productId),
     getCategories(),
+    db.select({ productId: storeProductCategories.productId, categoryId: storeProductCategories.categoryId, name: storeCategories.name })
+      .from(storeProductCategories)
+      .innerJoin(storeCategories, eq(storeCategories.id, storeProductCategories.categoryId))
+      .where(inArray(storeProductCategories.productId, ids)),
+    db.select().from(storeLensShades).where(inArray(storeLensShades.id, products.map((product) => product.lensShadeId).filter((id): id is string => Boolean(id)))),
   ])
   const group = <R extends { productId: string }>(rows: R[]) => {
     const map = new Map<string, R[]>()
@@ -110,9 +120,15 @@ async function enrich<T extends { id: string; categoryId: string }>(products: T[
   const variantMap = group(variants)
   const ratingMap = new Map(ratings.map((row) => [row.productId, row]))
   const pathMap = new Map(categories.map((category) => [category.id, category.path]))
+  const assigned = new Map<string, Array<{ id: string; name: string }>>()
+  for (const row of assignments) assigned.set(row.productId, [...(assigned.get(row.productId) ?? []), { id: row.categoryId, name: row.name }])
+  const shadesById = new Map(shades.map((shade) => [shade.id, shade]))
   return products.map((product) => ({
     ...product,
     categoryPath: pathMap.get(product.categoryId) ?? '',
+    categoryIds: assigned.get(product.id)?.map((category) => category.id) ?? [product.categoryId],
+    categories: assigned.get(product.id) ?? [],
+    lensShade: product.lensShadeId ? shadesById.get(product.lensShadeId) ?? null : null,
     assets: assetMap.get(product.id) ?? [],
     variants: variantMap.get(product.id) ?? [],
     ratingAvg: ratingMap.get(product.id) ? Math.round(Number(ratingMap.get(product.id)!.avg) * 10) / 10 : null,
@@ -126,7 +142,8 @@ async function loadCatalog(categorySlug: string | null, query: string | null) {
     const all = await getCategories()
     const target = all.find((category) => category.slug === categorySlug)
     if (!target) return []
-    conditions.push(inArray(storeProducts.categoryId, [...descendantIds(all, target.id)]))
+    const matchingCategoryIds = [...descendantIds(all, target.id)]
+    conditions.push(inArray(storeProducts.id, db.select({ productId: storeProductCategories.productId }).from(storeProductCategories).where(inArray(storeProductCategories.categoryId, matchingCategoryIds))))
   }
   if (query) {
     const like = `%${query.replace(/[%_\\]/g, '\\$&')}%`

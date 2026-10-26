@@ -4,20 +4,21 @@ import { useState, type FormEvent, type InvalidEvent } from 'react'
 import useSWR from 'swr'
 import { LoaderCircle, Plus, X } from 'lucide-react'
 import { createProduct, getAdminCategories, setProductRelations, updateProduct } from '@/app/actions/catalog-admin'
+import { getAdminBrands, getAdminLensShades } from '@/app/actions/catalog-taxonomy'
 import { Alert, Field, flattenCategories, inputClass, primaryButton, secondaryButton, type AdminCategory } from '@/components/admin/admin-ui'
 import { useAdminProducts, type AdminProduct } from '@/lib/hooks/use-admin-data'
 import { notify, reportError } from '@/lib/ui/notifications'
 
-type ColorRow = { name: string; hex: string }
 type SpecRow = { label: string; value: string }
 
 export function ProductEditor({ product, onSaved, onCancel }: { product?: AdminProduct; onSaved: () => void; onCancel: () => void }) {
   const { data: categoryData } = useSWR('admin-categories', () => getAdminCategories())
+  const { data: brandData } = useSWR('admin-brands', () => getAdminBrands())
+  const { data: shadeData } = useSWR('admin-lens-shades', () => getAdminLensShades())
   const { products } = useAdminProducts()
   const categories = flattenCategories((categoryData ?? []) as AdminCategory[])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [colors, setColors] = useState<ColorRow[]>(product?.colors ?? [])
   const [specs, setSpecs] = useState<SpecRow[]>(product?.specs ?? [])
   const [related, setRelated] = useState<string[]>(product?.relatedProductIds ?? [])
   const [relatedQuery, setRelatedQuery] = useState('')
@@ -30,8 +31,9 @@ export function ProductEditor({ product, onSaved, onCancel }: { product?: AdminP
     const values = {
       name: text('name'),
       slug: text('slug'),
-      categoryId: text('categoryId'),
-      brand: text('brand'),
+      categoryIds: form.getAll('categoryIds'),
+      brandId: text('brandId') || null,
+      lensShadeId: text('lensShadeId') || null,
       sku: text('sku'),
       shortDescription: text('shortDescription'),
       description: text('description'),
@@ -39,7 +41,6 @@ export function ProductEditor({ product, onSaved, onCancel }: { product?: AdminP
       compareAtPrice: text('compareAtPrice'),
       currency: text('currency').toUpperCase() || 'PKR',
       status: text('status'),
-      colors,
       diameterMm: text('diameterMm'),
       baseCurve: text('baseCurve'),
       waterContent: text('waterContent'),
@@ -96,22 +97,26 @@ export function ProductEditor({ product, onSaved, onCancel }: { product?: AdminP
 
       <fieldset className="grid gap-4 sm:grid-cols-2">
         <legend className="mb-3 text-sm font-semibold">Basics</legend>
-        <Field label="Name *"><input name="name" required maxLength={200} defaultValue={product?.name} className={inputClass} /></Field>
+        <Field label="Name" required><input name="name" required maxLength={200} defaultValue={product?.name} className={inputClass} /></Field>
         <Field label="Slug (blank = from name)"><input name="slug" maxLength={120} pattern="[a-z0-9]+(-[a-z0-9]+)*" defaultValue={product?.slug} className={inputClass} /></Field>
-        <Field label="Category *">
-          <select name="categoryId" required defaultValue={product?.categoryId ?? ''} className={inputClass}>
-            <option value="" disabled>Select a category</option>
+        <Field label="Categories" required>
+          <select name="categoryIds" required multiple defaultValue={product?.categoryIds ?? (product?.categoryId ? [product.categoryId] : [])} className={`${inputClass} min-h-32`}>
             {categories.map((row) => <option key={row.id} value={row.id}>{'\u2003'.repeat(row.depth)}{row.name}</option>)}
           </select>
         </Field>
-        <Field label="Brand"><input name="brand" maxLength={100} defaultValue={product?.brand ?? ''} className={inputClass} /></Field>
+        <Field label="Brand">
+          <select name="brandId" defaultValue={product?.brandId ?? ''} className={inputClass}>
+            <option value="">No brand</option>
+            {(brandData ?? []).map((row) => <option key={row.id} value={row.id}>{row.name}{row.isActive ? '' : ' (inactive)'}</option>)}
+          </select>
+        </Field>
         <Field label="SKU"><input name="sku" maxLength={80} defaultValue={product?.sku ?? ''} className={inputClass} /></Field>
         <Field label="Status">
           <select name="status" defaultValue={product?.status ?? 'active'} className={inputClass}>
             <option value="active">Active</option><option value="draft">Draft</option><option value="archived">Archived</option>
           </select>
         </Field>
-        <Field label="Price *"><input name="price" required inputMode="decimal" pattern="\d+(\.\d{1,2})?" readOnly={variantManaged} defaultValue={product?.price} className={inputClass} /></Field>
+        <Field label="Price" required><input name="price" required inputMode="decimal" pattern="\d+(\.\d{1,2})?" readOnly={variantManaged} defaultValue={product?.price} className={inputClass} /></Field>
         <div className="grid grid-cols-[1fr_90px] gap-3">
           <Field label="Compare-at (old) price"><input name="compareAtPrice" inputMode="decimal" pattern="\d+(\.\d{1,2})?" defaultValue={product?.compareAtPrice ?? ''} className={inputClass} /></Field>
           <Field label="Currency"><input name="currency" maxLength={3} defaultValue={product?.currency ?? 'PKR'} className={inputClass} /></Field>
@@ -141,18 +146,15 @@ export function ProductEditor({ product, onSaved, onCancel }: { product?: AdminP
         <label className="flex items-center gap-2 self-end pb-2 text-sm"><input name="uvProtection" type="checkbox" defaultChecked={product?.uvProtection} /> UV protection</label>
       </fieldset>
 
-      <fieldset className="mt-6">
-        <legend className="mb-3 text-sm font-semibold">Colors</legend>
-        <ul className="space-y-2">
-          {colors.map((color, index) => (
-            <li key={index} className="flex items-center gap-2">
-              <input type="color" aria-label="Color" value={color.hex} onChange={(event) => setColors(colors.map((row, i) => i === index ? { ...row, hex: event.target.value } : row))} className="size-10 rounded border" />
-              <input aria-label="Color name" value={color.name} placeholder="Color name" onChange={(event) => setColors(colors.map((row, i) => i === index ? { ...row, name: event.target.value } : row))} className={inputClass} />
-              <button type="button" aria-label="Remove color" onClick={() => setColors(colors.filter((_, i) => i !== index))} className="grid size-9 shrink-0 place-items-center rounded-full hover:bg-[#f2f1ed]"><X size={15} /></button>
-            </li>
-          ))}
-        </ul>
-        <button type="button" onClick={() => setColors([...colors, { name: '', hex: '#8b5a2b' }])} className={`${secondaryButton} mt-2`}><Plus size={14} className="mr-1 inline" />Add color</button>
+      <fieldset className="mt-6 grid gap-4 sm:grid-cols-2">
+        <legend className="mb-3 text-sm font-semibold">Lens shade</legend>
+        <Field label="Shade">
+          <select name="lensShadeId" defaultValue={product?.lensShadeId ?? ''} className={inputClass}>
+            <option value="">No shade</option>
+            {(shadeData ?? []).map((row) => <option key={row.id} value={row.id}>{row.name}{row.isActive ? '' : ' (inactive)'}</option>)}
+          </select>
+        </Field>
+        <p className="self-end pb-2 text-xs leading-5 text-[#68675f]">Add or edit shades in the Lens shades section.</p>
       </fieldset>
 
       <fieldset className="mt-6 grid gap-4">

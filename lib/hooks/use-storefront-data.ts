@@ -17,8 +17,13 @@ export interface Product {
   shortDescription?: string | null
   category: string
   categoryId?: string
+  categoryIds?: string[]
+  categories?: Array<{ id: string; name: string }>
   categoryPath?: string
   brand?: string | null
+  brandId?: string | null
+  lensShadeId?: string | null
+  lensShade?: { id: string; name: string; hex: string } | null
   sku?: string | null
   price: string
   compareAtPrice?: string | null

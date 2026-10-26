@@ -18,8 +18,13 @@ const FILES_TO_CHECK = [
   'db/migrations/0003_isk_lens_catalog.sql',
   'db/migrations/0005_cod_checkout_and_customer_accounts.sql',
   'db/migrations/0009_category_tree_catalog.sql',
+  'db/migrations/0011_catalog_taxonomy_and_error_logs.sql',
   'scripts/bootstrap-admin.mjs',
   'app/actions/catalog-admin.ts',
+  'app/actions/catalog-taxonomy.ts',
+  'app/api/errors/route.ts',
+  'components/admin/catalog-taxonomy-manager.tsx',
+  'lib/errors/log-error.ts',
   'lib/data/catalog.ts',
   'app/actions/checkout.ts',
   'app/actions/admin.ts',
@@ -103,6 +108,9 @@ try {
     'storeProductImportRuns',
     'storeProductImportItems',
     'storeActivityEvents',
+    'storeBrands',
+    'storeLensShades',
+    'storeErrorLogs',
     'storeAdminUsers',
   ]
 
