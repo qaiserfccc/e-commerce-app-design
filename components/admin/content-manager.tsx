@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { LoaderCircle, Trash2 } from 'lucide-react'
 import { deleteBanner, deleteReview, getContentAdmin, saveBanner, saveReview, saveSetting } from '@/app/actions/content'
 import { BANNER_PLACEMENTS, SETTING_KEYS, type SettingKey } from '@/lib/content-types'
+import { reportError } from '@/lib/ui/notifications'
 
 type Content = Awaited<ReturnType<typeof getContentAdmin>>
 type BannerRow = Content['banners'][number]
@@ -13,8 +14,6 @@ const placementLabels: Record<string, string> = {
   service: 'Service images', new_arrival: 'New arrivals banner', feature: 'Store promises', why_choose: 'Why choose us',
 }
 const inputClass = 'w-full rounded-lg border border-[#d8d6cc] bg-white px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-[#1c1c1a]'
-const message = (error: unknown) => (error instanceof Error ? error.message : 'The request could not be completed.')
-
 function BannerEditor({ banner, canEdit, onChanged, onError }: { banner?: BannerRow; canEdit: boolean; onChanged: () => Promise<void>; onError: (message: string) => void }) {
   const [placement, setPlacement] = useState(banner?.placement ?? 'hero')
   const [title, setTitle] = useState(banner?.title ?? '')
@@ -39,7 +38,7 @@ function BannerEditor({ banner, canEdit, onChanged, onError }: { banner?: Banner
       setImageUrl(payload.data.url)
       setBlobPathname(payload.data.pathname)
     } catch (error) {
-      onError(message(error))
+      onError(reportError(error, 'Content image could not be uploaded.'))
     } finally {
       setBusy(false)
     }
@@ -54,7 +53,7 @@ function BannerEditor({ banner, canEdit, onChanged, onError }: { banner?: Banner
       if (!banner) { setTitle(''); setBody(''); setHref(''); setImageUrl(''); setBlobPathname('') }
       await onChanged()
     } catch (error) {
-      onError(message(error))
+      onError(reportError(error, 'The banner could not be saved.'))
     } finally {
       setBusy(false)
     }
@@ -67,7 +66,7 @@ function BannerEditor({ banner, canEdit, onChanged, onError }: { banner?: Banner
       await deleteBanner(banner.id)
       await onChanged()
     } catch (error) {
-      onError(message(error))
+      onError(reportError(error, 'The banner could not be deleted.'))
       setBusy(false)
     }
   }
@@ -116,7 +115,7 @@ function ReviewEditor({ review, canEdit, onChanged, onError }: { review?: Conten
       if (!review) { setAuthor(''); setBody('') }
       await onChanged()
     } catch (error) {
-      onError(message(error))
+      onError(reportError(error, 'The review could not be saved.'))
     } finally {
       setBusy(false)
     }
@@ -129,7 +128,7 @@ function ReviewEditor({ review, canEdit, onChanged, onError }: { review?: Conten
       await deleteReview(review.id)
       await onChanged()
     } catch (error) {
-      onError(message(error))
+      onError(reportError(error, 'The review could not be deleted.'))
       setBusy(false)
     }
   }
@@ -162,7 +161,9 @@ function SettingEditor({ name, value, canEdit, onChanged, onError }: { name: Set
       await saveSetting(name, JSON.parse(draft))
       await onChanged()
     } catch (error) {
-      onError(error instanceof SyntaxError ? `${name}: invalid JSON.` : message(error))
+      const errorMessage = error instanceof SyntaxError ? `${name}: invalid JSON.` : reportError(error, `${name} could not be saved.`)
+      if (error instanceof SyntaxError) reportError(errorMessage)
+      onError(errorMessage)
     } finally {
       setBusy(false)
     }
@@ -186,7 +187,7 @@ export function ContentManager({ canEdit }: { canEdit: boolean }) {
       setContent(await getContentAdmin())
       setLoading(false)
     } catch (loadError) {
-      setError(message(loadError))
+      setError(reportError(loadError, 'Storefront content could not be loaded.'))
       setLoading(false)
     }
   }, [])

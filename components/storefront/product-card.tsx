@@ -19,6 +19,7 @@ export function ProductCard({ product }: { product: Product }) {
         <StorefrontProductImage
           sources={getProductImageSources(product)}
           alt={product.name}
+          fdaApproved={product.fdaApproved}
           className="relative aspect-square overflow-hidden"
           imageClassName="size-full object-cover transition-transform duration-500 group-hover:scale-105"
           fallback={<div role="img" aria-label={`No product image is available for ${product.name}`} className="product-placeholder size-full" />}

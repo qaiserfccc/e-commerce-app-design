@@ -4,6 +4,7 @@ import { Slider } from '@/components/storefront/home/slider'
 import { SectionProgress } from '@/components/storefront/home/section-progress'
 import { TrendingProducts } from '@/components/storefront/home/trending-products'
 import { StoreFooter } from '@/components/storefront/shell/store-footer'
+import { RuntimeErrorNotice } from '@/components/ui/app-notifications'
 import type { BannerContent, HomeContent, SiteChrome } from '@/lib/content-types'
 import { getCatalog } from '@/lib/data/catalog'
 import { getHomeContent } from '@/lib/data/site-content'
@@ -123,13 +124,18 @@ const storeFeatures: { title: string; body: string; icon: LucideIcon }[] = [
   { title: 'Follow professional guidance', body: 'Consult an eye-care professional about lens fit and suitability.', icon: Eye },
 ]
 
-async function loadHome(): Promise<{ content: HomeContent | null; products: Product[] }> {
+async function loadHome(): Promise<{ content: HomeContent | null; products: Product[]; loadError?: string }> {
   const [content, catalog] = await Promise.allSettled([getHomeContent(), getCatalog()])
   if (content.status === 'rejected') console.error('[home] Content unavailable', content.reason instanceof Error ? content.reason.name : 'UnknownError')
   if (catalog.status === 'rejected') console.error('[home] Catalog unavailable', catalog.reason instanceof Error ? catalog.reason.name : 'UnknownError')
+  const errors = [
+    content.status === 'rejected' ? 'Homepage content could not be loaded.' : '',
+    catalog.status === 'rejected' ? 'The product catalog could not be loaded.' : '',
+  ].filter(Boolean)
   return {
     content: content.status === 'fulfilled' ? content.value : null,
     products: catalog.status === 'fulfilled' ? (catalog.value.slice(0, 12) as unknown as Product[]) : [],
+    loadError: errors.join(' '),
   }
 }
 
@@ -187,7 +193,7 @@ function SampleNotice() {
 }
 
 export async function Home({ chrome }: { chrome: SiteChrome }) {
-  const { content, products } = await loadHome()
+  const { content, products, loadError } = await loadHome()
   const banners = (placement: BannerContent['placement']) => content?.banners.filter((banner) => banner.placement === placement) ?? []
   const h = content?.headings ?? {}
   const serviceBanners = banners('service')
@@ -203,6 +209,7 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
   ]
   return (
     <main id="isk-home-scroll" tabIndex={0} aria-label="Homepage sections, scroll to explore" className="isk-home snap-y snap-mandatory overflow-x-hidden overflow-y-auto overscroll-y-contain scroll-smooth bg-[#fffaf8] text-[#201b35]">
+      <RuntimeErrorNotice message={loadError} />
       <Hero />
       <SectionProgress />
 

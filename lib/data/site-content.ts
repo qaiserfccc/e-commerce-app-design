@@ -40,7 +40,12 @@ export async function getSiteChrome(): Promise<SiteChrome> {
     }
   } catch (error) {
     console.error('[site-content] Site chrome unavailable', error instanceof Error ? error.name : 'UnknownError')
-    return { announcements: [], contact: {}, footer: {} }
+    return {
+      announcements: [],
+      contact: {},
+      footer: {},
+      loadError: 'Store announcements and contact details could not be loaded.',
+    }
   }
 }
 

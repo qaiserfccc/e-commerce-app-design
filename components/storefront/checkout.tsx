@@ -7,6 +7,7 @@ import { ArrowLeft, Check, LoaderCircle, LockKeyhole, PackageCheck, Store } from
 import { getProductImageSources, StorefrontProductImage } from '@/components/storefront/product-image'
 import { useProducts, type Product } from '@/lib/hooks/use-storefront-data'
 import { useStorefrontCart } from '@/lib/hooks/use-storefront-cart'
+import { reportError } from '@/lib/ui/notifications'
 
 type Customer = { email: string }
 
@@ -60,7 +61,7 @@ export function Checkout() {
       setCustomer(body.customer && typeof body.customer.email === 'string' ? body.customer : null)
       setAuthMode('guest')
     } catch (error) {
-      setAuthError(error instanceof Error ? error.message : 'Account status could not be checked.')
+      setAuthError(reportError(error, 'Account status could not be checked.'))
     } finally {
       setAuthLoading(false)
     }
@@ -99,7 +100,7 @@ export function Checkout() {
       setAuthMode('guest')
       formElement.reset()
     } catch (error) {
-      setAuthError(error instanceof Error ? error.message : 'Account access could not be completed.')
+      setAuthError(reportError(error, 'Account access could not be completed.'))
     } finally {
       setAuthBusy(false)
     }
@@ -120,7 +121,7 @@ export function Checkout() {
       setAccountMessage('')
       setAuthMode('guest')
     } catch (error) {
-      setAuthError(error instanceof Error ? error.message : 'Sign out could not be completed.')
+      setAuthError(reportError(error, 'Sign out could not be completed.'))
     } finally {
       setAuthBusy(false)
     }
@@ -189,7 +190,7 @@ export function Checkout() {
       clear()
       router.push('/checkout/confirmation')
     } catch (error) {
-      setOrderError(error instanceof Error ? error.message : 'The order could not be placed. Your bag is unchanged; try again.')
+      setOrderError(reportError(error, 'The order could not be placed. Your bag is unchanged; try again.'))
     } finally {
       setSubmitting(false)
     }
@@ -386,6 +387,7 @@ export function Checkout() {
                   <StorefrontProductImage
                     sources={imageSources}
                     alt=""
+                    fdaApproved={line.product.fdaApproved}
                     className="size-16 overflow-hidden bg-[#dbe7e1]"
                     imageClassName="size-full object-cover"
                     fallback={<div className="lens-study size-full" aria-hidden="true" />}

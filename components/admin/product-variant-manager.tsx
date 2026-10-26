@@ -10,10 +10,7 @@ import {
 } from '@/app/actions/admin'
 import type { AdminProduct } from '@/lib/hooks/use-admin-data'
 import type { ProductVariant } from '@/lib/hooks/use-storefront-data'
-
-function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : 'The variant could not be saved.'
-}
+import { reportError } from '@/lib/ui/notifications'
 
 const fieldClass = 'w-full rounded-lg border border-[#1c1c1a]/15 bg-white px-3 py-2.5 text-sm text-[#1c1c1a] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#1c1c1a]'
 const buttonClass = 'inline-flex items-center justify-center gap-2 rounded-full border border-[#1c1c1a]/15 bg-white px-3 py-2 text-xs font-medium hover:bg-[#f2f1ed] focus-visible:outline-2 focus-visible:outline-[#1c1c1a] disabled:cursor-wait disabled:opacity-60'
@@ -60,7 +57,7 @@ export function ProductVariantManager({
       await Promise.all([globalMutate('/api/admin/products'), globalMutate('/api/products'), globalMutate('/api/admin/metrics')])
       onChanged()
     } catch (saveError) {
-      setError(errorMessage(saveError))
+      setError(reportError(saveError, 'The lens option could not be saved.'))
     } finally {
       setBusyId('')
     }
@@ -92,7 +89,7 @@ export function ProductVariantManager({
       await Promise.all([globalMutate('/api/admin/products'), globalMutate('/api/products'), globalMutate('/api/admin/metrics')])
       onChanged()
     } catch (archiveError) {
-      setError(errorMessage(archiveError))
+      setError(reportError(archiveError, 'The lens option could not be updated.'))
     } finally {
       setBusyId('')
     }

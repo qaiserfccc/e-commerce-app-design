@@ -62,6 +62,7 @@ export interface SiteChrome {
   announcements: string[]
   contact: ContactSettings
   footer: FooterSettings
+  loadError?: string
 }
 
 export interface HomeContent {

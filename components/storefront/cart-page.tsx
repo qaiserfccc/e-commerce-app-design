@@ -43,6 +43,7 @@ export function CartPage() {
                 <StorefrontProductImage
                   sources={getProductImageSources(line.product)}
                   alt={line.product.name}
+                  fdaApproved={line.product.fdaApproved}
                   className="size-[88px] overflow-hidden rounded-lg bg-[#eef3fa] sm:size-28"
                   imageClassName="size-full object-cover"
                   fallback={<div className="product-placeholder size-full" />}

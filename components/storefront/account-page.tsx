@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import Link from 'next/link'
 import { LoaderCircle } from 'lucide-react'
+import { reportError } from '@/lib/ui/notifications'
 
 type Mode = 'login' | 'register'
 
@@ -17,7 +18,10 @@ function MyOrders() {
     fetch('/api/storefront/orders', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error('failed'))))
       .then((b) => setOrders(b.data ?? []))
-      .catch(() => setFailed(true))
+      .catch((error: unknown) => {
+        reportError(error, 'Your orders could not be loaded.')
+        setFailed(true)
+      })
   }, [])
   return (
     <section className="mt-6" aria-label="My orders">
@@ -55,7 +59,7 @@ export function AccountPage() {
       if (!response.ok) throw new Error(body.error || 'Account status could not be checked.')
       setCustomer(body.customer && typeof body.customer.email === 'string' ? body.customer : null)
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Account status could not be checked.')
+      setError(reportError(loadError, 'Account status could not be checked.'))
     } finally {
       setLoading(false)
     }
@@ -72,7 +76,7 @@ export function AccountPage() {
       if (!response.ok) throw new Error(body.error || 'The request could not be completed.')
       setCustomer(payload.action === 'logout' ? null : body.customer)
     } catch (postError) {
-      setError(postError instanceof Error ? postError.message : 'The request could not be completed.')
+      setError(reportError(postError))
     } finally {
       setBusy(false)
     }

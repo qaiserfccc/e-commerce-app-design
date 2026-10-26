@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import Link from 'next/link'
 import { LoaderCircle } from 'lucide-react'
+import { reportError } from '@/lib/ui/notifications'
 
 const inputClass = 'mt-2 w-full rounded-xl border border-[#1c1c1a]/15 bg-white px-3 py-2.5 text-sm font-normal focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1c1c1a]'
 
@@ -20,7 +21,10 @@ export function ForgotPasswordForm() {
     fetch('/api/admin/password-reset', { cache: 'no-store' })
       .then((response) => response.json())
       .then((result) => setConfigured(Boolean(result.configured)))
-      .catch(() => setConfigured(false))
+      .catch((error: unknown) => {
+        reportError(error, 'Password recovery settings could not be checked.')
+        setConfigured(false)
+      })
   }, [])
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -44,7 +48,7 @@ export function ForgotPasswordForm() {
       setNewPassword('')
       setConfirmPassword('')
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : 'Unable to reset the password.')
+      setError(reportError(submitError, 'Unable to reset the password.'))
     } finally {
       setSubmitting(false)
     }

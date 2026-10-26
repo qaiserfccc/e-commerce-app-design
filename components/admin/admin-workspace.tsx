@@ -37,6 +37,7 @@ import { ContentManager } from '@/components/admin/content-manager'
 import { ProjectKanban } from '@/components/admin/project-kanban'
 import { ProductVariantManager } from '@/components/admin/product-variant-manager'
 import { getProductImageSources } from '@/components/storefront/product-image'
+import { reportError } from '@/lib/ui/notifications'
 
 type Section = 'overview' | 'categories' | 'products' | 'catalog-settings' | 'orders' | 'customers' | 'analytics' | 'content' | 'system-users' | 'project-plan'
 
@@ -140,7 +141,7 @@ function AdminLogin({
       if (typeof result.expiresAt !== 'number') throw new Error('The sign-in session could not be established. Try again.')
       onSignedIn(result.email, result.role, result.expiresAt)
     } catch (submitError) {
-      setError(errorMessage(submitError))
+      setError(reportError(submitError))
     } finally {
       setSubmitting(false)
     }
@@ -309,7 +310,7 @@ function ProductWorkspace({ canEdit }: { canEdit: boolean }) {
       await updateProductStock(product.id, quantity)
       await refresh()
     } catch (updateError) {
-      setMessage(errorMessage(updateError))
+      setMessage(reportError(updateError))
     } finally {
       setBusyId('')
     }
@@ -323,7 +324,7 @@ function ProductWorkspace({ canEdit }: { canEdit: boolean }) {
       await deleteProduct(product.id)
       await refresh()
     } catch (deleteError) {
-      setMessage(errorMessage(deleteError))
+      setMessage(reportError(deleteError))
     } finally {
       setBusyId('')
     }
@@ -417,7 +418,7 @@ function ProductRow({
       onRefresh()
       setAssetMessage(`${files.length} ${files.length === 1 ? 'file' : 'files'} uploaded successfully.`)
     } catch (uploadError) {
-      setAssetMessage(errorMessage(uploadError))
+      setAssetMessage(reportError(uploadError, 'Product media could not be uploaded.'))
     } finally {
       setUploading(false)
     }
@@ -433,7 +434,7 @@ function ProductRow({
       await Promise.all([globalMutate('/api/admin/products'), globalMutate('/api/products')])
       onRefresh()
     } catch (removeError) {
-      setAssetMessage(errorMessage(removeError))
+      setAssetMessage(reportError(removeError, 'Product media could not be removed.'))
     }
   }
 
@@ -444,7 +445,7 @@ function ProductRow({
       await Promise.all([globalMutate('/api/admin/products'), globalMutate('/api/products'), globalMutate(`/api/products/${product.slug}`)])
       onRefresh()
     } catch (reorderError) {
-      setAssetMessage(errorMessage(reorderError))
+      setAssetMessage(reportError(reorderError, 'Product media could not be reordered.'))
     }
   }
 
@@ -502,7 +503,7 @@ function ProductRow({
                       ? <img src={asset.blobUrl} alt={asset.altText ?? ''} className="h-20 w-24 object-cover" />
                       : <div className="grid h-20 w-24 place-items-center bg-[#f2f1ed] text-xs">Missing media URL</div>}
                   <div className="mt-1 flex items-center justify-between gap-1">
-                    <span className="truncate text-[10px] uppercase text-[#68675f]">{asset.mediaType} · {index + 1}</span>
+                    <span className="truncate text-xs uppercase text-[#68675f]">{asset.mediaType} · {index + 1}</span>
                     {canEdit && <div className="flex">
                       <button type="button" disabled={index === 0} onClick={() => void reorderAsset(asset.id, 'up')} aria-label={`Move ${asset.mediaType} ${index + 1} earlier`} className="grid size-7 place-items-center hover:bg-[#f2f1ed] disabled:opacity-35"><ArrowUp size={13} /></button>
                       <button type="button" disabled={index === product.assets.length - 1} onClick={() => void reorderAsset(asset.id, 'down')} aria-label={`Move ${asset.mediaType} ${index + 1} later`} className="grid size-7 place-items-center hover:bg-[#f2f1ed] disabled:opacity-35"><ArrowDown size={13} /></button>
@@ -539,7 +540,7 @@ function OrdersWorkspace({ canEdit }: { canEdit: boolean }) {
       await updateOrderStatus(orderId, status)
       await Promise.all([mutate(), globalMutate('/api/admin/metrics'), globalMutate('/api/admin/activity')])
     } catch (statusError) {
-      setMessage(errorMessage(statusError))
+      setMessage(reportError(statusError, 'The order status could not be changed.'))
     } finally {
       setSaving('')
     }
@@ -552,7 +553,7 @@ function OrdersWorkspace({ canEdit }: { canEdit: boolean }) {
       await updateOrderDeliveryFee(orderId, fee)
       await Promise.all([mutate(), globalMutate('/api/admin/metrics'), globalMutate('/api/admin/activity')])
     } catch (feeError) {
-      setMessage(errorMessage(feeError))
+      setMessage(reportError(feeError, 'The delivery fee could not be saved.'))
     } finally {
       setSaving('')
     }
@@ -693,7 +694,7 @@ function CustomersWorkspace() {
       await updateCustomer(customer.id, { marketingOptIn })
       await Promise.all([mutate(), globalMutate('/api/admin/activity')])
     } catch (updateError) {
-      setMessage(errorMessage(updateError))
+      setMessage(reportError(updateError, 'The customer details could not be saved.'))
     } finally {
       setSaving('')
     }
@@ -768,7 +769,7 @@ function SystemUsersWorkspace({ signedInUserId, signedInEmail }: { signedInUserI
     try {
       setUsers(await getSystemUsers())
     } catch (loadFailure) {
-      setLoadError(errorMessage(loadFailure))
+      setLoadError(reportError(loadFailure, 'System users could not be loaded.'))
     } finally {
       setLoading(false)
     }
@@ -789,7 +790,7 @@ function SystemUsersWorkspace({ signedInUserId, signedInEmail }: { signedInUserI
       await refreshUsers()
     } catch (createError) {
       setMessageTone('error')
-      setMessage(errorMessage(createError))
+      setMessage(reportError(createError, 'The user could not be created.'))
     } finally {
       setSaving(false)
     }
@@ -807,7 +808,7 @@ function SystemUsersWorkspace({ signedInUserId, signedInEmail }: { signedInUserI
       setMessage(nextActive ? 'System user activated.' : 'System user deactivated; their sessions were revoked.')
     } catch (updateError) {
       setMessageTone('error')
-      setMessage(errorMessage(updateError))
+      setMessage(reportError(updateError, 'The user could not be updated.'))
     } finally {
       setBusyUserId('')
     }
@@ -825,7 +826,7 @@ function SystemUsersWorkspace({ signedInUserId, signedInEmail }: { signedInUserI
       setMessage(`Password reset for ${user.email}. Their sessions were signed out; share the new password securely.`)
     } catch (resetError) {
       setMessageTone('error')
-      setMessage(errorMessage(resetError))
+      setMessage(reportError(resetError, 'The password could not be reset.'))
     } finally {
       setBusyUserId('')
     }
@@ -840,7 +841,7 @@ function SystemUsersWorkspace({ signedInUserId, signedInEmail }: { signedInUserI
       window.dispatchEvent(new Event('admin-session-expired'))
     } catch (updateError) {
       setMessageTone('error')
-      setMessage(errorMessage(updateError))
+      setMessage(reportError(updateError, 'Your account details could not be updated.'))
     } finally {
       setSaving(false)
     }
@@ -1015,7 +1016,8 @@ export function AdminWorkspace() {
           })
         }
       })
-      .catch(() => {
+      .catch((sessionError: unknown) => {
+        reportError(sessionError, 'Could not check the admin session. Refresh the page to try again.')
         if (active) setSession({ checked: true, authenticated: false, error: 'Could not check the admin session. Refresh the page to try again.' })
       })
     return () => { active = false }
@@ -1049,7 +1051,7 @@ export function AdminWorkspace() {
       setSection('overview')
       setSession({ checked: true, authenticated: false })
     } catch (signOutError) {
-      setSession((current) => ({ ...current, error: errorMessage(signOutError) }))
+      setSession((current) => ({ ...current, error: reportError(signOutError, 'Sign out could not be completed.') }))
     } finally {
       setSigningOut(false)
     }

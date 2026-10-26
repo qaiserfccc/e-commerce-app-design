@@ -42,6 +42,7 @@ export const storeProducts = pgTable('store_products', {
   powerType: text('power_type'),
   powerRange: text('power_range'),
   uvProtection: boolean('uv_protection').notNull().default(false),
+  fdaApproved: boolean('fda_approved').notNull().default(false),
   features: jsonb('features').$type<string[]>().notNull().default([]),
   specs: jsonb('specs').$type<{ label: string; value: string }[]>().notNull().default([]),
   usageInstructions: text('usage_instructions'),

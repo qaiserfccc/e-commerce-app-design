@@ -36,6 +36,7 @@ export interface Product {
   powerType?: string | null
   powerRange?: string | null
   uvProtection?: boolean
+  fdaApproved?: boolean
   features?: string[]
   specs?: { label: string; value: string }[]
   usageInstructions?: string | null

@@ -198,6 +198,7 @@ export type AdminProductInput = {
   powerType?: unknown
   powerRange?: unknown
   uvProtection?: unknown
+  fdaApproved?: unknown
   features?: unknown
   specs?: unknown
   usageInstructions?: unknown
@@ -265,6 +266,7 @@ function parseProduct(input: AdminProductInput) {
     powerType: text(input.powerType, 120, 'Power type'),
     powerRange: text(input.powerRange, 200, 'Power range'),
     uvProtection: input.uvProtection === true,
+    fdaApproved: input.fdaApproved === true,
     features,
     specs,
     usageInstructions: text(input.usageInstructions, 4000, 'Usage instructions'),

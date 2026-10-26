@@ -1,6 +1,7 @@
 import { Analytics } from '@vercel/analytics/next'
 import { Outfit } from 'next/font/google'
 import type { Metadata, Viewport } from 'next'
+import { AppNotifications } from '@/components/ui/app-notifications'
 import { StorefrontCartProvider } from '@/lib/hooks/use-storefront-cart'
 import './globals.css'
 
@@ -43,7 +44,9 @@ export default function RootLayout({
     <html lang="en" className={outfit.variable}>
       <body className="antialiased">
         <div hidden aria-hidden="true" dangerouslySetInnerHTML={{ __html: '<!--\nTHESIS: ISK Lenses makes real lens photography and shade comparisons the focus, not decorative color claims.\nOWN-WORLD: Clear sky-blue fields, deep ocean-blue actions, cool white surfaces, and untouched product colors.\nSTORY: Shoppers browse the catalog, compare genuine photos and details, add items to the bag, and continue through the existing checkout.\nFIRST VIEWPORT: Blue announcement strip, white logo/search row, category links, and the existing full-height image-led hero with its primary action left.\nFORM: Preserve the current responsive storefront and nine-panel snap homepage; this is a palette change guided by isklenses.com, not a layout replacement.\n-->' }} />
-        <StorefrontCartProvider>{children}</StorefrontCartProvider>
+        <AppNotifications>
+          <StorefrontCartProvider>{children}</StorefrontCartProvider>
+        </AppNotifications>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

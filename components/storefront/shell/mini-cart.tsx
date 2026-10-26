@@ -46,6 +46,7 @@ export function MiniCart({ open, onClose }: { open: boolean; onClose: () => void
                     <StorefrontProductImage
                       sources={getProductImageSources(line.product)}
                       alt={line.product.name}
+                      fdaApproved={line.product.fdaApproved}
                       className="size-20 shrink-0 overflow-hidden rounded-lg bg-[#eef3fa]"
                       imageClassName="size-full object-cover"
                       fallback={<div className="product-placeholder size-full" />}

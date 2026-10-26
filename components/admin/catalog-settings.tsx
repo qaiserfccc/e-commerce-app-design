@@ -7,6 +7,7 @@ import { createAdminReview, deleteReview, getAdminProductPageSettings, getAdminR
 import { Alert, errorText, Field, inputClass, primaryButton, secondaryButton } from '@/components/admin/admin-ui'
 import { SECTION_SOURCES, SECTION_SOURCE_LABELS, type ProductPageSettings } from '@/lib/catalog-types'
 import { useAdminProducts } from '@/lib/hooks/use-admin-data'
+import { reportError } from '@/lib/ui/notifications'
 
 function SettingsEditor({ initial, canEdit }: { initial: ProductPageSettings; canEdit: boolean }) {
   const [settings, setSettings] = useState(initial)
@@ -28,7 +29,7 @@ function SettingsEditor({ initial, canEdit }: { initial: ProductPageSettings; ca
       await saveProductPageSettings(settings)
       setMessage({ tone: 'info', text: 'Saved. Product pages update within a few minutes.' })
     } catch (error) {
-      setMessage({ tone: 'error', text: errorText(error) })
+      setMessage({ tone: 'error', text: reportError(error, 'Product page settings could not be saved.') })
     } finally {
       setBusy(false)
     }
@@ -87,7 +88,7 @@ function ReviewModeration({ canEdit }: { canEdit: boolean }) {
       await action()
       await mutate()
     } catch (actionError) {
-      setMessage(errorText(actionError))
+      setMessage(reportError(actionError, 'The review action could not be completed.'))
     }
   }
 
@@ -122,7 +123,7 @@ function ReviewModeration({ canEdit }: { canEdit: boolean }) {
         {(data ?? []).map((review) => (
           <li key={review.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
             <div className="min-w-0 max-w-2xl text-sm">
-              <p className="font-medium">{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)} <span className="text-xs font-normal text-[#68675f]">{review.author} on {review.productName}</span> {!review.isApproved && <span className="ml-1 rounded bg-[#fff1cc] px-1.5 py-0.5 text-[10px] uppercase">Pending</span>}</p>
+              <p className="font-medium">{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)} <span className="text-xs font-normal text-[#68675f]">{review.author} on {review.productName}</span> {!review.isApproved && <span className="ml-1 rounded bg-[#fff1cc] px-1.5 py-0.5 text-xs uppercase">Pending</span>}</p>
               {review.title && <p className="font-medium">{review.title}</p>}
               <p className="text-[#41403a]">{review.body}</p>
             </div>

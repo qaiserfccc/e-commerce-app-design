@@ -5,6 +5,7 @@ import useSWR from 'swr'
 import { ArrowDown, ArrowUp, LoaderCircle, Pencil, Plus, Trash2 } from 'lucide-react'
 import { createCategory, deleteCategory, getAdminCategories, moveCategory, updateCategory } from '@/app/actions/catalog-admin'
 import { Alert, errorText, Field, flattenCategories, inputClass, primaryButton, secondaryButton, type AdminCategory } from '@/components/admin/admin-ui'
+import { reportError } from '@/lib/ui/notifications'
 
 function CategoryForm({ category, defaultParentId, rows, onDone, onCancel }: { category?: AdminCategory; defaultParentId?: string; rows: AdminCategory[]; onDone: () => void; onCancel: () => void }) {
   const [busy, setBusy] = useState(false)
@@ -32,7 +33,7 @@ function CategoryForm({ category, defaultParentId, rows, onDone, onCancel }: { c
       if (!response.ok) throw new Error(payload.error ?? 'Upload failed.')
       setImageUrl(payload.data.url)
     } catch (uploadError) {
-      setError(errorText(uploadError))
+      setError(reportError(uploadError, 'Category image could not be uploaded.'))
     } finally {
       setBusy(false)
     }
@@ -60,7 +61,7 @@ function CategoryForm({ category, defaultParentId, rows, onDone, onCancel }: { c
       else await createCategory(input)
       onDone()
     } catch (saveError) {
-      setError(errorText(saveError))
+      setError(reportError(saveError, 'The category could not be saved.'))
     } finally {
       setBusy(false)
     }
@@ -109,7 +110,7 @@ export function CategoryManager({ canEdit }: { canEdit: boolean }) {
       await action()
       await mutate()
     } catch (actionError) {
-      setMessage(errorText(actionError))
+      setMessage(reportError(actionError, 'The category action could not be completed.'))
     }
   }
 
@@ -131,7 +132,7 @@ export function CategoryManager({ canEdit }: { canEdit: boolean }) {
           {flat.map((row) => (
             <li key={row.id} style={{ marginLeft: row.depth * 24 }} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#1c1c1a]/10 bg-white px-4 py-3">
               <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{row.name} {!row.isActive && <span className="ml-1 rounded bg-[#f2f1ed] px-1.5 py-0.5 text-[10px] uppercase">Hidden</span>}{!row.showInMenu && <span className="ml-1 rounded bg-[#f2f1ed] px-1.5 py-0.5 text-[10px] uppercase">Not in menu</span>}</p>
+                <p className="truncate text-sm font-medium">{row.name} {!row.isActive && <span className="ml-1 rounded bg-[#f2f1ed] px-1.5 py-0.5 text-xs uppercase">Hidden</span>}{!row.showInMenu && <span className="ml-1 rounded bg-[#f2f1ed] px-1.5 py-0.5 text-xs uppercase">Not in menu</span>}</p>
                 <p className="text-xs text-[#68675f]">/product-category/{row.path} · {row.productCount} direct product{row.productCount === 1 ? '' : 's'}</p>
               </div>
               {canEdit && (

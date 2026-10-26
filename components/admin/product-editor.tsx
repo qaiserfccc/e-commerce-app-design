@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type InvalidEvent } from 'react'
 import useSWR from 'swr'
 import { LoaderCircle, Plus, X } from 'lucide-react'
 import { createProduct, getAdminCategories, setProductRelations, updateProduct } from '@/app/actions/catalog-admin'
-import { Alert, errorText, Field, flattenCategories, inputClass, primaryButton, secondaryButton, type AdminCategory } from '@/components/admin/admin-ui'
+import { Alert, Field, flattenCategories, inputClass, primaryButton, secondaryButton, type AdminCategory } from '@/components/admin/admin-ui'
 import { useAdminProducts, type AdminProduct } from '@/lib/hooks/use-admin-data'
+import { notify, reportError } from '@/lib/ui/notifications'
 
 type ColorRow = { name: string; hex: string }
 type SpecRow = { label: string; value: string }
@@ -48,6 +49,7 @@ export function ProductEditor({ product, onSaved, onCancel }: { product?: AdminP
       powerType: text('powerType'),
       powerRange: text('powerRange'),
       uvProtection: form.get('uvProtection') === 'on',
+      fdaApproved: form.get('fdaApproved') === 'on',
       features: text('features').split('\n'),
       specs,
       usageInstructions: text('usageInstructions'),
@@ -62,11 +64,19 @@ export function ProductEditor({ product, onSaved, onCancel }: { product?: AdminP
       if (product) await updateProduct(product.id, values)
       else id = (await createProduct(values)).id
       if (id) await setProductRelations(id, related)
+      notify('info', product ? 'Product updated.' : 'Product created.')
       onSaved()
     } catch (saveError) {
-      setError(errorText(saveError))
+      setError(reportError(saveError, 'The product could not be saved.'))
     } finally {
       setSaving(false)
+    }
+  }
+
+  function showRequiredFieldError(event: InvalidEvent<HTMLFormElement>) {
+    const field = event.target
+    if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement || field instanceof HTMLTextAreaElement) {
+      notify('warning', field.validationMessage || 'Complete the required product fields before saving.')
     }
   }
 
@@ -75,7 +85,7 @@ export function ProductEditor({ product, onSaved, onCancel }: { product?: AdminP
     .slice(0, 6)
 
   return (
-    <form key={product?.id ?? 'new'} onSubmit={submit} className="rounded-2xl border border-[#1c1c1a]/10 bg-white p-5">
+    <form key={product?.id ?? 'new'} onSubmit={submit} onInvalidCapture={showRequiredFieldError} className="rounded-2xl border border-[#1c1c1a]/10 bg-white p-5">
       <div className="mb-5 flex items-center justify-between gap-4">
         <h2 className="font-medium">{product ? `Edit ${product.name}` : 'Add a product'}</h2>
         <button type="button" onClick={onCancel} aria-label="Close product editor" className="rounded-full p-2 hover:bg-[#f2f1ed]"><X size={17} /></button>
@@ -86,9 +96,9 @@ export function ProductEditor({ product, onSaved, onCancel }: { product?: AdminP
 
       <fieldset className="grid gap-4 sm:grid-cols-2">
         <legend className="mb-3 text-sm font-semibold">Basics</legend>
-        <Field label="Name"><input name="name" required maxLength={200} defaultValue={product?.name} className={inputClass} /></Field>
+        <Field label="Name *"><input name="name" required maxLength={200} defaultValue={product?.name} className={inputClass} /></Field>
         <Field label="Slug (blank = from name)"><input name="slug" maxLength={120} pattern="[a-z0-9]+(-[a-z0-9]+)*" defaultValue={product?.slug} className={inputClass} /></Field>
-        <Field label="Category">
+        <Field label="Category *">
           <select name="categoryId" required defaultValue={product?.categoryId ?? ''} className={inputClass}>
             <option value="" disabled>Select a category</option>
             {categories.map((row) => <option key={row.id} value={row.id}>{'\u2003'.repeat(row.depth)}{row.name}</option>)}
@@ -101,7 +111,7 @@ export function ProductEditor({ product, onSaved, onCancel }: { product?: AdminP
             <option value="active">Active</option><option value="draft">Draft</option><option value="archived">Archived</option>
           </select>
         </Field>
-        <Field label="Price"><input name="price" required inputMode="decimal" pattern="\d+(\.\d{1,2})?" readOnly={variantManaged} defaultValue={product?.price} className={inputClass} /></Field>
+        <Field label="Price *"><input name="price" required inputMode="decimal" pattern="\d+(\.\d{1,2})?" readOnly={variantManaged} defaultValue={product?.price} className={inputClass} /></Field>
         <div className="grid grid-cols-[1fr_90px] gap-3">
           <Field label="Compare-at (old) price"><input name="compareAtPrice" inputMode="decimal" pattern="\d+(\.\d{1,2})?" defaultValue={product?.compareAtPrice ?? ''} className={inputClass} /></Field>
           <Field label="Currency"><input name="currency" maxLength={3} defaultValue={product?.currency ?? 'PKR'} className={inputClass} /></Field>
@@ -109,6 +119,13 @@ export function ProductEditor({ product, onSaved, onCancel }: { product?: AdminP
         <div className="sm:col-span-2"><Field label="Short description"><input name="shortDescription" maxLength={400} defaultValue={product?.shortDescription ?? ''} className={inputClass} /></Field></div>
         <div className="sm:col-span-2"><Field label="Description"><textarea name="description" rows={5} maxLength={10000} defaultValue={product?.description ?? ''} className={inputClass} /></Field></div>
         <label className="flex items-center gap-2 text-sm"><input name="isFeatured" type="checkbox" defaultChecked={product?.isFeatured} /> Featured product</label>
+        <label className="flex items-start gap-2 text-sm sm:col-span-2">
+          <input name="fdaApproved" type="checkbox" defaultChecked={product?.fdaApproved ?? false} className="mt-0.5" />
+          <span>
+            <span className="font-medium">FDA Approved</span>
+            <span className="mt-1 block text-xs leading-5 text-[#526b7b]">Only enable after verifying current FDA approval documentation. This adds an FDA Approved stamp to product photos.</span>
+          </span>
+        </label>
       </fieldset>
 
       <fieldset className="mt-6 grid gap-4 sm:grid-cols-3">

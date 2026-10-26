@@ -8,6 +8,7 @@ import { ProductCard } from '@/components/storefront/product-card'
 import { useStorefrontCart } from '@/lib/hooks/use-storefront-cart'
 import { useProduct, type Product, type ProductAsset } from '@/lib/hooks/use-storefront-data'
 import { getProductImageSources, StorefrontProductImage } from '@/components/storefront/product-image'
+import { reportError } from '@/lib/ui/notifications'
 
 function formatPrice(value: string, currency: string) {
   const amount = Number(value)
@@ -48,7 +49,11 @@ function ReviewForm({ slug, autoApprove }: { slug: string; autoApprove: boolean 
       body: JSON.stringify({ author: form.get('author'), title: form.get('title'), body: form.get('body'), rating }),
     })
     const body = await response.json().catch(() => ({}))
-    if (!response.ok) { setState('idle'); setMessage(body.error || 'Review could not be saved.'); return }
+    if (!response.ok) {
+      setState('idle')
+      setMessage(reportError(new Error(body.error || 'Review could not be saved.')))
+      return
+    }
     setState('done')
     setMessage(autoApprove ? 'Thank you! Your review is live.' : 'Thank you! Your review will appear once approved.')
   }
@@ -141,13 +146,14 @@ export function StorefrontProductDetail({
               <StorefrontProductImage
                 sources={imageSources}
                 alt={selectedMedia?.altText || product.name}
+                fdaApproved={product.fdaApproved}
                 className="size-full"
                 imageClassName="size-full object-cover"
                 loading="eager"
                 fallback={(
                   <div role="img" aria-label="Abstract illustration; no product photograph is available" className="lens-study relative grid size-full place-items-center">
                     <span className="lens-crosshair" />
-                    <span className="absolute bottom-5 left-5 max-w-40 bg-[#152a52] px-3 py-2 font-mono text-[10px] uppercase leading-4 tracking-[.12em] text-[#d3ff48]">
+                    <span className="absolute bottom-5 left-5 max-w-40 bg-[#152a52] px-3 py-2 font-mono text-xs uppercase leading-4 tracking-[.12em] text-[#d3ff48]">
                       Abstract study / no product photo
                     </span>
                   </div>
@@ -174,7 +180,7 @@ export function StorefrontProductDetail({
                 >
                   {asset.mediaType === 'image'
                     ? <img src={asset.blobUrl ?? ''} alt="" className="size-full object-cover" />
-                    : <span className="grid size-full place-items-center bg-[#152a52] font-mono text-[10px] uppercase text-[#d3ff48]">Video</span>}
+                    : <span className="grid size-full place-items-center bg-[#152a52] font-mono text-xs uppercase text-[#d3ff48]">Video</span>}
                 </button>
               ))}
             </div>
@@ -182,7 +188,7 @@ export function StorefrontProductDetail({
         </section>
 
         <section className="flex flex-col items-start">
-          <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[#16468a]">{product.brand ? `${product.brand} · ` : ''}{product.category}</p>
+          <p className="font-mono text-xs uppercase tracking-[.2em] text-[#16468a]">{product.brand ? `${product.brand} · ` : ''}{product.category}</p>
           <h1 className="mt-4 text-3xl font-bold leading-tight tracking-tight sm:text-4xl">{product.name}</h1>
           {product.ratingCount ? (
             <button type="button" onClick={() => setTab('reviews')} className="mt-3 inline-flex items-center gap-2 text-sm hover:underline">
@@ -200,13 +206,13 @@ export function StorefrontProductDetail({
                 </>
               )}
             </p>
-            <p className="font-mono text-[10px] uppercase tracking-[.12em] text-[#314a63]">
+            <p className="font-mono text-xs uppercase tracking-[.12em] text-[#314a63]">
               {stockQuantity > 0 ? `${stockQuantity} available` : 'Unavailable'}
             </p>
           </div>
           {product.colors && product.colors.length > 0 && (
             <div className="mt-6">
-              <p className="font-mono text-[10px] font-bold uppercase tracking-[.15em]">Available colors</p>
+              <p className="font-mono text-xs font-bold uppercase tracking-[.15em]">Available colors</p>
               <ul className="mt-2 flex flex-wrap gap-3">
                 {product.colors.map((color) => (
                   <li key={color.name} className="flex items-center gap-2 text-xs"><span className="size-6 rounded-full border border-black/15" style={{ backgroundColor: color.hex }} aria-hidden="true" />{color.name}</li>
@@ -217,7 +223,7 @@ export function StorefrontProductDetail({
 
           {variants.length > 0 && (
             <div id="listed-options" className="mt-8 w-full scroll-mt-8">
-              <label htmlFor="product-variant" className="mb-2 block font-mono text-[10px] font-bold uppercase tracking-[.15em]">Choose a listed option</label>
+              <label htmlFor="product-variant" className="mb-2 block font-mono text-xs font-bold uppercase tracking-[.15em]">Choose a listed option</label>
               <select
                 id="product-variant"
                 value={selectedVariant?.id ?? ''}
@@ -242,7 +248,7 @@ export function StorefrontProductDetail({
               ['Pack', selectedVariant?.packSize ? String(selectedVariant.packSize) : null],
             ].filter(([, value]) => value).map(([label, value]) => (
               <div key={label} className="min-w-0 bg-[#edf4ef] px-3 py-3">
-                <p className="font-mono text-[10px] uppercase tracking-[.12em] text-[#314a63]">{label}</p>
+                <p className="font-mono text-xs uppercase tracking-[.12em] text-[#314a63]">{label}</p>
                 <p className="mt-1 truncate text-sm font-semibold">{value}</p>
               </div>
             ))}
@@ -266,7 +272,7 @@ export function StorefrontProductDetail({
           >
             {stockQuantity > 0 ? 'Add selected option to bag' : 'Currently unavailable'}
           </button>
-          <p className="mt-3 w-full text-center text-[10px] font-mono uppercase tracking-[.1em] text-[#314a63]">Cash on delivery · guest or account checkout</p>
+          <p className="mt-3 w-full text-center text-xs font-mono uppercase tracking-[.1em] text-[#314a63]">Cash on delivery · guest or account checkout</p>
         </section>
       </div>
 
