@@ -34,12 +34,13 @@ const REQUIRED_TABLES = [
   'store_settings',
   'store_brands',
   'store_lens_shades',
+  'store_lens_types',
   'store_error_logs',
 ]
 
 const TABLE_SCHEMAS = {
   store_products: [
-    'id', 'name', 'slug', 'description', 'category_id', 'brand', 'brand_id', 'lens_shade_id', 'source_product_id', 'source_url', 'source_payload', 'source_content_hash', 'source_image_url', 'sku', 'short_description', 'price', 'compare_at_price',
+    'id', 'name', 'slug', 'description', 'category_id', 'brand', 'brand_id', 'lens_shade_id', 'lens_type_id', 'source_product_id', 'source_url', 'source_payload', 'source_content_hash', 'source_image_url', 'sku', 'short_description', 'price', 'compare_at_price',
     'currency', 'status', 'stock_quantity', 'hero_image_url', 'colors', 'diameter_mm', 'base_curve', 'water_content',
     'material', 'wear_duration', 'pack_contents', 'power_type', 'power_range', 'uv_protection', 'fda_approved', 'features', 'specs',
     'usage_instructions', 'is_featured', 'seo_title', 'seo_description', 'created_at', 'updated_at',
@@ -113,6 +114,7 @@ const TABLE_SCHEMAS = {
   store_settings: ['key', 'value', 'updated_at'],
   store_brands: ['id', 'name', 'slug', 'logo_url', 'is_active', 'created_at', 'updated_at'],
   store_lens_shades: ['id', 'name', 'hex', 'image_url', 'source_image_url', 'is_active', 'created_at', 'updated_at'],
+  store_lens_types: ['id', 'name', 'source_category_id', 'is_active', 'created_at', 'updated_at'],
   store_error_logs: ['id', 'source', 'error_name', 'message', 'stack', 'created_at'],
   store_admin_users: [
     'id',

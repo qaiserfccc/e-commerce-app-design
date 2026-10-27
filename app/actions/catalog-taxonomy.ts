@@ -4,7 +4,7 @@ import { asc, eq, sql } from 'drizzle-orm'
 import { invalidateCache } from '@/lib/cache'
 import { requireAdminSession } from '@/lib/auth/admin'
 import { db } from '@/lib/db'
-import { storeBrands, storeErrorLogs, storeLensShades, storeProducts } from '@/lib/db/schema'
+import { storeBrands, storeErrorLogs, storeLensShades, storeLensTypes, storeProducts } from '@/lib/db/schema'
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
@@ -108,6 +108,38 @@ export async function deleteLensShade(id: string) {
   await requireAdminSession('admin')
   assertId(id)
   await db.delete(storeLensShades).where(eq(storeLensShades.id, id))
+  bustCatalog()
+}
+
+export async function getAdminLensTypes() {
+  await requireAdminSession('staff')
+  return db.select().from(storeLensTypes).orderBy(asc(storeLensTypes.name))
+}
+
+export async function saveLensType(input: { id?: string; name: unknown; isActive?: boolean }) {
+  await requireAdminSession('admin')
+  const name = requiredText(input.name, 'Name', 100)
+  const id = input.id ? assertId(input.id) : null
+  const values = { name, isActive: input.isActive !== false, updatedAt: new Date() }
+  try {
+    if (id) {
+      const [row] = await db.update(storeLensTypes).set(values)
+        .where(eq(storeLensTypes.id, id)).returning({ id: storeLensTypes.id })
+      if (!row) throw new Error('Lens type not found.')
+    } else {
+      await db.insert(storeLensTypes).values(values)
+    }
+  } catch (error) {
+    if (String((error as { code?: string }).code) === '23505') throw new Error('A lens type with that name already exists.')
+    throw error
+  }
+  bustCatalog()
+}
+
+export async function deleteLensType(id: string) {
+  await requireAdminSession('admin')
+  assertId(id)
+  await db.delete(storeLensTypes).where(eq(storeLensTypes.id, id))
   bustCatalog()
 }
 

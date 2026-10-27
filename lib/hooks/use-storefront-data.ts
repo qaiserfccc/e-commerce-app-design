@@ -24,6 +24,8 @@ export interface Product {
   brandId?: string | null
   lensShadeId?: string | null
   lensShade?: { id: string; name: string; hex: string | null; imageUrl?: string | null } | null
+  lensTypeId?: string | null
+  lensType?: { id: string; name: string } | null
   sku?: string | null
   price: string
   compareAtPrice?: string | null

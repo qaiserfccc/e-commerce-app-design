@@ -6,6 +6,7 @@ import { db } from '@/lib/db'
 import {
   storeCategories,
   storeLensShades,
+  storeLensTypes,
   storeOrderItems,
   storeOrders,
   storeProductAssets,
@@ -63,6 +64,7 @@ const productColumns = {
   categoryId: storeProducts.categoryId,
   brandId: storeProducts.brandId,
   lensShadeId: storeProducts.lensShadeId,
+  lensTypeId: storeProducts.lensTypeId,
   category: storeCategories.name,
   brand: storeProducts.brand,
   sku: storeProducts.sku,
@@ -93,10 +95,10 @@ const productColumns = {
   updatedAt: storeProducts.updatedAt,
 }
 
-async function enrich<T extends { id: string; categoryId: string; lensShadeId: string | null }>(products: T[]) {
+async function enrich<T extends { id: string; categoryId: string; lensShadeId: string | null; lensTypeId: string | null }>(products: T[]) {
   const ids = products.map((product) => product.id)
   if (!ids.length) return []
-  const [assets, variants, ratings, categories, assignments, shades] = await Promise.all([
+  const [assets, variants, ratings, categories, assignments, shades, types] = await Promise.all([
     db.select().from(storeProductAssets).where(inArray(storeProductAssets.productId, ids)).orderBy(asc(storeProductAssets.sortOrder), asc(storeProductAssets.createdAt)),
     db.select().from(storeProductVariants).where(and(inArray(storeProductVariants.productId, ids), eq(storeProductVariants.isActive, true))).orderBy(asc(storeProductVariants.price)),
     db
@@ -110,6 +112,7 @@ async function enrich<T extends { id: string; categoryId: string; lensShadeId: s
       .innerJoin(storeCategories, eq(storeCategories.id, storeProductCategories.categoryId))
       .where(inArray(storeProductCategories.productId, ids)),
     db.select().from(storeLensShades).where(inArray(storeLensShades.id, products.map((product) => product.lensShadeId).filter((id): id is string => Boolean(id)))),
+    db.select().from(storeLensTypes).where(inArray(storeLensTypes.id, products.map((product) => product.lensTypeId).filter((id): id is string => Boolean(id)))),
   ])
   const group = <R extends { productId: string }>(rows: R[]) => {
     const map = new Map<string, R[]>()
@@ -123,12 +126,14 @@ async function enrich<T extends { id: string; categoryId: string; lensShadeId: s
   const assigned = new Map<string, Array<{ id: string; name: string }>>()
   for (const row of assignments) assigned.set(row.productId, [...(assigned.get(row.productId) ?? []), { id: row.categoryId, name: row.name }])
   const shadesById = new Map(shades.map((shade) => [shade.id, shade]))
+  const typesById = new Map(types.map((type) => [type.id, type]))
   return products.map((product) => ({
     ...product,
     categoryPath: pathMap.get(product.categoryId) ?? '',
     categoryIds: assigned.get(product.id)?.map((category) => category.id) ?? [product.categoryId],
     categories: assigned.get(product.id) ?? [],
     lensShade: product.lensShadeId ? shadesById.get(product.lensShadeId) ?? null : null,
+    lensType: product.lensTypeId ? typesById.get(product.lensTypeId) ?? null : null,
     assets: assetMap.get(product.id) ?? [],
     variants: variantMap.get(product.id) ?? [],
     ratingAvg: ratingMap.get(product.id) ? Math.round(Number(ratingMap.get(product.id)!.avg) * 10) / 10 : null,

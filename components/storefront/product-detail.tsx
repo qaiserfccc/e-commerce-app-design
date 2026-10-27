@@ -210,6 +210,11 @@ export function StorefrontProductDetail({
               {stockQuantity > 0 ? `${stockQuantity} available` : 'Unavailable'}
             </p>
           </div>
+          {product.lensType && (
+            <p className="mt-4 text-sm text-[#526b7b]">
+              <span className="font-semibold text-[#15384d]">Lens type:</span> {product.lensType.name}
+            </p>
+          )}
           {product.lensShade && (
             <div className="mt-6">
               <p className="font-mono text-xs font-bold uppercase tracking-[.15em]">Lens shade</p>

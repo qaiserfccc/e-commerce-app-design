@@ -1,7 +1,7 @@
-export type CatalogSyncEntity = 'products' | 'brands' | 'categories' | 'lens-shades' | 'all'
+export type CatalogSyncEntity = 'products' | 'brands' | 'categories' | 'lens-shades' | 'lens-types' | 'all'
 
 export interface CatalogSyncResult {
-  entity: 'products' | 'brands' | 'categories' | 'lens-shades'
+  entity: 'products' | 'brands' | 'categories' | 'lens-shades' | 'lens-types'
   source: number
   created: number
   updated: number

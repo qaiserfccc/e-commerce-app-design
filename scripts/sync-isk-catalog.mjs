@@ -1,4 +1,4 @@
-// Usage: node --env-file=.env.local scripts/sync-isk-catalog.mjs [products|brands|categories|lens-shades|all]
+// Usage: node --env-file=.env.local scripts/sync-isk-catalog.mjs [products|brands|categories|lens-shades|lens-types|all]
 import { syncIskCatalog } from '../lib/server/isk-catalog-sync.mjs'
 
 const entity = process.argv[2] ?? 'all'

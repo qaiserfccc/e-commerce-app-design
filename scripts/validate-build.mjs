@@ -21,6 +21,7 @@ const FILES_TO_CHECK = [
   'db/migrations/0011_catalog_taxonomy_and_error_logs.sql',
   'db/migrations/0012_isk_reference_taxonomy_and_brand_logos.sql',
   'db/migrations/0013_repeatable_catalog_sync.sql',
+  'db/migrations/0014_lens_types.sql',
   'scripts/bootstrap-admin.mjs',
   'app/actions/catalog-admin.ts',
   'app/actions/catalog-taxonomy.ts',
@@ -118,6 +119,7 @@ try {
     'storeActivityEvents',
     'storeBrands',
     'storeLensShades',
+    'storeLensTypes',
     'storeErrorLogs',
     'storeAdminUsers',
   ]

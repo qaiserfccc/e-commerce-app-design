@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { ArrowRight, Check, Image as ImageIcon, LoaderCircle, Package, RefreshCw, Tags, TriangleAlert } from 'lucide-react'
 import { reportError } from '@/lib/ui/notifications'
 
-type Entity = 'all' | 'products' | 'brands' | 'categories' | 'lens-shades'
+type Entity = 'all' | 'products' | 'brands' | 'categories' | 'lens-shades' | 'lens-types'
 
 type SyncResult = {
   entity: Exclude<Entity, 'all'>
@@ -22,6 +22,7 @@ type SyncResult = {
   failures?: Array<{ name: string; reason: string }>
   prerequisiteSyncs?: SyncResult[]
   shadeSync?: SyncResult
+  lensTypeSync?: SyncResult
 }
 
 const jobs: Array<{
@@ -59,6 +60,13 @@ const jobs: Array<{
     icon: ImageIcon,
     detail: 'Shade photos are reused from the product gallery when available; shade colors are never guessed.',
   },
+  {
+    id: 'lens-types',
+    title: 'Lens types',
+    description: 'Refresh the Contact Lenses and Comfort Lenses types and link source products to their family.',
+    icon: Tags,
+    detail: 'Types come from the source catalog’s top-level lens categories; non-lens products are left untyped.',
+  },
 ]
 
 function resultLines(result: SyncResult) {
@@ -66,6 +74,7 @@ function resultLines(result: SyncResult) {
   if (typeof result.imagesUploaded === 'number') lines.push(`${result.imagesUploaded} images uploaded`)
   if (typeof result.imagesReused === 'number' && result.imagesReused > 0) lines.push(`${result.imagesReused} Blob images reused`)
   if (typeof result.linked === 'number') lines.push(`${result.linked} product links refreshed`)
+  if (result.lensTypeSync) lines.push(`${result.lensTypeSync.source} lens types refreshed`)
   return lines.join(' · ')
 }
 
@@ -162,7 +171,7 @@ export function CatalogSyncManager({ canEdit }: { canEdit: boolean }) {
                 className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-[#b8d4e0] bg-white px-4 py-2 text-sm font-semibold text-[#15384d] transition-colors hover:bg-[#f7fcff] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#087ba5] disabled:cursor-not-allowed disabled:opacity-55 sm:justify-self-end"
               >
                 {isRunning ? <LoaderCircle size={15} className="animate-spin" /> : <RefreshCw size={15} />}
-                {isRunning ? 'Syncing…' : `Sync ${id === 'lens-shades' ? 'shades' : id}`}
+                {isRunning ? 'Syncing…' : `Sync ${id === 'lens-shades' ? 'shades' : id === 'lens-types' ? 'types' : id}`}
                 {!isRunning && <ArrowRight size={14} aria-hidden="true" />}
               </button>
             </article>

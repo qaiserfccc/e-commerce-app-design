@@ -4,7 +4,7 @@ import { useState, type FormEvent, type InvalidEvent } from 'react'
 import useSWR from 'swr'
 import { LoaderCircle, Plus, X } from 'lucide-react'
 import { createProduct, getAdminCategories, setProductRelations, updateProduct } from '@/app/actions/catalog-admin'
-import { getAdminBrands, getAdminLensShades } from '@/app/actions/catalog-taxonomy'
+import { getAdminBrands, getAdminLensShades, getAdminLensTypes } from '@/app/actions/catalog-taxonomy'
 import { Alert, Field, flattenCategories, inputClass, primaryButton, secondaryButton, type AdminCategory } from '@/components/admin/admin-ui'
 import { useAdminProducts, type AdminProduct } from '@/lib/hooks/use-admin-data'
 import { notify, reportError } from '@/lib/ui/notifications'
@@ -15,6 +15,7 @@ export function ProductEditor({ product, onSaved, onCancel }: { product?: AdminP
   const { data: categoryData } = useSWR('admin-categories', () => getAdminCategories())
   const { data: brandData } = useSWR('admin-brands', () => getAdminBrands())
   const { data: shadeData } = useSWR('admin-lens-shades', () => getAdminLensShades())
+  const { data: lensTypeData } = useSWR('admin-lens-types', () => getAdminLensTypes())
   const { products } = useAdminProducts()
   const categories = flattenCategories((categoryData ?? []) as AdminCategory[])
   const [saving, setSaving] = useState(false)
@@ -34,6 +35,7 @@ export function ProductEditor({ product, onSaved, onCancel }: { product?: AdminP
       categoryIds: form.getAll('categoryIds'),
       brandId: text('brandId') || null,
       lensShadeId: text('lensShadeId') || null,
+      lensTypeId: text('lensTypeId') || null,
       sku: text('sku'),
       shortDescription: text('shortDescription'),
       description: text('description'),
@@ -139,6 +141,12 @@ export function ProductEditor({ product, onSaved, onCancel }: { product?: AdminP
         <Field label="Base curve (mm)"><input name="baseCurve" inputMode="decimal" placeholder="8.6" defaultValue={product?.baseCurve ?? ''} className={inputClass} /></Field>
         <Field label="Water content"><input name="waterContent" placeholder="38%" defaultValue={product?.waterContent ?? ''} className={inputClass} /></Field>
         <Field label="Material"><input name="material" defaultValue={product?.material ?? ''} className={inputClass} /></Field>
+        <Field label="Lens type">
+          <select name="lensTypeId" defaultValue={product?.lensTypeId ?? ''} className={inputClass}>
+            <option value="">No lens type</option>
+            {(lensTypeData ?? []).map((row) => <option key={row.id} value={row.id}>{row.name}{row.isActive ? '' : ' (inactive)'}</option>)}
+          </select>
+        </Field>
         <Field label="Wear duration"><input name="wearDuration" placeholder="Monthly / One day" defaultValue={product?.wearDuration ?? ''} className={inputClass} /></Field>
         <Field label="Pack contents"><input name="packContents" placeholder="2 lenses (1 pair)" defaultValue={product?.packContents ?? ''} className={inputClass} /></Field>
         <Field label="Power type"><input name="powerType" placeholder="Zero power / Prescription" defaultValue={product?.powerType ?? ''} className={inputClass} /></Field>

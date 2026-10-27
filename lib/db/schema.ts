@@ -46,6 +46,20 @@ export const storeLensShades = pgTable('store_lens_shades', {
   nameColorUnique: uniqueIndex('store_lens_shades_lower_name_hex_unique').on(sql`lower(${table.name})`, table.hex),
 }))
 
+export const storeLensTypes = pgTable('store_lens_types', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: text('name').notNull(),
+  sourceCategoryId: integer('source_category_id'),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  nameUnique: uniqueIndex('store_lens_types_lower_name_unique').on(sql`lower(${table.name})`),
+  sourceCategoryUnique: uniqueIndex('store_lens_types_source_category_id_unique')
+    .on(table.sourceCategoryId)
+    .where(sql`${table.sourceCategoryId} IS NOT NULL`),
+}))
+
 export const storeProducts = pgTable('store_products', {
   id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull(),
@@ -54,6 +68,7 @@ export const storeProducts = pgTable('store_products', {
   categoryId: uuid('category_id').notNull().references(() => storeCategories.id, { onDelete: 'restrict' }),
   brandId: uuid('brand_id').references(() => storeBrands.id, { onDelete: 'set null' }),
   lensShadeId: uuid('lens_shade_id').references(() => storeLensShades.id, { onDelete: 'set null' }),
+  lensTypeId: uuid('lens_type_id').references(() => storeLensTypes.id, { onDelete: 'set null' }),
   sourceProductId: integer('source_product_id'),
   sourceUrl: text('source_url'),
   sourcePayload: jsonb('source_payload').$type<Record<string, unknown> | null>(),

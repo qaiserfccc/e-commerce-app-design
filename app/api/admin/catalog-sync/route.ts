@@ -8,7 +8,7 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
 
-const entities = new Set<CatalogSyncEntity>(['products', 'brands', 'categories', 'lens-shades', 'all'])
+const entities = new Set<CatalogSyncEntity>(['products', 'brands', 'categories', 'lens-shades', 'lens-types', 'all'])
 
 export async function POST(request: NextRequest) {
   if (request.headers.get('origin') !== request.nextUrl.origin || request.headers.get('sec-fetch-site') === 'cross-site') {
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     const body: unknown = await request.json()
     if (typeof body !== 'object' || body === null || !('entity' in body) ||
         typeof body.entity !== 'string' || !entities.has(body.entity as CatalogSyncEntity)) {
-      return NextResponse.json({ error: 'Choose products, brands, categories, lens shades, or all.' }, { status: 400 })
+      return NextResponse.json({ error: 'Choose products, brands, categories, lens shades, lens types, or all.' }, { status: 400 })
     }
     const result = await syncIskCatalog(body.entity as CatalogSyncEntity)
     invalidateCache('catalog')

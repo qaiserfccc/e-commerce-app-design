@@ -4,13 +4,14 @@ import { useState, type FormEvent } from 'react'
 import useSWR from 'swr'
 import { LoaderCircle, Pencil, Plus, Trash2 } from 'lucide-react'
 import {
-  deleteBrand, deleteLensShade, getAdminBrands, getAdminLensShades, getRecentErrorLogs, saveBrand, saveLensShade,
+  deleteBrand, deleteLensShade, deleteLensType, getAdminBrands, getAdminLensShades, getAdminLensTypes, getRecentErrorLogs, saveBrand, saveLensShade, saveLensType,
 } from '@/app/actions/catalog-taxonomy'
 import { Alert, Field, inputClass, primaryButton, secondaryButton } from '@/components/admin/admin-ui'
 import { reportError } from '@/lib/ui/notifications'
 
 type Brand = Awaited<ReturnType<typeof getAdminBrands>>[number]
 type LensShade = Awaited<ReturnType<typeof getAdminLensShades>>[number]
+type LensType = Awaited<ReturnType<typeof getAdminLensTypes>>[number]
 
 function BrandForm({ brand, onDone, onCancel }: { brand?: Brand; onDone: () => void; onCancel: () => void }) {
   const [busy, setBusy] = useState(false)
@@ -171,6 +172,66 @@ export function LensShadeManager({ canEdit }: { canEdit: boolean }) {
           {canEdit && <div className="flex">
             <button type="button" aria-label={`Edit ${shade.name}`} onClick={() => setEditing(shade)} className="grid size-9 place-items-center rounded-full hover:bg-[#f2f1ed]"><Pencil size={15} /></button>
             <button type="button" aria-label={`Delete ${shade.name}`} onClick={() => void remove(shade)} className="grid size-9 place-items-center rounded-full text-[#753b2d] hover:bg-[#f8eeeb]"><Trash2 size={15} /></button>
+          </div>}
+        </li>)}</ul>
+      )}
+    </section>
+  )
+}
+
+function LensTypeForm({ lensType, onDone, onCancel }: { lensType?: LensType; onDone: () => void; onCancel: () => void }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setBusy(true)
+    setError('')
+    const form = new FormData(event.currentTarget)
+    try {
+      await saveLensType({ id: lensType?.id, name: form.get('name'), isActive: form.get('isActive') === 'on' })
+      onDone()
+    } catch (saveError) {
+      setError(reportError(saveError, 'Lens type could not be saved.'))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <form onSubmit={submit} className="mb-5 grid gap-4 rounded-2xl border border-[#cfe2eb] bg-white p-5 sm:grid-cols-[1fr_auto_auto] sm:items-end">
+      <Field label="Lens type name" required><input name="name" required maxLength={100} defaultValue={lensType?.name ?? ''} className={inputClass} /></Field>
+      <label className="flex items-center gap-2 pb-2 text-sm"><input name="isActive" type="checkbox" defaultChecked={lensType?.isActive ?? true} /> Active</label>
+      <div className="flex gap-2">
+        <button type="submit" disabled={busy} className={primaryButton}>{busy && <LoaderCircle size={15} className="animate-spin" />}{busy ? 'Saving…' : lensType ? 'Save type' : 'Create type'}</button>
+        <button type="button" onClick={onCancel} className={secondaryButton}>Cancel</button>
+      </div>
+      {error && <div className="sm:col-span-3"><Alert>{error}</Alert></div>}
+    </form>
+  )
+}
+
+export function LensTypeManager({ canEdit }: { canEdit: boolean }) {
+  const { data, error, isLoading, mutate } = useSWR('admin-lens-types', () => getAdminLensTypes())
+  const [editing, setEditing] = useState<LensType | 'new' | null>(null)
+  const [message, setMessage] = useState('')
+  async function remove(lensType: LensType) {
+    if (!window.confirm(`Delete lens type ${lensType.name}? Products using it will have their type cleared.`)) return
+    try { await deleteLensType(lensType.id); await mutate() }
+    catch (removeError) { setMessage(reportError(removeError, 'Lens type could not be deleted.')) }
+  }
+  return (
+    <section className="min-w-0 flex-1">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div><h1 className="text-2xl font-semibold tracking-[-.04em]">Lens types</h1><p className="mt-2 text-sm leading-6 text-[#526b7b]">Maintain lens families used in product records. Sync available source types from Catalog sync.</p></div>
+        {canEdit && <button type="button" onClick={() => setEditing('new')} className={primaryButton}><Plus size={16} /> Add lens type</button>}
+      </div>
+      {(message || error) && <div className="mb-4"><Alert>{message || (error instanceof Error ? error.message : 'Lens types could not be loaded.')}</Alert></div>}
+      {editing && <LensTypeForm lensType={editing === 'new' ? undefined : editing} onCancel={() => setEditing(null)} onDone={() => { setEditing(null); void mutate() }} />}
+      {isLoading ? <p className="text-sm text-[#526b7b]">Loading lens types…</p> : !data?.length ? <p className="rounded-2xl border border-dashed border-[#b8d4e0] bg-white/60 px-5 py-10 text-center text-sm text-[#526b7b]">No lens types yet. Sync the source catalog or add a type to make it available in product forms.</p> : (
+        <ul className="space-y-2">{data.map((lensType) => <li key={lensType.id} className="flex items-center justify-between gap-3 rounded-xl border border-[#cfe2eb] bg-white px-4 py-3">
+          <p className="text-sm font-medium text-[#15384d]">{lensType.name}{!lensType.isActive && <span className="ml-2 text-xs text-[#526b7b]">Inactive</span>}</p>
+          {canEdit && <div className="flex">
+            <button type="button" aria-label={`Edit ${lensType.name}`} onClick={() => setEditing(lensType)} className="grid size-9 place-items-center rounded-full hover:bg-[#e8f6fb]"><Pencil size={15} /></button>
+            <button type="button" aria-label={`Delete ${lensType.name}`} onClick={() => void remove(lensType)} className="grid size-9 place-items-center rounded-full text-[#753b2d] hover:bg-[#f8eeeb]"><Trash2 size={15} /></button>
           </div>}
         </li>)}</ul>
       )}

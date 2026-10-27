@@ -10,6 +10,7 @@ import {
   storeBrands,
   storeCategories,
   storeLensShades,
+  storeLensTypes,
   storeProductAssets,
   storeProductCategories,
   storeProductRelations,
@@ -186,6 +187,7 @@ export type AdminProductInput = {
   categoryIds: unknown
   brandId?: unknown
   lensShadeId?: unknown
+  lensTypeId?: unknown
   sku?: unknown
   shortDescription?: unknown
   description?: unknown
@@ -240,6 +242,7 @@ function parseProduct(input: AdminProductInput) {
   const categoryIds = [...new Set(input.categoryIds.map((value) => uuid(value, 'Category')))]
   const brandId = input.brandId ? uuid(input.brandId, 'Brand') : null
   const lensShadeId = input.lensShadeId ? uuid(input.lensShadeId, 'Lens shade') : null
+  const lensTypeId = input.lensTypeId ? uuid(input.lensTypeId, 'Lens type') : null
   const features = (Array.isArray(input.features) ? input.features : []).map((item) => text(item, 200, 'Feature')).filter((item): item is string => Boolean(item)).slice(0, 30)
   const specs = (Array.isArray(input.specs) ? input.specs : []).slice(0, 30).flatMap((item) => {
     const spec = item as { label?: unknown; value?: unknown }
@@ -255,6 +258,7 @@ function parseProduct(input: AdminProductInput) {
     categoryId: categoryIds[0],
     brandId,
     lensShadeId,
+    lensTypeId,
     sku: text(input.sku, 80, 'SKU'),
     shortDescription: text(input.shortDescription, 400, 'Short description'),
     description: text(input.description, 10000, 'Description'),
@@ -281,15 +285,17 @@ function parseProduct(input: AdminProductInput) {
   }
 }
 
-async function validateProductReferences(categoryIds: string[], brandId: string | null, lensShadeId: string | null) {
-  const [categories, brands, shades] = await Promise.all([
+async function validateProductReferences(categoryIds: string[], brandId: string | null, lensShadeId: string | null, lensTypeId: string | null) {
+  const [categories, brands, shades, types] = await Promise.all([
     db.select({ id: storeCategories.id }).from(storeCategories).where(inArray(storeCategories.id, categoryIds)),
     brandId ? db.select({ id: storeBrands.id }).from(storeBrands).where(eq(storeBrands.id, brandId)) : Promise.resolve([]),
     lensShadeId ? db.select({ id: storeLensShades.id }).from(storeLensShades).where(eq(storeLensShades.id, lensShadeId)) : Promise.resolve([]),
+    lensTypeId ? db.select({ id: storeLensTypes.id }).from(storeLensTypes).where(eq(storeLensTypes.id, lensTypeId)) : Promise.resolve([]),
   ])
   if (categories.length !== categoryIds.length) throw new Error('One or more selected categories no longer exist.')
   if (brandId && !brands.length) throw new Error('Selected brand no longer exists.')
   if (lensShadeId && !shades.length) throw new Error('Selected lens shade no longer exists.')
+  if (lensTypeId && !types.length) throw new Error('Selected lens type no longer exists.')
 }
 
 function duplicateMessage(error: unknown) {
@@ -333,7 +339,7 @@ export async function createProduct(input: AdminProductInput) {
   await requireAdminSession('admin')
   const values = parseProduct(input)
   try {
-    await validateProductReferences(values.categoryIds, values.brandId, values.lensShadeId)
+    await validateProductReferences(values.categoryIds, values.brandId, values.lensShadeId, values.lensTypeId)
     const [brand] = values.brandId ? await db.select({ name: storeBrands.name }).from(storeBrands).where(eq(storeBrands.id, values.brandId)) : []
     const { categoryIds, ...productValues } = values
     const [row] = await db.transaction(async (tx) => {
@@ -360,7 +366,7 @@ export async function updateProduct(id: string, input: AdminProductInput) {
   uuid(id, 'Product')
   const values = parseProduct(input)
   try {
-    await validateProductReferences(values.categoryIds, values.brandId, values.lensShadeId)
+    await validateProductReferences(values.categoryIds, values.brandId, values.lensShadeId, values.lensTypeId)
     const [hasVariants] = await db.select({ id: storeProductVariants.id }).from(storeProductVariants).where(eq(storeProductVariants.productId, id)).limit(1)
     const [brand] = values.brandId ? await db.select({ name: storeBrands.name }).from(storeBrands).where(eq(storeBrands.id, values.brandId)) : []
     const { categoryIds, ...productValues } = values
