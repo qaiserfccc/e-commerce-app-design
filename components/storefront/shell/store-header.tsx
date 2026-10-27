@@ -8,17 +8,17 @@ import { MiniCart } from '@/components/storefront/shell/mini-cart'
 import { useStorefrontCart } from '@/lib/hooks/use-storefront-cart'
 import { useStorefrontCategories, type ProductCategory } from '@/lib/hooks/use-storefront-categories'
 import type { SiteChrome } from '@/lib/content-types'
-import { categoryHref, categoryTree, STORE_NAME, storeContact } from '@/lib/store-config'
+import { categoryHref, categoryTree, STORE_NAME } from '@/lib/store-config'
 
 export function StoreHeader({ chrome }: { chrome: SiteChrome }) {
   const announcements = chrome.announcements
-  const headerPhone = storeContact.phone || chrome.contact.phone || ''
-  const headerEmail = storeContact.email || chrome.contact.email || ''
+  const headerPhone = chrome.contact.phone ?? ''
+  const headerEmail = chrome.contact.email ?? ''
   const router = useRouter()
   const pathname = usePathname()
   const isHome = pathname === '/'
   const { count } = useStorefrontCart()
-  const { categories } = useStorefrontCategories()
+  const { categories, isLoading: categoriesLoading, isError: categoriesError, mutate: refreshCategories } = useStorefrontCategories()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [cartOpen, setCartOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -26,12 +26,8 @@ export function StoreHeader({ chrome }: { chrome: SiteChrome }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [announcement, setAnnouncement] = useState(0)
   const headerRef = useRef<HTMLElement>(null)
-  const announcementText = announcements.length > 0
-    ? announcements[announcement % announcements.length]
-    : 'Explore the ISK Lenses catalog'
-  const marqueeItems = announcements.length > 0
-    ? announcements
-    : ['Explore the ISK Lenses catalog', 'Browse lenses by brand and shade', 'Review product details before choosing']
+  const mobileMenuRef = useRef<HTMLDivElement>(null)
+  const announcementText = announcements[announcement % Math.max(announcements.length, 1)] ?? ''
 
   const tree = useMemo(() => categoryTree(categories), [categories])
   const roots = tree.get('root') ?? []
@@ -43,7 +39,43 @@ export function StoreHeader({ chrome }: { chrome: SiteChrome }) {
   }, [pathname])
 
   useEffect(() => {
-    const id = window.setInterval(() => setAnnouncement((value) => (value + 1) % Math.max(announcements.length, 1)), 4000)
+    if (!mobileOpen) return
+    const dialog = mobileMenuRef.current
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setMobileOpen(false)
+        return
+      }
+      if (event.key !== 'Tab' || !dialog) return
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>('a[href], button:not([disabled]):not([tabindex="-1"])'))
+      const first = focusable[0]
+      const last = focusable.at(-1)
+      if (!first || !last) return
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+
+    dialog?.querySelector<HTMLElement>('#mobile-store-menu button')?.focus()
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener('keydown', onKeyDown)
+      previousFocus?.focus()
+    }
+  }, [mobileOpen])
+
+  useEffect(() => {
+    if (announcements.length < 2) return
+    const id = window.setInterval(() => setAnnouncement((value) => (value + 1) % announcements.length), 4000)
     return () => window.clearInterval(id)
   }, [announcements.length])
 
@@ -89,70 +121,65 @@ export function StoreHeader({ chrome }: { chrome: SiteChrome }) {
 
   return (
     <header ref={headerRef} className="sticky top-0 z-40 border-b border-[#e6dce1] bg-[#f7fcff]/95 shadow-[0_8px_30px_rgba(21,56,77,0.08)] backdrop-blur-xl">
-      <div className="bg-[#201b35] text-white">
-        {isHome ? (
-          <div className="overflow-hidden">
-            <div role="region" aria-label={`Store announcements: ${marqueeItems.join(' · ')}`} className="isk-marquee flex h-9 w-max items-center text-xs font-medium tracking-wide">
-              {[0, 1, 2].map((copy) => (
-                <div key={copy} aria-hidden={copy > 0} className="flex shrink-0 items-center">
-                  {marqueeItems.map((item, index) => (
-                    <span key={`${copy}-${index}`} className="flex h-9 items-center gap-8 px-8">
-                      {item}<span aria-hidden="true" className="size-1.5 rotate-45 bg-[#e84f88]" />
-                    </span>
-                  ))}
-                </div>
-              ))}
+      {(isHome ? announcements.length > 0 : true) && (
+        <div className="bg-[#201b35] text-white">
+          {isHome ? (
+            <div className="overflow-hidden">
+              <div role="region" aria-label={`Store announcements: ${announcements.join(' · ')}`} className="isk-marquee flex h-9 w-max items-center text-xs font-medium tracking-wide">
+                {[0, 1, 2].map((copy) => (
+                  <div key={copy} aria-hidden={copy > 0} className="flex shrink-0 items-center">
+                    {announcements.map((item, index) => (
+                      <span key={`${copy}-${index}`} className="flex h-9 items-center gap-8 px-8">
+                        {item}<span aria-hidden="true" className="size-1.5 rotate-45 bg-[#e84f88]" />
+                      </span>
+                    ))}
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="mx-auto flex h-9 max-w-[1440px] items-center justify-between gap-4 px-4 text-xs sm:px-6">
-            <p className="hidden min-w-0 items-center gap-2 truncate text-white/80 sm:flex" aria-live="off">
-              {headerPhone && <a href={`tel:${headerPhone.replace(/[^\d+]/g, '')}`} className="inline-flex items-center gap-1.5 hover:underline"><Phone size={12} aria-hidden="true" />{headerPhone}</a>}
-              {headerEmail && <a href={`mailto:${headerEmail}`} className="ml-3 hover:underline">{headerEmail}</a>}
-            </p>
-            <p className="flex-1 truncate text-center font-semibold tracking-wide" aria-live="off">{announcementText}</p>
-            <Link href="/contact-us" className="hidden shrink-0 text-white/80 hover:text-white hover:underline sm:inline">Contact us</Link>
-          </div>
-        )}
-      </div>
+          ) : (
+            <div className="mx-auto flex h-9 max-w-[1440px] items-center justify-between gap-4 px-4 text-xs sm:px-6">
+              <p className="hidden min-w-0 items-center gap-2 truncate text-white/80 sm:flex" aria-live="off">
+                {headerPhone && <a href={`tel:${headerPhone.replace(/[^\d+]/g, '')}`} className="inline-flex items-center gap-1.5 hover:underline"><Phone size={12} aria-hidden="true" />{headerPhone}</a>}
+                {headerEmail && <a href={`mailto:${headerEmail}`} className="ml-3 hover:underline">{headerEmail}</a>}
+              </p>
+              <p className="flex-1 truncate text-center font-semibold tracking-wide" aria-live="off">{announcementText}</p>
+              <Link href="/contact-us" className="hidden shrink-0 text-white/80 hover:text-white hover:underline sm:inline">Contact us</Link>
+            </div>
+          )}
+        </div>
+      )}
 
-      <div className={`mx-auto flex max-w-[1440px] items-center gap-3 px-4 sm:px-6 ${isHome ? 'min-h-[76px] lg:min-h-[96px]' : 'h-[76px]'}`}>
-        <button type="button" aria-label="Open menu" aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)} className="grid size-10 place-items-center rounded-full text-[#201b35] hover:bg-[#fae9ef] lg:hidden">
+      <div className={`mx-auto flex max-w-[1440px] items-center gap-1 px-2 sm:gap-3 sm:px-6 ${isHome ? 'min-h-[76px] lg:min-h-[96px]' : 'h-[76px]'}`}>
+        <button type="button" aria-label="Open menu" aria-controls="mobile-store-menu" aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)} className="grid size-10 shrink-0 place-items-center rounded-full text-[#201b35] hover:bg-[#fae9ef] lg:hidden">
           <Menu size={22} aria-hidden="true" />
         </button>
-        <Link href="/" className="flex shrink-0 items-center gap-2.5" aria-label={`${STORE_NAME} home`}>
-          <span className="relative grid size-10 place-items-center rounded-full border-[5px] border-[#201b35] bg-[#d45782] shadow-[inset_0_0_0_4px_#fffaf8]">
+        <Link href="/" className="flex min-w-0 items-center gap-1.5 sm:shrink-0 sm:gap-2.5" aria-label={`${STORE_NAME} home`}>
+          <span className="relative grid size-7 shrink-0 place-items-center rounded-full border-4 border-[#201b35] bg-[#d45782] shadow-[inset_0_0_0_3px_#fffaf8] sm:size-10 sm:border-[5px] sm:shadow-[inset_0_0_0_4px_#fffaf8]">
             <span className="size-2 rounded-full bg-[#201b35]" />
           </span>
-          <span className="isk-reference-brand text-2xl font-extrabold leading-none">ISK <em>Lenses</em></span>
+          <span className="isk-reference-brand truncate text-base font-extrabold leading-none sm:text-2xl">ISK <em>Lenses</em></span>
         </Link>
         <div className={`mx-8 max-w-xl flex-1 ${isHome ? 'hidden' : 'hidden lg:block'}`}>{searchForm}</div>
         {isHome && (
           <nav aria-label="Featured categories" className="mx-auto hidden lg:block">
             <ul className="flex items-center gap-5 xl:gap-7">
-              {[
-                ['Colored Lenses', '/shop?q=colored'],
-                ['Brands', '#brands'],
-                ['Transparent', '/shop?q=transparent'],
-                ['Toric', '/shop?q=toric'],
-                ['Solutions', '/faq'],
-                ['Catalog', '/shop'],
-              ].map(([label, href], index) => (
-                <li key={label}>
-                  <Link href={href} className={`text-sm font-medium transition-colors hover:text-[#b83f6b] ${index === 5 ? 'text-[#d45782]' : 'text-[#201b35]'}`}>{label}</Link>
-                </li>
+              {roots.slice(0, 4).map((category) => (
+                <li key={category.id}><Link href={categoryHref(category)} className="text-sm font-medium text-[#201b35] transition-colors hover:text-[#b83f6b]">{category.name}</Link></li>
               ))}
+              <li><Link href="#brands" className="text-sm font-medium text-[#201b35] transition-colors hover:text-[#b83f6b]">Brands</Link></li>
+              <li><Link href="/shop" className="text-sm font-medium text-[#d45782] transition-colors hover:text-[#b83f6b]">Catalog</Link></li>
             </ul>
           </nav>
         )}
-        <div className="ml-auto flex items-center gap-1.5">
-          <button type="button" aria-label="Search" aria-expanded={searchOpen} onClick={() => setSearchOpen((open) => !open)} className={`grid size-10 place-items-center rounded-full text-[#201b35] hover:bg-[#fae9ef] ${isHome ? '' : 'lg:hidden'}`}>
+        <div className="ml-auto flex shrink-0 items-center gap-0 sm:gap-1.5">
+          <button type="button" aria-label="Search" aria-expanded={searchOpen} onClick={() => setSearchOpen((open) => !open)} className={`grid size-11 place-items-center rounded-full text-[#201b35] hover:bg-[#fae9ef] ${isHome ? '' : 'lg:hidden'}`}>
             <Search size={20} aria-hidden="true" />
           </button>
-          <Link href="/my-account" aria-label="My account" className="grid size-10 place-items-center rounded-full text-[#201b35] hover:bg-[#fae9ef]">
+          <Link href="/my-account" aria-label="My account" className="grid size-11 place-items-center rounded-full text-[#201b35] hover:bg-[#fae9ef]">
             <User size={20} aria-hidden="true" />
           </Link>
-          <button type="button" onClick={() => setCartOpen(true)} aria-label={`Open cart, ${count} items`} className="relative grid size-10 place-items-center rounded-full text-[#201b35] hover:bg-[#fae9ef]">
+          <button type="button" onClick={() => setCartOpen(true)} aria-label={`Open cart, ${count} items`} className="relative grid size-11 place-items-center rounded-full text-[#201b35] hover:bg-[#fae9ef]">
             <ShoppingBag size={20} aria-hidden="true" />
             {count > 0 && <span className="absolute -right-0.5 -top-0.5 grid min-w-5 place-items-center rounded-full bg-[#b83f6b] px-1 text-xs font-bold leading-5 text-white">{count}</span>}
           </button>
@@ -171,17 +198,25 @@ export function StoreHeader({ chrome }: { chrome: SiteChrome }) {
 
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
-          <button type="button" aria-label="Close menu" className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
-          <div className="absolute inset-y-0 left-0 flex w-[86%] max-w-sm flex-col bg-[#fffaf8] shadow-2xl">
+          <button type="button" aria-label="Close menu" tabIndex={-1} className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
+          <div id="mobile-store-menu" ref={mobileMenuRef} className="absolute inset-y-0 left-0 flex h-[100dvh] w-[min(88vw,24rem)] max-w-[calc(100vw-1rem)] flex-col bg-[#fffaf8] shadow-2xl">
             <div className="flex h-16 items-center justify-between bg-[#201b35] px-4 text-white">
               <span className="isk-reference-brand isk-reference-brand-on-dark text-lg font-bold text-white">ISK <em>Lenses</em></span>
-              <button type="button" aria-label="Close menu" onClick={() => setMobileOpen(false)} className="grid size-10 place-items-center"><X size={22} /></button>
+              <button type="button" aria-label="Close menu" onClick={() => setMobileOpen(false)} className="grid size-11 place-items-center"><X size={22} /></button>
             </div>
-            <ul className="flex-1 overflow-y-auto py-2 text-sm font-semibold">
+            <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-2 text-sm font-semibold">
               {[['/', 'Home'], ['/shop', 'Shop all'], ['/blogs', 'Blogs'], ['/faq', 'FAQ'], ['/contact-us', 'Contact us'], ['/my-account', 'My account']].map(([href, label]) => (
-                <li key={href}><Link href={href} className="block border-b border-[#e6dce1] px-5 py-3.5">{label}</Link></li>
+                <li key={href}><Link href={href} className="flex min-h-12 items-center border-b border-[#e6dce1] px-5 py-3.5">{label}</Link></li>
               ))}
               <li className="px-5 pb-1 pt-4 text-xs font-bold uppercase tracking-widest text-[#686371]">Categories</li>
+              {categoriesLoading && roots.length === 0 && <li className="px-5 py-4 text-sm font-normal text-[#686371]" role="status">Loading categories…</li>}
+              {categoriesError && roots.length === 0 && (
+                <li className="px-5 py-4 text-sm font-normal text-[#686371]">
+                  <p role="alert">Categories could not be loaded.</p>
+                  <button type="button" onClick={() => void refreshCategories()} className="mt-2 font-semibold text-[#b83f6b] underline">Try again</button>
+                </li>
+              )}
+              {!categoriesLoading && !categoriesError && roots.length === 0 && <li className="px-5 py-4 text-sm font-normal text-[#686371]">No categories are available yet.</li>}
               {roots.map((root) => <MobileItem key={root.id} node={root} tree={tree} expanded={expanded} toggle={(id) => setExpanded((current) => { const next = new Set(current); if (!next.delete(id)) next.add(id); return next })} depth={0} />)}
             </ul>
           </div>
@@ -215,17 +250,18 @@ function DesktopItem({ node, tree, top = false }: { node: ProductCategory; tree:
 function MobileItem({ node, tree, expanded, toggle, depth }: { node: ProductCategory; tree: Tree; expanded: Set<string>; toggle: (id: string) => void; depth: number }) {
   const kids = tree.get(node.id) ?? []
   const open = expanded.has(node.id)
+  const childrenId = `mobile-category-${node.id}`
   return (
     <li className={depth === 0 ? 'border-b border-[#e6dce1]' : ''}>
       <div className="flex items-center">
-        <Link href={categoryHref(node)} style={{ paddingLeft: 20 + depth * 16 }} className={`flex-1 py-3 pr-2 ${depth === 0 ? 'uppercase' : 'font-medium'}`}>{node.name}</Link>
+        <Link href={categoryHref(node)} style={{ paddingLeft: 20 + depth * 16 }} className={`flex min-h-12 min-w-0 flex-1 items-center break-words py-3 pr-2 leading-5 ${depth === 0 ? 'uppercase' : 'font-medium'}`}>{node.name}</Link>
         {kids.length > 0 && (
-          <button type="button" aria-expanded={open} aria-label={`Toggle ${node.name}`} onClick={() => toggle(node.id)} className="grid size-12 place-items-center">
+          <button type="button" aria-expanded={open} aria-controls={childrenId} aria-label={`${open ? 'Collapse' : 'Expand'} ${node.name}`} onClick={() => toggle(node.id)} className="grid size-12 shrink-0 place-items-center">
             <ChevronDown size={18} className={open ? 'rotate-180' : ''} />
           </button>
         )}
       </div>
-      {open && <ul className="bg-[#fae9ef]">{kids.map((kid) => <MobileItem key={kid.id} node={kid} tree={tree} expanded={expanded} toggle={toggle} depth={depth + 1} />)}</ul>}
+      <ul id={childrenId} hidden={!open} className="bg-[#e8f6fb]">{kids.map((kid) => <MobileItem key={kid.id} node={kid} tree={tree} expanded={expanded} toggle={toggle} depth={depth + 1} />)}</ul>
     </li>
   )
 }

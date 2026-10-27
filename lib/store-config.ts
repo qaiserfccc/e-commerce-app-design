@@ -3,15 +3,6 @@ import type { ProductCategory } from '@/lib/hooks/use-storefront-categories'
 
 export const STORE_NAME = 'ISK Lenses'
 
-// Contact details are optional and come from the environment; nothing is shown when unset.
-export const storeContact = {
-  phone: process.env.NEXT_PUBLIC_STORE_PHONE?.trim() || '',
-  email: process.env.NEXT_PUBLIC_STORE_EMAIL?.trim() || '',
-  whatsapp: process.env.NEXT_PUBLIC_STORE_WHATSAPP?.replace(/[^\d]/g, '') || '',
-  instagram: process.env.NEXT_PUBLIC_STORE_INSTAGRAM_URL?.trim() || '',
-  facebook: process.env.NEXT_PUBLIC_STORE_FACEBOOK_URL?.trim() || '',
-}
-
 export function formatPrice(value: string | number, currency: string) {
   const amount = Number(value)
   if (!Number.isFinite(amount)) return `${currency} ${value}`

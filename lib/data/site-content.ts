@@ -18,6 +18,38 @@ import { storeBanners, storeReviews, storeSettings } from '@/lib/db/schema'
 
 export const CONTENT_NAMESPACE = 'content'
 const TTL_SECONDS = 300
+const LEGACY_ANNOUNCEMENTS = [
+  'Get exclusive discounts on top lens brands',
+  'Delivery available all over Pakistan',
+  'Hurry up and save now!',
+  'Free delivery on orders over Rs 2500',
+]
+const LEGACY_FOOTER_ABOUT = 'Eye Lenses is a main online dispensary of contact lenses that serves all categories of users, ranging from occasional wearers to daily lens users.'
+const LEGACY_FOOTER_BRANDS = ['Comfort', 'Bella', 'Optiano', 'Us Vision', 'Freshlook', 'Magic Eye', 'Dress Your Eye', 'Joli', 'Freshkon']
+const LEGACY_FOOTER_COLLECTIONS = ['Luminous', 'Naturel', '3D Colors', 'Tinker Bell']
+const LEGACY_FOOTER_EXPLORE = [
+  ['Shop By Color', 'colored-lenses'],
+  ['Shop By Diameter', 'shop-by-diameter-dia'],
+  ['Shop By Disposibility', 'shop-by-disposability'],
+  ['Deals', 'deals'],
+  ['Accessories', 'accessories'],
+  ['Transparent', 'transparent-lenses'],
+]
+const LEGACY_HERO_TITLES = new Set(['10.10 sale', 'Sunglasses collection', 'Shop now', 'Deals on contact lenses'])
+
+function matchesStrings(value: string[] | undefined, expected: string[]) {
+  return value?.length === expected.length && value.every((item, index) => item === expected[index])
+}
+
+function storefrontFooter(value: unknown): FooterSettings {
+  const footer = { ...((value ?? {}) as FooterSettings) }
+  if (footer.logo?.startsWith('https://eyelenses.pk/')) delete footer.logo
+  if (footer.about === LEGACY_FOOTER_ABOUT) delete footer.about
+  if (matchesStrings(footer.brands, LEGACY_FOOTER_BRANDS)) delete footer.brands
+  if (matchesStrings(footer.collections, LEGACY_FOOTER_COLLECTIONS)) delete footer.collections
+  if (JSON.stringify(footer.explore) === JSON.stringify(LEGACY_FOOTER_EXPLORE)) delete footer.explore
+  return footer
+}
 
 async function loadSettings() {
   const rows = await db.select().from(storeSettings)
@@ -34,9 +66,9 @@ export async function getSiteChrome(): Promise<SiteChrome> {
   try {
     const settings = await getSettings()
     return {
-      announcements: asStrings(settings.announcements),
+      announcements: asStrings(settings.announcements).filter((item) => !LEGACY_ANNOUNCEMENTS.includes(item)),
       contact: (settings.contact ?? {}) as ContactSettings,
-      footer: (settings.footer ?? {}) as FooterSettings,
+      footer: storefrontFooter(settings.footer),
     }
   } catch (error) {
     console.error('[site-content] Site chrome unavailable', error instanceof Error ? error.name : 'UnknownError')
@@ -64,11 +96,16 @@ export function getAllReviews() {
 }
 
 export async function getHomeContent(): Promise<HomeContent> {
-  const [banners, reviews, settings] = await Promise.all([getAllBanners(), getAllReviews(), getSettings()])
+  const [banners, settings] = await Promise.all([getAllBanners(), getSettings()])
+  const headings = { ...((settings.headings ?? {}) as HeadingSettings) }
+  if (headings.categoriesIntro === 'Browse through our extensive selection to find the perfect lens for you.') delete headings.categoriesIntro
+  if (headings.serviceTitle === 'Professional Service') delete headings.serviceTitle
+  if (headings.serviceBody === 'Enjoy fast and secure delivery across Pakistan your lenses, delivered safely to your doorstep!') delete headings.serviceBody
+  if (headings.reviews === 'Customer Love Us') delete headings.reviews
+  if (headings.reviewsIntro === 'Loved by customers for exceptional service and quality.') delete headings.reviewsIntro
   return {
-    banners: banners.filter((banner) => banner.isActive),
-    reviews: reviews.filter((review) => review.isActive),
-    headings: (settings.headings ?? {}) as HeadingSettings,
+    banners: banners.filter((banner) => banner.isActive && !banner.imageUrl.startsWith('https://eyelenses.pk/') && !(banner.placement === 'hero' && LEGACY_HERO_TITLES.has(banner.title))),
+    headings,
     seoSections: Array.isArray(settings.seo_sections) ? (settings.seo_sections as SeoSection[]) : [],
   }
 }

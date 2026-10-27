@@ -4,13 +4,13 @@ import { useEffect, useState } from 'react'
 
 const sections = [
   ['hero', 'Featured collections'],
-  ['bloom', 'Color previews'],
+  ['bloom', 'Categories'],
   ['brands', 'Brands'],
   ['shades', 'Shades'],
   ['trending', 'Catalog'],
   ['types', 'Lens types'],
   ['why-us', 'About ISK Lenses'],
-  ['reviews', 'Customer notes'],
+  ['reviews', 'Product reviews'],
   ['contact', 'Contact'],
 ] as const
 

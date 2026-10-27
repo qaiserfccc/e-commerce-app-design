@@ -8,13 +8,6 @@ import { useStorefrontCart } from '@/lib/hooks/use-storefront-cart'
 import type { Product } from '@/lib/hooks/use-storefront-data'
 import { formatPrice, isAvailable, lowestPrice } from '@/lib/store-config'
 
-const sampleProducts = [
-  { name: 'Sterling Gray', image: '/isk-home/eye-gray.webp', query: 'gray' },
-  { name: 'Mel Honey', image: '/isk-home/eye-brown.webp', query: 'honey' },
-  { name: 'Hazel Gold', image: '/isk-home/eye-hazel.webp', query: 'hazel' },
-  { name: 'Hidrocor Verde', image: '/isk-home/eye-green.webp', query: 'green' },
-]
-
 type Filter = 'catalog' | 'new' | 'reduced'
 
 export function TrendingProducts({ products }: { products: Product[] }) {
@@ -29,7 +22,7 @@ export function TrendingProducts({ products }: { products: Product[] }) {
     <div>
       <div className="mb-7 flex flex-wrap gap-2 border-b border-[#e6dce1]" role="tablist" aria-label="Filter products">
         {([
-          ['catalog', 'Featured'],
+          ['catalog', 'Catalog'],
           ['new', 'New arrivals'],
           ['reduced', 'On sale'],
         ] as const).map(([value, label]) => (
@@ -59,24 +52,12 @@ export function TrendingProducts({ products }: { products: Product[] }) {
           </div>
         )
       ) : (
-        <ul role="tabpanel" className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4 lg:gap-x-6">
-          {sampleProducts.map((product) => (
-            <li key={product.name} className="group min-w-0">
-              <Link href={`/shop?q=${encodeURIComponent(product.query)}`} aria-label={`Browse sample ${product.name} lenses`} className="isk-trending-image relative block overflow-hidden rounded-2xl bg-[#fae9ef]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={product.image} alt={`Illustrative ${product.name} eye image`} loading="lazy" decoding="async" className="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
-                <span className="absolute left-3 top-3 rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold text-[#201b35]">Sample item</span>
-              </Link>
-              <div className="pt-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#b83f6b]">Design preview</p>
-                <h3 className="mt-2 text-lg font-bold tracking-[-0.03em] text-[#201b35]">{product.name}</h3>
-                <Link href={`/shop?q=${encodeURIComponent(product.query)}`} className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-[#201b35] hover:text-[#b83f6b]">
-                  Browse related lenses <ArrowRight size={15} aria-hidden="true" />
-                </Link>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <div role="tabpanel" className="border-t border-[#cfe2eb] py-12 text-center">
+          <p className="text-lg font-semibold text-[#15384d]">No active products are available right now.</p>
+          <Link href="/shop" className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-[#006f9b] hover:underline">
+            Browse the catalog <ArrowRight size={15} aria-hidden="true" />
+          </Link>
+        </div>
       )}
     </div>
   )

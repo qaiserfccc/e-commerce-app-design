@@ -59,7 +59,7 @@ export function Slider({ label, children, autoPlayMs = 0, dots = false, arrows =
     >
       <ul ref={track} onScroll={onScroll} className={`flex snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${fullHeight ? 'h-full' : ''}`}>
         {children.map((child, i) => (
-          <li key={i} className={`${perView} ${fullHeight ? 'h-full' : ''} shrink-0 snap-start`} aria-roledescription="slide" aria-label={`${i + 1} of ${count}`}>{child}</li>
+          <li key={i} className={`${perView} ${fullHeight ? 'h-full' : ''} min-w-0 shrink-0 snap-start`} aria-roledescription="slide" aria-label={`${i + 1} of ${count}`}>{child}</li>
         ))}
       </ul>
       {arrows && count > 1 && (

@@ -1,14 +1,23 @@
 import Link from 'next/link'
-import { ArrowRight, BookOpen, Compass, Eye, Headphones, ShoppingBag, type LucideIcon } from 'lucide-react'
+import { ArrowRight, BookOpen, Compass, Eye, Headphones, ShoppingBag, Star, type LucideIcon } from 'lucide-react'
 import { Slider } from '@/components/storefront/home/slider'
 import { SectionProgress } from '@/components/storefront/home/section-progress'
 import { TrendingProducts } from '@/components/storefront/home/trending-products'
 import { StoreFooter } from '@/components/storefront/shell/store-footer'
 import { RuntimeErrorNotice } from '@/components/ui/app-notifications'
 import type { BannerContent, HomeContent, SiteChrome } from '@/lib/content-types'
-import { getCatalog } from '@/lib/data/catalog'
+import type { CategoryNode } from '@/lib/catalog-types'
+import {
+  getCategories,
+  getHomeCatalog,
+  getStorefrontBrands,
+  getStorefrontLensTypes,
+  getStorefrontReviews,
+  getStorefrontShades,
+} from '@/lib/data/catalog'
 import { getHomeContent } from '@/lib/data/site-content'
 import type { Product } from '@/lib/hooks/use-storefront-data'
+import { categoryHref } from '@/lib/store-config'
 
 function Img({ src, alt, className, priority = false }: { src: string; alt: string; className?: string; priority?: boolean }) {
   // eslint-disable-next-line @next/next/no-img-element
@@ -53,61 +62,6 @@ function Heading({
   )
 }
 
-const demoSlides = [
-  {
-    image: '/isk-home/banner-deals.webp',
-    alt: 'Sample portrait wearing hazel-gray contact lenses',
-    label: 'EXPLORE COLOR LENSES',
-    title: 'Find your shade',
-    accent: 'Own the mood.',
-    body: 'Browse colored lens listings and review the details shown for each product.',
-    action: 'Browse color lenses',
-    href: '/shop?q=colored',
-    tone: 'light',
-  },
-  {
-    image: '/isk-home/banner-featured.webp',
-    alt: 'Sample contact lens packaging and case on a stone pedestal',
-    label: 'FEATURED COLLECTION',
-    title: 'Bella Elite',
-    accent: 'Glow Collection',
-    body: 'Explore the ISK Lenses catalog and compare the information listed with each product.',
-    action: 'Explore Bella lenses',
-    href: '/shop?q=Bella',
-    tone: 'light',
-  },
-  {
-    image: '/isk-home/banner-news.webp',
-    alt: 'Sample portrait wearing green contact lenses',
-    label: 'EXPLORE THE CATALOG',
-    title: 'A different look',
-    accent: 'starts here.',
-    body: 'Explore available listings and follow your eye-care professional’s guidance when choosing lenses.',
-    action: 'How to choose',
-    href: '/faq',
-    tone: 'dark',
-  },
-] as const
-
-const demoMoods = [
-  { name: 'Honey', image: '/isk-home/mood-honey.webp' },
-  { name: 'Mist', image: '/isk-home/mood-gray.webp' },
-  { name: 'Ocean', image: '/isk-home/mood-blue.webp' },
-  { name: 'Hazel', image: '/isk-home/mood-hazel.webp' },
-  { name: 'Matcha', image: '/isk-home/mood-green.webp' },
-]
-
-const demoShades = [
-  { name: 'Gray', image: '/isk-home/eye-gray.webp', color: '#a3abb3' },
-  { name: 'Hazel', image: '/isk-home/eye-hazel.webp', color: '#b39150' },
-  { name: 'Brown', image: '/isk-home/eye-brown.webp', color: '#96613a' },
-  { name: 'Green', image: '/isk-home/eye-green.webp', color: '#43885c' },
-  { name: 'Blue', image: '/isk-home/eye-blue.webp', color: '#6aa8d3' },
-  { name: 'Violet', image: '/isk-home/eye-violet.webp', color: '#9478bc' },
-]
-
-const demoBrands = ['Bella', 'Hydrocor', 'Dahab', 'FreshLook', 'Solotica', 'Desio', 'Anesthesia', 'Lenseme', 'Acuvue', 'Bausch+Lomb', 'Air Optix', 'Victoria']
-
 function brandWordmarkClass(name: string) {
   const brand = name.toLowerCase()
   if (['bella', 'dahab', 'solotica', 'lenseme', 'victoria'].includes(brand)) return 'font-serif font-normal italic'
@@ -124,125 +78,172 @@ const storeFeatures: { title: string; body: string; icon: LucideIcon }[] = [
   { title: 'Follow professional guidance', body: 'Consult an eye-care professional about lens fit and suitability.', icon: Eye },
 ]
 
-async function loadHome(): Promise<{ content: HomeContent | null; products: Product[]; loadError?: string }> {
-  const [content, catalog] = await Promise.allSettled([getHomeContent(), getCatalog()])
-  if (content.status === 'rejected') console.error('[home] Content unavailable', content.reason instanceof Error ? content.reason.name : 'UnknownError')
-  if (catalog.status === 'rejected') console.error('[home] Catalog unavailable', catalog.reason instanceof Error ? catalog.reason.name : 'UnknownError')
-  const errors = [
-    content.status === 'rejected' ? 'Homepage content could not be loaded.' : '',
-    catalog.status === 'rejected' ? 'The product catalog could not be loaded.' : '',
-  ].filter(Boolean)
+type HomeData = {
+  content: HomeContent | null
+  products: Product[]
+  categories: CategoryNode[]
+  brands: Awaited<ReturnType<typeof getStorefrontBrands>>
+  shades: Awaited<ReturnType<typeof getStorefrontShades>>
+  lensTypes: Awaited<ReturnType<typeof getStorefrontLensTypes>>
+  reviews: Awaited<ReturnType<typeof getStorefrontReviews>>
+  loadError?: string
+}
+
+async function loadHome(): Promise<HomeData> {
+  const [content, catalog, categories, brands, shades, lensTypes, reviews] = await Promise.allSettled([
+    getHomeContent(),
+    getHomeCatalog(),
+    getCategories(),
+    getStorefrontBrands(),
+    getStorefrontShades(),
+    getStorefrontLensTypes(),
+    getStorefrontReviews(),
+  ])
+  const failed = [
+    ['Homepage content could not be loaded.', content],
+    ['The product catalog could not be loaded.', catalog],
+    ['Product categories could not be loaded.', categories],
+    ['Product brands could not be loaded.', brands],
+    ['Lens shades could not be loaded.', shades],
+    ['Lens types could not be loaded.', lensTypes],
+    ['Approved product reviews could not be loaded.', reviews],
+  ] as const
+  for (const [, result] of failed) {
+    if (result.status === 'rejected') console.error('[home] Database content unavailable', result.reason instanceof Error ? result.reason.name : 'UnknownError')
+  }
+  const errors = failed.filter(([, result]) => result.status === 'rejected').map(([message]) => message)
   return {
     content: content.status === 'fulfilled' ? content.value : null,
-    products: catalog.status === 'fulfilled' ? (catalog.value.slice(0, 12) as unknown as Product[]) : [],
+    products: catalog.status === 'fulfilled'
+      ? catalog.value as unknown as Product[]
+      : [],
+    categories: categories.status === 'fulfilled' ? categories.value : [],
+    brands: brands.status === 'fulfilled' ? brands.value : [],
+    shades: shades.status === 'fulfilled' ? shades.value : [],
+    lensTypes: lensTypes.status === 'fulfilled' ? lensTypes.value : [],
+    reviews: reviews.status === 'fulfilled' ? reviews.value : [],
     loadError: errors.join(' '),
   }
 }
 
-function Hero() {
+function Hero({ slides }: { slides: BannerContent[] }) {
   return (
     <section id="hero" aria-label="Featured lens collections" className="isk-home-section relative h-full min-h-full snap-start snap-always">
-      <Slider label="Featured lens collections" autoPlayMs={5500} dots arrows editorialControls fullHeight>
-        {demoSlides.map((slide, index) => {
-          const dark = slide.tone === 'dark'
-          return (
-            <div key={slide.image} className="relative h-full min-h-full overflow-hidden bg-[#f7e8ed]">
-              <Img src={slide.image} alt={slide.alt} priority={index === 0} className="absolute inset-0 size-full object-cover object-[68%_center]" />
-              <div
-                aria-hidden="true"
-                className="absolute inset-0"
-                style={{
-                  background: dark
-                    ? 'linear-gradient(90deg, rgba(8,123,165,.96) 0%, rgba(8,123,165,.82) 40%, rgba(8,123,165,.05) 100%)'
-                    : 'linear-gradient(90deg, rgba(247,252,255,.98) 0%, rgba(247,252,255,.88) 36%, rgba(247,252,255,.12) 76%, rgba(247,252,255,0) 100%)',
-                }}
-              />
-              <div className="relative mx-auto flex h-full min-h-full max-w-[1440px] items-center px-5 pb-28 pt-12 sm:px-10 lg:px-12">
-                <div className={`max-w-[650px] ${dark ? 'text-white' : 'text-[#201b35]'}`}>
-                  <span className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold uppercase tracking-[0.15em] ${dark ? 'bg-white/15 text-white' : 'bg-[#fae9ef] text-[#b83f6b]'}`}>
-                    <span className="size-2 rounded-full bg-[#d45782]" aria-hidden="true" />
-                    {slide.label}
-                  </span>
-                  <h1 className="mt-7 text-balance text-[clamp(3.5rem,7.6vw,7rem)] font-extrabold leading-[0.91] tracking-[-0.065em]">
-                    {slide.title}
-                    <span className={`mt-2 block font-serif text-[.76em] font-normal italic leading-[1.02] tracking-[-0.04em] ${dark ? 'text-[#f3b4c9]' : 'text-[#e84f88]'}`}>{slide.accent}</span>
+      {slides.length > 0 ? (
+        <Slider label="Featured lens collections" autoPlayMs={5500} dots arrows editorialControls fullHeight>
+          {slides.map((slide, index) => (
+            <div key={slide.id} className="relative h-full min-h-full overflow-hidden bg-[#15384d]">
+              <Img src={slide.imageUrl} alt={slide.title || 'ISK Lenses collection'} priority={index === 0} className="absolute inset-0 size-full object-cover object-[68%_center]" />
+              <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(90deg,rgba(21,56,77,.94)_0%,rgba(21,56,77,.72)_42%,rgba(21,56,77,.08)_100%)]" />
+              <div className="relative mx-auto flex h-full min-h-full w-full min-w-0 max-w-[1440px] items-center px-5 pb-28 pt-12 sm:px-10 lg:px-12">
+                <div className="w-full min-w-0 max-w-[650px] text-white">
+                  <h1 className="text-balance text-[clamp(2.6rem,7.6vw,6rem)] font-extrabold leading-[0.94] tracking-[-0.055em]">
+                    {slide.title || 'ISK Lenses'}
                   </h1>
-                  <p className={`mt-6 max-w-xl text-lg leading-8 sm:text-xl ${dark ? 'text-white/85' : 'text-[#686371]'}`}>{slide.body}</p>
-                  <div className="mt-8 flex flex-wrap items-center gap-3">
-                    <Link href={slide.href} className="group inline-flex min-h-14 items-center gap-3 rounded-full bg-[#b83f6b] px-7 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-[#201b35]">
-                      {slide.action}
-                      <ArrowRight className="transition-transform group-hover:translate-x-1" size={18} aria-hidden="true" />
-                    </Link>
-                    <Link href="#brands" className={`inline-flex min-h-14 items-center rounded-full border px-7 text-sm font-bold transition ${dark ? 'border-white/35 text-white hover:bg-white/10' : 'border-[#201b35]/25 text-[#201b35] hover:bg-white/70'}`}>
-                      Compare options
-                    </Link>
-                  </div>
-                  <p className={`mt-5 text-xs ${dark ? 'text-white/75' : 'text-[#686371]'}`}>Sample campaign content · illustrative image</p>
+                  {slide.body && <p className="mt-6 w-full min-w-0 max-w-xl text-lg leading-8 text-white/85 sm:text-xl">{slide.body}</p>}
+                  <Link href={slide.href || '/shop'} className="group mt-8 inline-flex min-h-14 items-center gap-3 rounded-full bg-[#087ba5] px-7 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-[#006f9b]">
+                    {slide.href?.startsWith('/product/') ? 'View product' : 'Browse collection'}
+                    <ArrowRight className="transition-transform group-hover:translate-x-1" size={18} aria-hidden="true" />
+                  </Link>
                 </div>
               </div>
             </div>
-          )
-        })}
-      </Slider>
+          ))}
+        </Slider>
+      ) : (
+        <div className="flex h-full items-center justify-center bg-[#e8f6fb] px-6 text-center">
+          <div>
+            <h1 className="text-balance text-4xl font-extrabold tracking-[-0.055em] text-[#15384d] sm:text-6xl">ISK Lenses</h1>
+            <p className="mt-4 text-[#526b7b]">No featured collections are available right now.</p>
+            <Link href="/shop" className="mt-7 inline-flex min-h-12 items-center rounded-full bg-[#006f9b] px-6 font-semibold text-white">Browse the catalog</Link>
+          </div>
+        </div>
+      )}
     </section>
   )
 }
 
-function SampleNotice() {
-  return <span className="absolute left-3 top-3 rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold text-[#201b35]">Sample image</span>
+function productImage(product: Product | undefined) {
+  return product?.heroImageUrl ?? product?.assets?.find((asset) => asset.mediaType === 'image')?.blobUrl ?? null
 }
 
 export async function Home({ chrome }: { chrome: SiteChrome }) {
-  const { content, products, loadError } = await loadHome()
+  const { content, products, categories, brands, shades, lensTypes, reviews, loadError } = await loadHome()
   const banners = (placement: BannerContent['placement']) => content?.banners.filter((banner) => banner.placement === placement) ?? []
   const h = content?.headings ?? {}
-  const serviceBanners = banners('service')
-  const brandNames = [...new Set(products.map((product) => product.brand?.trim()).filter((brand): brand is string => Boolean(brand)))]
-  const hasRealProducts = products.length > 0
-  const hasRealReviews = Boolean(content?.reviews.length)
-  const reviews = content?.reviews ?? []
-  const reviewCards = hasRealReviews ? reviews.slice(0, 8) : [
-    { id: 'sample-1', body: 'Sample feedback will appear here after it has been reviewed.', author: 'Preview content' },
-    { id: 'sample-2', body: 'Customer notes can be added here when verified.', author: 'Preview content' },
-    { id: 'sample-3', body: 'Use this space for genuine feedback from shoppers.', author: 'Preview content' },
-    { id: 'sample-4', body: 'Reviews are not included in this design preview.', author: 'Preview content' },
-  ]
+  const heroBanners = banners('hero')
+  const heroSlides: BannerContent[] = heroBanners.length > 0
+    ? heroBanners
+    : products
+      .filter((product) => productImage(product))
+      .slice(0, 4)
+      .map((product, index) => ({
+        id: `catalog-${product.id}`,
+        placement: 'hero',
+        title: product.name,
+        body: product.shortDescription || product.description,
+        imageUrl: productImage(product)!,
+        href: `/product/${product.slug}`,
+        sortOrder: index,
+        isActive: true,
+      }))
+  const brandLogos = new Map(brands.flatMap((brand) => brand.logoUrl
+    ? [[brand.name.trim().toLocaleLowerCase(), brand.logoUrl] as const]
+    : []))
+  const categoryCards = categories
+    .filter((category) => category.productCount > 0)
+    .slice(0, 5)
+    .map((category) => {
+      const product = products.find((item) => item.categoryPath === category.path || item.categoryPath?.startsWith(`${category.path}/`))
+      return { category, image: category.imageUrl ?? productImage(product) }
+    })
+  const shadeCards = shades.map((shade) => ({
+    shade,
+    product: products.find((product) => product.lensShadeId === shade.id),
+  }))
+  const contactProduct = products.find((product) => productImage(product))
+  const contactImage = productImage(contactProduct)
   return (
     <main id="isk-home-scroll" tabIndex={0} aria-label="Homepage sections, scroll to explore" className="isk-home snap-y snap-mandatory overflow-x-hidden overflow-y-auto overscroll-y-contain scroll-smooth bg-[#fffaf8] text-[#201b35]">
       <RuntimeErrorNotice message={loadError} />
-      <Hero />
+      <Hero slides={heroSlides} />
       <SectionProgress />
 
-      <section id="bloom" aria-labelledby="bloom-heading" className="isk-home-section min-h-full snap-start snap-always bg-[#fbefe5] py-8 sm:py-10 lg:flex lg:items-center">
+      <section id="bloom" aria-labelledby="bloom-heading" className="isk-home-section min-h-full snap-start snap-always bg-[#e8f6fb] py-8 sm:py-10 lg:flex lg:items-center">
         <div className="mx-auto grid w-full max-w-[1440px] items-center gap-8 px-4 sm:px-8 lg:grid-cols-[.85fr_1.4fr] lg:gap-10 lg:px-12">
           <div>
-            <p className="font-extrabold text-[#d45782]"><span className="text-5xl leading-none tracking-[-0.08em] sm:text-6xl">bloom</span><span className="ml-2 align-top text-xs font-bold uppercase tracking-[0.12em] text-[#686371]">color lenses</span></p>
             <h2 id="bloom-heading" className="mt-8 max-w-xl text-5xl font-extrabold leading-[0.94] tracking-[-0.06em] sm:text-6xl">
-              Pick a shade.<br />Own the mood.
+              {h.categories ?? 'Browse'}<br /><em className="font-serif font-normal text-[#087ba5]">collections.</em>
             </h2>
-            <p className="mt-5 font-serif text-2xl italic leading-snug text-[#686371] sm:text-3xl">Five shades.<br />One unforgettable gaze.</p>
-            <p className="mt-5 max-w-lg text-base leading-7 text-[#686371]">Explore sample color directions. These images are illustrative; product options and appearance vary by listing.</p>
+            <p className="mt-5 max-w-lg text-base leading-7 text-[#526b7b]">{h.categoriesIntro ?? 'Shop active product categories from the ISK Lenses catalog.'}</p>
             <div className="mt-7 flex flex-wrap items-center gap-5">
-              <Link href="/shop" className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[#d45782] px-6 text-sm font-bold text-white transition hover:bg-[#b83f6b]">
-                Explore color lenses <ArrowRight size={17} aria-hidden="true" />
+              <Link href="/shop" className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[#006f9b] px-6 text-sm font-bold text-white transition hover:bg-[#087ba5]">
+                Browse the catalog <ArrowRight size={17} aria-hidden="true" />
               </Link>
-              <span className="text-sm font-semibold text-[#686371]">Sample gallery</span>
+              <span className="text-sm font-semibold text-[#526b7b]">{categoryCards.length} available {categoryCards.length === 1 ? 'category' : 'categories'}</span>
             </div>
           </div>
-          <ul className="grid grid-cols-2 items-center gap-x-3 gap-y-5 sm:grid-cols-3 lg:grid-cols-5 lg:gap-4">
-            {demoMoods.map((mood, index) => {
-              return (
-                <li key={mood.name} className={index % 2 ? 'lg:translate-y-12' : ''}>
-                  <Link href={`/shop?q=${encodeURIComponent(mood.name)}`} className="group block text-center">
-                    <span className="relative block overflow-hidden rounded-[50%] bg-[#e9d8cf]">
-                      <Img src={mood.image} alt={`Sample ${mood.name.toLowerCase()} lens look`} className="aspect-[.68/1] w-full object-cover transition duration-500 group-hover:scale-[1.04]" />
+          {categoryCards.length > 0 ? (
+            <ul className="grid grid-cols-2 items-center gap-x-3 gap-y-5 sm:grid-cols-3 lg:grid-cols-5 lg:gap-4">
+              {categoryCards.map(({ category, image }, index) => (
+                <li key={category.id} className={index % 2 ? 'lg:translate-y-12' : ''}>
+                  <Link href={categoryHref(category)} className="group block text-center">
+                    <span className="relative block overflow-hidden rounded-[50%] bg-[#cfe2eb]">
+                      {image ? (
+                        <Img src={image} alt={category.name} className="aspect-[.68/1] w-full object-cover transition duration-500 group-hover:scale-[1.04]" />
+                      ) : (
+                        <span className="grid aspect-[.68/1] w-full place-items-center text-[#087ba5]"><Eye size={32} aria-hidden="true" /></span>
+                      )}
                     </span>
-                    <span className={`mt-3 block text-base font-bold ${index === 0 ? 'text-[#d45782]' : 'text-[#201b35]'}`}>{mood.name}</span>
+                    <span className="mt-3 block text-base font-bold text-[#15384d]">{category.name}</span>
+                    <span className="mt-1 block text-xs text-[#526b7b]">{category.productCount} active {category.productCount === 1 ? 'listing' : 'listings'}</span>
                   </Link>
                 </li>
-              )
-            })}
-          </ul>
+              ))}
+            </ul>
+          ) : (
+            <p className="rounded-2xl border border-[#cfe2eb] bg-white/70 p-6 text-sm text-[#526b7b]">No product categories with active listings are available yet.</p>
+          )}
         </div>
       </section>
 
@@ -253,67 +254,80 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
             eyebrow="International brands"
             first="Shop by"
             accent="brand"
-            description={hasRealProducts ? 'Browse the brand names shown in the current catalog.' : 'Sample brand names for this design preview.'}
+            description={brands.length > 0 ? 'Browse brands attached to active product listings.' : undefined}
             href="/shop"
             hrefLabel="View all brands"
           />
-          <ul className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 lg:gap-4">
-            {(brandNames.length ? brandNames : demoBrands).slice(0, 12).map((brand) => (
-              <li key={brand}>
-                <Link href={`/shop?q=${encodeURIComponent(brand)}`} className="group flex min-h-28 flex-col justify-center rounded-3xl border border-[#e6dce1] bg-white px-4 py-3 transition-colors hover:border-[#d45782] sm:min-h-32">
-                  <span className={`text-lg text-[#201b35] group-hover:text-[#b83f6b] ${brandWordmarkClass(brand)}`}>{brand}</span>
-                  <span className="mt-1 text-xs text-[#686371]">Browse listings</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+          {brands.length > 0 ? (
+            <ul className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 lg:gap-4">
+              {brands.slice(0, 12).map((brand) => {
+                const logo = brand.logoUrl ?? brandLogos.get(brand.name.trim().toLocaleLowerCase())
+                return (
+                  <li key={brand.id}>
+                    <Link href={`/shop?q=${encodeURIComponent(brand.name)}`} className="group flex min-h-28 flex-col justify-center rounded-3xl border border-[#cfe2eb] bg-white px-4 py-3 transition-colors hover:border-[#087ba5] sm:min-h-32">
+                      {logo
+                        ? <Img src={logo} alt={`${brand.name} logo`} className="h-12 w-full object-contain" />
+                        : <span className={`text-lg text-[#15384d] group-hover:text-[#006f9b] ${brandWordmarkClass(brand.name)}`}>{brand.name}</span>}
+                      <span className="mt-2 text-xs text-[#526b7b]">{brand.productCount} active {brand.productCount === 1 ? 'listing' : 'listings'}</span>
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          ) : (
+            <p className="mt-8 rounded-2xl border border-[#cfe2eb] bg-white p-6 text-sm text-[#526b7b]">No active catalog products are linked to a brand yet.</p>
+          )}
         </div>
       </section>
 
-      <section id="shades" aria-labelledby="shades-heading" className="isk-home-section min-h-full snap-start snap-always bg-[#f6eeea] py-8 sm:py-10 lg:flex lg:items-center">
+      <section id="shades" aria-labelledby="shades-heading" className="isk-home-section min-h-full snap-start snap-always bg-[#f7fcff] py-8 sm:py-10 lg:flex lg:items-center">
         <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-8 lg:px-12">
           <Heading
             id="shades-heading"
             eyebrow="Find your color"
             first="Shop by"
             accent="shade"
-            description="Sample eye images are illustrative; check each product listing for its actual photos and details."
+            description={shadeCards.length > 0 ? 'Each shade is linked to an active product listing.' : undefined}
             href="/shop"
             hrefLabel="Browse all shades"
           />
-          <ul className="mt-8 grid grid-cols-3 gap-x-3 gap-y-5 sm:grid-cols-3 lg:grid-cols-6 lg:gap-5">
-            {demoShades.map((shade) => (
-              <li key={shade.name}>
-                <Link href={`/shop?q=${encodeURIComponent(shade.name)}`} className="group block text-center">
-                  <span className="block overflow-hidden rounded-full border-[5px] border-white bg-white shadow-[0_3px_8px_rgba(32,27,53,0.12)]">
-                    <Img src={shade.image} alt={`Sample close-up of a ${shade.name.toLowerCase()} contact lens`} className="aspect-square w-full object-cover transition duration-500 group-hover:scale-105" />
-                  </span>
-                  <span className="mt-4 flex items-center justify-center gap-2 text-base font-bold text-[#201b35] sm:text-lg">
-                    <span aria-hidden="true" className="size-3 rounded-full ring-2 ring-white" style={{ backgroundColor: shade.color }} />
-                    {shade.name}
-                  </span>
-                  <span className="mt-1 block text-sm text-[#686371]">Explore shade</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-          <ul className="mt-8 flex flex-wrap gap-2.5">
-            {['Natural look', 'Bridal', 'Party & dramatic', 'Dark eyes', 'Daily office', 'Cosplay'].map((tag) => (
-              <li key={tag}><Link href={`/shop?q=${encodeURIComponent(tag)}`} className="inline-flex rounded-full border border-[#e6dce1] px-4 py-2 text-sm font-medium text-[#686371] transition hover:border-[#d45782] hover:text-[#201b35]">{tag}</Link></li>
-            ))}
-          </ul>
+          {shadeCards.length > 0 ? (
+            <ul className="mt-8 grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 lg:grid-cols-6 lg:gap-5">
+              {shadeCards.slice(0, 12).map(({ shade, product }) => {
+                const image = shade.imageUrl ?? productImage(product)
+                const swatch = shade.hex && /^#[\da-f]{6}$/i.test(shade.hex) ? shade.hex : null
+                return (
+                  <li key={shade.id}>
+                    <Link href={`/shop?q=${encodeURIComponent(shade.name)}`} className="group block text-center">
+                      <span className="block overflow-hidden rounded-full border-[5px] border-white bg-[#e8f6fb]">
+                        {image
+                          ? <Img src={image} alt={`${shade.name} lens listing`} className="aspect-square w-full object-cover transition duration-500 group-hover:scale-105" />
+                          : <span className="grid aspect-square w-full place-items-center"><span aria-hidden="true" className="size-12 rounded-full border border-[#cfe2eb]" style={{ backgroundColor: swatch ?? '#e8f6fb' }} /></span>}
+                      </span>
+                      <span className="mt-4 flex items-center justify-center gap-2 text-base font-bold text-[#15384d] sm:text-lg">
+                        {swatch && <span aria-hidden="true" className="size-3 rounded-full ring-2 ring-white" style={{ backgroundColor: swatch }} />}
+                        {shade.name}
+                      </span>
+                      <span className="mt-1 block text-sm text-[#526b7b]">{shade.productCount} active {shade.productCount === 1 ? 'listing' : 'listings'}</span>
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          ) : (
+            <p className="mt-8 rounded-2xl border border-[#cfe2eb] bg-white p-6 text-sm text-[#526b7b]">No active products are linked to lens shades yet.</p>
+          )}
         </div>
       </section>
 
-      <section id="trending" aria-label="Trending lens listings" className="isk-home-section min-h-full snap-start snap-always bg-white py-8 sm:py-10 lg:flex lg:items-center">
+      <section id="trending" aria-label="Catalog listings" className="isk-home-section min-h-full snap-start snap-always bg-white py-8 sm:py-10 lg:flex lg:items-center">
         <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-8 lg:px-12">
           <div className="mb-8">
             <Heading
-              eyebrow="Explore the catalog"
               id="trending-heading"
-              first="Trending"
-              accent="right now"
-              description={hasRealProducts ? undefined : 'Sample product cards show the layout only. The live catalog supplies product names, prices, and availability.'}
+              first="Browse"
+              accent="the catalog"
+              description={products.length > 0 ? 'Product details and prices are read from active catalog listings.' : undefined}
               href="/shop"
               hrefLabel="Shop all lenses"
             />
@@ -334,38 +348,32 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
               Need help choosing? <ArrowRight size={17} aria-hidden="true" />
             </Link>
           </div>
-          <ul className="grid grid-cols-2 gap-x-5 sm:grid-cols-3">
-            {[
-              ['Colored lenses', 'Explore color lens listings', 'colored'],
-              ['Daily disposable', 'Browse lens listings', 'daily'],
-              ['Monthly', 'Browse lens listings', 'monthly'],
-              ['3 & 6 months', 'Browse lens listings', 'extended-wear'],
-              ['Yearly', 'Browse lens listings', 'yearly'],
-              ['Toric', 'Explore toric lens listings', 'toric'],
-              ['Solutions & care', 'Browse care information', 'solutions'],
-            ].map(([title, body, query], index) => (
-              <li key={title} className={index === 0 ? 'col-span-2 sm:col-span-1 sm:row-span-3' : ''}>
-                {index === 0 ? (
-                  <Link href={`/shop?q=${encodeURIComponent(query)}`} className="group relative flex min-h-64 h-full flex-col justify-end overflow-hidden rounded-3xl bg-[#201b35] p-6 text-white sm:min-h-0">
-                    <Img src="/isk-home/mood-hazel.webp" alt="" priority className="absolute inset-0 size-full object-cover opacity-65 transition duration-500 group-hover:scale-105" />
-                    <span aria-hidden="true" className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(8,123,165,.96), rgba(8,123,165,.3) 48%, transparent)' }} />
-                    <span className="relative text-xs font-bold uppercase tracking-[0.16em] text-[#f3b4c9]">Featured category</span>
-                    <span className="relative mt-2 text-2xl font-bold">{title}</span>
-                    <span className="relative mt-1 text-sm text-white/85">{body}</span>
-                    <span className="relative mt-4 inline-flex items-center gap-2 text-sm font-semibold">Browse listings <ArrowRight size={16} aria-hidden="true" /></span>
-                  </Link>
-                ) : (
-                  <Link href={`/shop?q=${encodeURIComponent(query)}`} className="group flex min-h-28 items-center justify-between gap-3 border-t border-[#201b35]/20 py-4 transition-colors hover:border-[#b83f6b] sm:min-h-32">
-                    <span>
-                      <span className="block text-base font-bold tracking-[-0.035em] text-[#201b35] sm:text-lg">{title}</span>
-                      <span className="mt-1 block text-xs text-[#686371] sm:text-sm">{body}</span>
-                    </span>
-                    <ArrowRight size={18} className="shrink-0 text-[#b83f6b] transition-transform group-hover:translate-x-1" aria-hidden="true" />
-                  </Link>
-                )}
-              </li>
-            ))}
-          </ul>
+          {lensTypes.length > 0 ? (
+            <ul className="grid grid-cols-2 gap-x-5 sm:grid-cols-3">
+              {lensTypes.map((lensType) => (
+                <li key={lensType.id}>
+                  {lensType.productCount > 0 ? (
+                    <Link href={`/shop?q=${encodeURIComponent(lensType.name)}`} className="group flex min-h-28 items-center justify-between gap-3 border-t border-[#15384d]/20 py-4 transition-colors hover:border-[#087ba5] sm:min-h-32">
+                      <span>
+                        <span className="block text-base font-bold tracking-[-0.035em] text-[#15384d] sm:text-lg">{lensType.name}</span>
+                        <span className="mt-1 block text-xs text-[#526b7b] sm:text-sm">{lensType.productCount} active {lensType.productCount === 1 ? 'listing' : 'listings'}</span>
+                      </span>
+                      <ArrowRight size={18} className="shrink-0 text-[#087ba5] transition-transform group-hover:translate-x-1" aria-hidden="true" />
+                    </Link>
+                  ) : (
+                    <div className="flex min-h-28 items-center justify-between gap-3 border-t border-[#15384d]/20 py-4 sm:min-h-32">
+                      <span>
+                        <span className="block text-base font-bold tracking-[-0.035em] text-[#15384d] sm:text-lg">{lensType.name}</span>
+                        <span className="mt-1 block text-xs text-[#526b7b] sm:text-sm">No active listings linked yet</span>
+                      </span>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="rounded-2xl border border-[#cfe2eb] bg-white/70 p-6 text-sm text-[#526b7b]">No lens types are available yet.</p>
+          )}
         </div>
       </section>
 
@@ -403,27 +411,27 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
         <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-8 lg:px-12">
           <Heading
             id="reviews-heading"
-            eyebrow="Customer notes"
-            first={h.reviews ?? 'Words from'}
-            accent={h.reviews ? undefined : 'the community'}
-            description={h.reviewsIntro ?? (hasRealReviews ? undefined : 'Sample cards show where customer feedback can appear. They are not real reviews.')}
+            first={h.reviews ?? 'Product'}
+            accent={h.reviews ? undefined : 'reviews'}
+            description={reviews.length > 0 ? h.reviewsIntro : undefined}
           />
-          <div className="isk-review-rows mt-8 space-y-4">
-            {[0, 1].map((row) => (
-              <div key={row} className="isk-review-track group flex w-max gap-4 py-1" dir={row ? 'rtl' : 'ltr'}>
-                {[...reviewCards, ...reviewCards].map((review, index) => (
-                  <figure key={`${row}-${review.id}-${index}`} dir="ltr" className="flex min-h-56 w-[min(84vw,440px)] flex-col rounded-[2rem] border border-[#e6dce1] bg-white p-5 sm:w-[440px] sm:p-6">
-                    {!hasRealReviews && <span className="text-xs font-bold uppercase tracking-[0.16em] text-[#b83f6b]">Sample content</span>}
-                    <blockquote className="mt-5 flex-1 text-lg leading-8 text-[#201b35] sm:text-xl">“{review.body}”</blockquote>
-                    <figcaption className="mt-5 flex items-center gap-3 border-t border-[#e6dce1] pt-4 text-sm font-semibold text-[#686371]">
-                      <span aria-hidden="true" className="grid size-10 shrink-0 place-items-center rounded-full bg-[#fbefe5] font-bold text-[#b83f6b]">{hasRealReviews ? review.author.slice(0, 1) : 'S'}</span>
-                      <span>{hasRealReviews ? review.author : 'Sample preview · not a customer review'}</span>
-                    </figcaption>
-                  </figure>
-                ))}
-              </div>
-            ))}
-          </div>
+          {reviews.length > 0 ? (
+            <div className="mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3">
+              {reviews.map((review) => (
+                <figure key={review.id} className="flex min-h-56 w-[min(84vw,440px)] shrink-0 snap-start flex-col rounded-[2rem] border border-[#cfe2eb] bg-white p-5 sm:w-[440px] sm:p-6">
+                  {review.title && <h3 className="font-semibold text-[#15384d]">{review.title}</h3>}
+                  <blockquote className="mt-4 flex-1 text-lg leading-8 text-[#15384d] sm:text-xl">“{review.body}”</blockquote>
+                  <figcaption className="mt-5 flex items-center gap-3 border-t border-[#cfe2eb] pt-4 text-sm font-semibold text-[#526b7b]">
+                    <span aria-hidden="true" className="grid size-10 shrink-0 place-items-center rounded-full bg-[#e8f6fb] font-bold text-[#006f9b]">{review.author.slice(0, 1)}</span>
+                    <span className="min-w-0 flex-1 truncate">{review.author}</span>
+                    <span className="inline-flex shrink-0 items-center gap-1"><Star size={14} className="fill-[#b66b24] text-[#b66b24]" aria-hidden="true" />{review.rating}/5</span>
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-8 rounded-2xl border border-[#cfe2eb] bg-white p-6 text-sm text-[#526b7b]">No approved product reviews have been published yet.</p>
+          )}
         </div>
       </section>
 
@@ -442,21 +450,15 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
                 <Link href="/contact-us" className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#201b35] px-6 text-sm font-bold text-white transition hover:bg-white hover:text-[#201b35]">
                   Contact the store <ArrowRight size={17} aria-hidden="true" />
                 </Link>
-                {serviceBanners.slice(1, 3).map((item) => (
-                  <Link key={item.id} href={item.href ?? '/contact-us'} className="inline-flex min-h-12 items-center rounded-full border border-white/60 px-5 text-sm font-semibold text-white transition hover:bg-white/15">{item.title}</Link>
-                ))}
               </div>
             </div>
             <div className="relative z-10 flex min-h-[260px] items-center justify-center px-6 pb-6 md:min-h-0 md:px-8 md:py-10">
-              <Img
-                src="/isk-home/mood-gray.webp"
-                alt="Sample portrait holding contact lens packaging"
-                className="isk-home-contact-portrait aspect-[1.05/1] w-full max-w-[400px] rounded-[50%] object-cover object-top"
-              />
-              <SampleNotice />
+              {contactProduct && contactImage
+                ? <Img src={contactImage} alt={contactProduct.name} className="isk-home-contact-portrait aspect-[1.05/1] w-full max-w-[400px] rounded-[50%] object-cover" />
+                : <div aria-hidden="true" className="grid aspect-square w-full max-w-[320px] place-items-center rounded-full bg-white/15 text-white"><Eye size={64} strokeWidth={1.2} /></div>}
             </div>
           </div>
-          <StoreFooter chrome={chrome} homepage />
+          <StoreFooter chrome={chrome} homepage brands={brands} categories={categories} />
         </div>
       </section>
 

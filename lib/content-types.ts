@@ -27,6 +27,7 @@ export interface ContactSettings {
   phone?: string
   email?: string
   address?: string
+  whatsapp?: string
   facebook?: string
   instagram?: string
 }
@@ -67,7 +68,6 @@ export interface SiteChrome {
 
 export interface HomeContent {
   banners: BannerContent[]
-  reviews: ReviewContent[]
   headings: HeadingSettings
   seoSections: SeoSection[]
 }

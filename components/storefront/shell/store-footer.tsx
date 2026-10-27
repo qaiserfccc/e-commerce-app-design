@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { MessageCircle } from 'lucide-react'
 import type { SiteChrome } from '@/lib/content-types'
-import { STORE_NAME, storeContact } from '@/lib/store-config'
+import type { CategoryNode } from '@/lib/catalog-types'
+import { STORE_NAME } from '@/lib/store-config'
 
 const slug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 
@@ -16,19 +17,19 @@ function LinkColumn({ title, links, homepage = false }: { title: string; links: 
   )
 }
 
-export function StoreFooter({ chrome, homepage = false }: { chrome: SiteChrome; homepage?: boolean }) {
+export function StoreFooter({ chrome, homepage = false, brands = [], categories = [] }: { chrome: SiteChrome; homepage?: boolean; brands?: Array<{ name: string }>; categories?: CategoryNode[] }) {
   const { contact, footer } = chrome
-  const phone = storeContact.phone || contact.phone || ''
-  const email = storeContact.email || contact.email || ''
-  const facebook = storeContact.facebook || contact.facebook || ''
+  const phone = contact.phone ?? ''
+  const email = contact.email ?? ''
+  const facebook = contact.facebook ?? ''
+  const whatsapp = contact.whatsapp?.replace(/[^\d]/g, '') ?? ''
+  const instagram = contact.instagram ?? ''
   if (homepage) {
-    const brands = footer.brands?.length ? footer.brands : ['Bella', 'Hydrocor', 'Dahab', 'FreshLook', 'Solotica']
-    const shop = [
-      ['Colored lenses', '/shop?q=colored'],
-      ['Transparent lenses', '/shop?q=transparent'],
-      ['Toric lenses', '/shop?q=toric'],
-      ['Shop all lenses', '/shop'],
-    ]
+    const shop = categories
+      .filter((category) => category.productCount > 0)
+      .slice(0, 4)
+      .map((category) => [category.name, `/product-category/${category.path}`])
+    if (!shop.length) shop.push(['Shop all lenses', '/shop'])
     const help = [
       ['Contact the store', '/contact-us'],
       ['FAQs', '/faq'],
@@ -39,16 +40,16 @@ export function StoreFooter({ chrome, homepage = false }: { chrome: SiteChrome; 
         <div className="grid gap-7 py-6 sm:grid-cols-2 md:grid-cols-4">
           <div className="sm:col-span-2 md:col-span-1">
             <span className="isk-reference-brand text-xl font-extrabold">ISK <em>Lenses</em></span>
-            <p className="mt-3 max-w-xs text-sm leading-6 text-[#686371]">
-              {footer.about ?? 'Browse lens listings and review product details from ISK Lenses.'}
-            </p>
+            {footer.about && <p className="mt-3 max-w-xs text-sm leading-6 text-[#686371]">{footer.about}</p>}
             <ul className="mt-3 space-y-1.5 text-xs text-[#686371]">
               {email && <li><a href={`mailto:${email}`} className="hover:underline">{email}</a></li>}
               {phone && <li><a href={`tel:${phone.replace(/[^\d+]/g, '')}`} className="hover:underline">{phone}</a></li>}
+              {facebook && <li><a href={facebook} target="_blank" rel="noopener noreferrer" className="hover:underline">Facebook</a></li>}
+              {instagram && <li><a href={instagram} target="_blank" rel="noopener noreferrer" className="hover:underline">Instagram</a></li>}
             </ul>
           </div>
           <LinkColumn title="Shop" links={shop} homepage />
-          <LinkColumn title="Brands" links={brands.map((name) => [name, `/product-category/${slug(name)}`])} homepage />
+          {brands.length > 0 && <LinkColumn title="Brands" links={brands.map(({ name }) => [name, `/shop?q=${encodeURIComponent(name)}`])} homepage />}
           <LinkColumn title="Help" links={help} homepage />
         </div>
         <div className="border-t border-[#e6dce1] py-3 text-xs text-[#686371]">
@@ -85,9 +86,9 @@ export function StoreFooter({ chrome, homepage = false }: { chrome: SiteChrome; 
           Copyright {new Date().getFullYear()} © {STORE_NAME} All Rights Reserved. Contact lenses are medical devices; follow the guidance of your eye-care professional.
         </p>
       </div>
-      {storeContact.whatsapp && (
+      {whatsapp && (
         <a
-          href={`https://wa.me/${storeContact.whatsapp}`}
+          href={`https://wa.me/${whatsapp}`}
           target="_blank"
           rel="noopener noreferrer"
           aria-label="Chat on WhatsApp"

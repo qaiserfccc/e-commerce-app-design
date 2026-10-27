@@ -4,6 +4,7 @@ import { and, asc, desc, eq, ilike, inArray, ne, or, sql } from 'drizzle-orm'
 import { cached } from '@/lib/cache'
 import { db } from '@/lib/db'
 import {
+  storeBrands,
   storeCategories,
   storeLensShades,
   storeLensTypes,
@@ -152,12 +153,21 @@ async function loadCatalog(categorySlug: string | null, query: string | null) {
   }
   if (query) {
     const like = `%${query.replace(/[%_\\]/g, '\\$&')}%`
-    conditions.push(or(ilike(storeProducts.name, like), ilike(storeProducts.brand, like), ilike(storeProducts.description, like), ilike(storeCategories.name, like))!)
+    conditions.push(or(
+      ilike(storeProducts.name, like),
+      ilike(storeProducts.brand, like),
+      ilike(storeProducts.description, like),
+      ilike(storeCategories.name, like),
+      ilike(storeLensShades.name, like),
+      ilike(storeLensTypes.name, like),
+    )!)
   }
   const rows = await db
     .select(productColumns)
     .from(storeProducts)
     .innerJoin(storeCategories, eq(storeCategories.id, storeProducts.categoryId))
+    .leftJoin(storeLensShades, eq(storeLensShades.id, storeProducts.lensShadeId))
+    .leftJoin(storeLensTypes, eq(storeLensTypes.id, storeProducts.lensTypeId))
     .where(and(...conditions))
     .orderBy(desc(storeProducts.createdAt))
   return enrich(rows)
@@ -168,6 +178,109 @@ export function getCatalog(category: string | null = null, query: string | null 
 }
 
 export type CatalogProduct = Awaited<ReturnType<typeof loadCatalog>>[number]
+
+async function loadHomeCatalog() {
+  const rows = await db
+    .select(productColumns)
+    .from(storeProducts)
+    .innerJoin(storeCategories, eq(storeCategories.id, storeProducts.categoryId))
+    .where(and(eq(storeProducts.status, 'active'), eq(storeCategories.isActive, true)))
+    .orderBy(desc(storeProducts.isFeatured), desc(storeProducts.createdAt))
+    .limit(12)
+  const products = await enrich(rows)
+  return products.map((product) => ({
+    ...product,
+    createdAt: typeof product.createdAt === 'string' ? product.createdAt : product.createdAt.toISOString(),
+    updatedAt: typeof product.updatedAt === 'string' ? product.updatedAt : product.updatedAt.toISOString(),
+  }))
+}
+
+export function getHomeCatalog() {
+  return cached(CATALOG_NAMESPACE, 'home-products', 300, loadHomeCatalog)
+}
+
+async function loadStorefrontBrands() {
+  return db
+    .select({
+      id: storeBrands.id,
+      name: storeBrands.name,
+      slug: storeBrands.slug,
+      logoUrl: storeBrands.logoUrl,
+      productCount: sql<number>`count(${storeProducts.id})::int`,
+    })
+    .from(storeBrands)
+    .innerJoin(storeProducts, and(eq(storeProducts.brandId, storeBrands.id), eq(storeProducts.status, 'active')))
+    .innerJoin(storeCategories, eq(storeCategories.id, storeProducts.categoryId))
+    .where(and(eq(storeBrands.isActive, true), eq(storeCategories.isActive, true)))
+    .groupBy(storeBrands.id, storeBrands.name, storeBrands.slug, storeBrands.logoUrl)
+    .orderBy(asc(storeBrands.name))
+}
+
+export function getStorefrontBrands() {
+  return cached(CATALOG_NAMESPACE, 'storefront-brands', 300, loadStorefrontBrands)
+}
+
+async function loadStorefrontShades() {
+  return db
+    .select({
+      id: storeLensShades.id,
+      name: storeLensShades.name,
+      hex: storeLensShades.hex,
+      imageUrl: storeLensShades.imageUrl,
+      productCount: sql<number>`count(${storeProducts.id})::int`,
+    })
+    .from(storeLensShades)
+    .innerJoin(storeProducts, and(eq(storeProducts.lensShadeId, storeLensShades.id), eq(storeProducts.status, 'active')))
+    .innerJoin(storeCategories, eq(storeCategories.id, storeProducts.categoryId))
+    .where(and(eq(storeLensShades.isActive, true), eq(storeCategories.isActive, true)))
+    .groupBy(storeLensShades.id, storeLensShades.name, storeLensShades.hex, storeLensShades.imageUrl)
+    .orderBy(asc(storeLensShades.name))
+}
+
+export function getStorefrontShades() {
+  return cached(CATALOG_NAMESPACE, 'storefront-shades', 300, loadStorefrontShades)
+}
+
+async function loadStorefrontLensTypes() {
+  return db
+    .select({
+      id: storeLensTypes.id,
+      name: storeLensTypes.name,
+      productCount: sql<number>`count(case when ${storeCategories.isActive} then ${storeProducts.id} end)::int`,
+    })
+    .from(storeLensTypes)
+    .leftJoin(storeProducts, and(eq(storeProducts.lensTypeId, storeLensTypes.id), eq(storeProducts.status, 'active')))
+    .leftJoin(storeCategories, eq(storeCategories.id, storeProducts.categoryId))
+    .where(eq(storeLensTypes.isActive, true))
+    .groupBy(storeLensTypes.id, storeLensTypes.name)
+    .orderBy(asc(storeLensTypes.name))
+}
+
+export function getStorefrontLensTypes() {
+  return cached(CATALOG_NAMESPACE, 'storefront-lens-types', 300, loadStorefrontLensTypes)
+}
+
+async function loadStorefrontReviews() {
+  return db
+    .select({
+      id: storeProductReviews.id,
+      author: storeProductReviews.author,
+      body: storeProductReviews.body,
+      rating: storeProductReviews.rating,
+      title: storeProductReviews.title,
+      createdAt: storeProductReviews.createdAt,
+    })
+    .from(storeProductReviews)
+    .innerJoin(storeProducts, eq(storeProducts.id, storeProductReviews.productId))
+    .innerJoin(storeCategories, eq(storeCategories.id, storeProducts.categoryId))
+    .where(and(eq(storeProductReviews.isApproved, true), eq(storeProducts.status, 'active'), eq(storeCategories.isActive, true)))
+    .orderBy(desc(storeProductReviews.createdAt))
+    .limit(8)
+}
+
+export function getStorefrontReviews() {
+  return cached(CATALOG_NAMESPACE, 'storefront-reviews', 300, loadStorefrontReviews)
+}
 
 async function loadProduct(slug: string) {
   const [row] = await db
