@@ -3,6 +3,7 @@ import 'server-only'
 import { and, eq, inArray, sql } from 'drizzle-orm'
 import { invalidateCache } from '@/lib/cache'
 import { db } from '@/lib/db'
+import { getDeliveryFeeCents as deliveryFeeForSubtotal, moneyToCents, parseDeliveryRules } from '@/lib/delivery'
 import {
   storeActivityEvents,
   storeCustomers,
@@ -25,6 +26,8 @@ type CheckoutLineInput = {
   quotedUnitPrice: string
   quotedCurrency: string
 }
+
+type CheckoutDeliveryInput = { quotedDeliveryFee: string }
 
 type ShippingInput = {
   firstName: string
@@ -84,13 +87,6 @@ function moneyString(cents: number) {
   return `${Math.floor(cents / 100)}.${String(cents % 100).padStart(2, '0')}`
 }
 
-async function getDeliveryFeeCents(subtotalCents: number) {
-  const [row] = await db.select().from(storeSettings).where(eq(storeSettings.key, 'delivery_rules')).limit(1)
-  const rules = Array.isArray(row?.value) ? row.value as Array<{ minSubtotal: string; maxSubtotal: string | null; fee: string }> : []
-  const match = rules.find((rule) => subtotalCents >= parseMoneyCents(rule.minSubtotal, 'Delivery minimum') && (!rule.maxSubtotal || subtotalCents <= parseMoneyCents(rule.maxSubtotal, 'Delivery maximum')))
-  return match ? parseMoneyCents(match.fee, 'Delivery fee') : 0
-}
-
 function parseOrderInput(value: unknown) {
   if (!isRecord(value)) throw new CheckoutError('Order details are required.')
   if (typeof value.checkoutKey !== 'string' || !uuidPattern.test(value.checkoutKey)) {
@@ -148,7 +144,16 @@ function parseOrderInput(value: unknown) {
     email: value.email,
     shippingAddress,
     items,
+    delivery: parseDeliveryInput(value),
   }
+}
+
+function parseDeliveryInput(value: Record<string, unknown>): CheckoutDeliveryInput {
+  const quotedDeliveryFee = value.quotedDeliveryFee
+  if (typeof quotedDeliveryFee !== 'string' || moneyToCents(quotedDeliveryFee) === null) {
+    throw new CheckoutError('The delivery price is invalid.')
+  }
+  return { quotedDeliveryFee }
 }
 
 function assertOrderOwner(order: { accountId: string | null }, session: StoreCustomerSession | null) {
@@ -325,7 +330,19 @@ async function submitCodOrderImpl(value: unknown) {
         }
       }
 
-      const shippingCents = await getDeliveryFeeCents(subtotalCents)
+      const [deliveryRow] = await tx
+        .select({ value: storeSettings.value })
+        .from(storeSettings)
+        .where(eq(storeSettings.key, 'delivery_rules'))
+        .limit(1)
+      const deliveryRules = parseDeliveryRules(deliveryRow?.value ?? [])
+      const shippingCents = deliveryFeeForSubtotal(deliveryRules, subtotalCents)
+      if (shippingCents === null) {
+        throw new CheckoutError('Delivery pricing is not configured for this order total. Please contact the store.', 503)
+      }
+      if (shippingCents !== moneyToCents(input.delivery.quotedDeliveryFee)) {
+        throw new CheckoutError('The delivery price changed. Review your order total and try again.', 409)
+      }
       if (subtotalCents > maxMoneyCents - shippingCents) throw new CheckoutError('The order total is outside the supported range.')
       const [order] = await tx
         .insert(storeOrders)
@@ -335,7 +352,7 @@ async function submitCodOrderImpl(value: unknown) {
           checkoutKey: input.checkoutKey,
           status: 'pending',
           paymentMethod: 'cash_on_delivery',
-          shippingFeeConfirmed: false,
+          shippingFeeConfirmed: true,
           subtotal: moneyString(subtotalCents),
           shippingTotal: moneyString(shippingCents),
           taxTotal: '0.00',

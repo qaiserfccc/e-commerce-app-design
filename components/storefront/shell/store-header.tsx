@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { ChevronDown, Menu, Phone, Search, ShoppingBag, User, X } from 'lucide-react'
+import { ChevronDown, Menu, Phone, Search, ShoppingBag, Truck, User, X } from 'lucide-react'
 import { MiniCart } from '@/components/storefront/shell/mini-cart'
 import { useStorefrontCart } from '@/lib/hooks/use-storefront-cart'
 import { useStorefrontCategories, type ProductCategory } from '@/lib/hooks/use-storefront-categories'
@@ -11,7 +11,8 @@ import type { SiteChrome } from '@/lib/content-types'
 import { categoryHref, categoryTree, STORE_NAME } from '@/lib/store-config'
 
 export function StoreHeader({ chrome }: { chrome: SiteChrome }) {
-  const announcements = chrome.announcements
+  const announcements = [chrome.deliveryNotice, ...chrome.announcements]
+    .filter((item): item is string => Boolean(item?.trim()))
   const headerPhone = chrome.contact.phone ?? ''
   const headerEmail = chrome.contact.email ?? ''
   const router = useRouter()
@@ -27,7 +28,7 @@ export function StoreHeader({ chrome }: { chrome: SiteChrome }) {
   const [announcement, setAnnouncement] = useState(0)
   const headerRef = useRef<HTMLElement>(null)
   const mobileMenuRef = useRef<HTMLDivElement>(null)
-  const announcementText = announcements[announcement % Math.max(announcements.length, 1)] ?? ''
+  const announcementText = announcements[announcement % Math.max(announcements.length, 1)] ?? 'Welcome to ISK Lenses'
 
   const tree = useMemo(() => categoryTree(categories), [categories])
   const roots = tree.get('root') ?? []
@@ -121,34 +122,19 @@ export function StoreHeader({ chrome }: { chrome: SiteChrome }) {
 
   return (
     <header ref={headerRef} className="sticky top-0 z-40 border-b border-[#e6dce1] bg-[#f7fcff]/95 shadow-[0_8px_30px_rgba(21,56,77,0.08)] backdrop-blur-xl">
-      {(isHome ? announcements.length > 0 : true) && (
-        <div className="bg-[#201b35] text-white">
-          {isHome ? (
-            <div className="overflow-hidden">
-              <div role="region" aria-label={`Store announcements: ${announcements.join(' · ')}`} className="isk-marquee flex h-9 w-max items-center text-xs font-medium tracking-wide">
-                {[0, 1, 2].map((copy) => (
-                  <div key={copy} aria-hidden={copy > 0} className="flex shrink-0 items-center">
-                    {announcements.map((item, index) => (
-                      <span key={`${copy}-${index}`} className="flex h-9 items-center gap-8 px-8">
-                        {item}<span aria-hidden="true" className="size-1.5 rotate-45 bg-[#e84f88]" />
-                      </span>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="mx-auto flex h-9 max-w-[1440px] items-center justify-between gap-4 px-4 text-xs sm:px-6">
-              <p className="hidden min-w-0 items-center gap-2 truncate text-white/80 sm:flex" aria-live="off">
-                {headerPhone && <a href={`tel:${headerPhone.replace(/[^\d+]/g, '')}`} className="inline-flex items-center gap-1.5 hover:underline"><Phone size={12} aria-hidden="true" />{headerPhone}</a>}
-                {headerEmail && <a href={`mailto:${headerEmail}`} className="ml-3 hover:underline">{headerEmail}</a>}
-              </p>
-              <p className="flex-1 truncate text-center font-semibold tracking-wide" aria-live="off">{announcementText}</p>
-              <Link href="/contact-us" className="hidden shrink-0 text-white/80 hover:text-white hover:underline sm:inline">Contact us</Link>
-            </div>
-          )}
+      <div className="bg-[#087ba5] text-white">
+        <div className="mx-auto flex h-9 max-w-[1440px] items-center justify-between gap-3 px-4 text-xs sm:px-6">
+          <p className="hidden min-w-0 flex-1 items-center gap-3 truncate text-white/90 lg:flex" aria-live="off">
+            {headerPhone && <a href={`tel:${headerPhone.replace(/[^\d+]/g, '')}`} className="inline-flex shrink-0 items-center gap-1.5 hover:underline"><Phone size={12} aria-hidden="true" />{headerPhone}</a>}
+            {headerEmail && <a href={`mailto:${headerEmail}`} className="truncate hover:underline">{headerEmail}</a>}
+          </p>
+          <p className="flex min-w-0 flex-1 items-center justify-center gap-2 text-center font-semibold tracking-wide lg:flex-[2]" aria-live="off">
+            <Truck size={14} className="shrink-0 text-white/85" aria-hidden="true" />
+            <span className="truncate">{announcementText}</span>
+          </p>
+          <Link href="/contact-us" className="hidden shrink-0 text-white/90 hover:text-white hover:underline sm:inline">Contact us</Link>
         </div>
-      )}
+      </div>
 
       <div className={`mx-auto flex max-w-[1440px] items-center gap-1 px-2 sm:gap-3 sm:px-6 ${isHome ? 'min-h-[76px] lg:min-h-[96px]' : 'h-[76px]'}`}>
         <button type="button" aria-label="Open menu" aria-controls="mobile-store-menu" aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)} className="grid size-10 shrink-0 place-items-center rounded-full text-[#201b35] hover:bg-[#fae9ef] lg:hidden">

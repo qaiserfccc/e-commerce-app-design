@@ -3,8 +3,10 @@
 import { useDeferredValue, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import {
   Activity, ArrowDown, ArrowUp, BarChart3, ClipboardList, LayoutDashboard, LoaderCircle,
-  AlertTriangle, LogOut, Package, Plus, RefreshCw, Search, ShoppingBag, ShieldCheck, Tags, Users, X,
+  AlertTriangle, LogOut, Package, Plus, RefreshCw, Search, ShoppingBag, ShieldCheck, Tags, Truck, Users, X,
 } from 'lucide-react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useSWRConfig } from 'swr'
 import {
   createSystemUser,
@@ -37,11 +39,13 @@ import { ContentManager } from '@/components/admin/content-manager'
 import { BrandManager, ErrorLogManager, LensShadeManager, LensTypeManager } from '@/components/admin/catalog-taxonomy-manager'
 import { CatalogSyncManager } from '@/components/admin/catalog-sync-manager'
 import { ProjectKanban } from '@/components/admin/project-kanban'
+import { DeliveryManager } from '@/components/admin/delivery-manager'
 import { ProductVariantManager } from '@/components/admin/product-variant-manager'
 import { getProductImageSources } from '@/components/storefront/product-image'
 import { reportError } from '@/lib/ui/notifications'
+import type { AdminSectionId } from '@/lib/admin-sections'
 
-type Section = 'overview' | 'categories' | 'brands' | 'lens-shades' | 'lens-types' | 'catalog-sync' | 'error-logs' | 'products' | 'catalog-settings' | 'orders' | 'customers' | 'analytics' | 'content' | 'system-users' | 'project-plan'
+type Section = AdminSectionId
 
 const sections: Array<{ id: Section; label: string; icon: typeof LayoutDashboard }> = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -57,6 +61,7 @@ const sections: Array<{ id: Section; label: string; icon: typeof LayoutDashboard
   { id: 'customers', label: 'Customers', icon: Users },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   { id: 'content', label: 'Storefront content', icon: Tags },
+  { id: 'delivery', label: 'Delivery', icon: Truck },
   { id: 'system-users', label: 'System users', icon: Users },
   { id: 'project-plan', label: 'Project Kanban', icon: ClipboardList },
 ]
@@ -996,8 +1001,8 @@ function AnalyticsWorkspace() {
   )
 }
 
-export function AdminWorkspace() {
-  const [section, setSection] = useState<Section>('overview')
+export function AdminWorkspace({ section = 'overview' }: { section?: AdminSectionId }) {
+  const router = useRouter()
   const [session, setSession] = useState<{ checked: boolean; authenticated: boolean; userId?: string; email?: string; role?: string; expiresAt?: number; loginPrefill?: { email: string; password: string }; configurationMessage?: string; error?: string }>({ checked: false, authenticated: false })
   const [signingOut, setSigningOut] = useState(false)
 
@@ -1055,7 +1060,7 @@ export function AdminWorkspace() {
     try {
       const response = await fetch('/api/admin/session', { method: 'DELETE' })
       if (!response.ok) throw new Error('Could not sign out. Refresh and try again.')
-      setSection('overview')
+      router.replace('/admin')
       setSession({ checked: true, authenticated: false })
     } catch (signOutError) {
       setSession((current) => ({ ...current, error: reportError(signOutError, 'Sign out could not be completed.') }))
@@ -1082,7 +1087,7 @@ export function AdminWorkspace() {
   }
 
   const content = {
-    overview: <AdminOverview onNavigate={setSection} />,
+    overview: <AdminOverview onNavigate={(next) => router.push(next === 'overview' ? '/admin' : `/admin/${next}`)} />,
     categories: <CategoryManager canEdit={session.role === 'owner' || session.role === 'admin'} />,
     brands: <BrandManager canEdit={session.role === 'owner' || session.role === 'admin'} />,
     'lens-shades': <LensShadeManager canEdit={session.role === 'owner' || session.role === 'admin'} />,
@@ -1095,9 +1100,10 @@ export function AdminWorkspace() {
     customers: <CustomersWorkspace />,
     analytics: <AnalyticsWorkspace />,
     content: <ContentManager canEdit={session.role === 'owner' || session.role === 'admin'} />,
+    delivery: <DeliveryManager canEdit={session.role === 'owner' || session.role === 'admin'} />,
     'system-users': session.role === 'owner' && session.userId
       ? <SystemUsersWorkspace signedInUserId={session.userId} signedInEmail={session.email ?? ''} />
-      : <AdminOverview onNavigate={setSection} />,
+      : <AdminOverview onNavigate={() => router.push('/admin')} />,
     'project-plan': <ProjectKanban />,
   }[section]
 
@@ -1112,15 +1118,14 @@ export function AdminWorkspace() {
         </div>
         <nav aria-label="Admin workspace" className="grid grid-cols-2 gap-1 text-sm sm:grid-cols-3 lg:flex lg:flex-col">
           {sections.filter(({ id }) => id !== 'system-users' || session.role === 'owner').map(({ id, label, icon: Icon }) => (
-            <button
+            <Link
               key={id}
-              type="button"
-              onClick={() => setSection(id)}
+              href={id === 'overview' ? '/admin' : `/admin/${id}`}
               aria-current={section === id ? 'page' : undefined}
               className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left focus-visible:outline-2 focus-visible:outline-[#1c1c1a] ${section === id ? 'bg-white font-medium shadow-sm' : 'text-[#68675f] hover:bg-white/60'}`}
             >
               <Icon size={17} aria-hidden="true" /><span>{label}</span>
-            </button>
+            </Link>
           ))}
         </nav>
         <p className="mt-5 hidden break-all text-xs leading-4 text-[#68675f] lg:block">Signed in as {session.email}</p>

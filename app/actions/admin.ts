@@ -6,6 +6,12 @@ import { del } from '@vercel/blob'
 import { invalidateCache } from '@/lib/cache'
 import { db } from '@/lib/db'
 import {
+  buildDeliveryRules,
+  deliverySettingsFromRules,
+  parseDeliveryRules,
+  type DeliverySettings,
+} from '@/lib/delivery'
+import {
   storeActivityEvents,
   storeCustomers,
   storeOrderItems,
@@ -1002,26 +1008,17 @@ export async function updateOrderStatus(...args: Parameters<typeof updateOrderSt
   return result
 }
 
-export type DeliveryRule = { minSubtotal: string; maxSubtotal: string | null; fee: string }
-
-export async function getDeliveryRules(): Promise<DeliveryRule[]> {
+export async function getDeliverySettings(): Promise<DeliverySettings> {
   await requireAdminSession('staff')
   const [row] = await db.select().from(storeSettings).where(eq(storeSettings.key, 'delivery_rules')).limit(1)
-  return Array.isArray(row?.value) ? row.value as DeliveryRule[] : [{ minSubtotal: '0.00', maxSubtotal: null, fee: '0.00' }]
+  return deliverySettingsFromRules(parseDeliveryRules(row?.value ?? []))
 }
 
-export async function saveDeliveryRules(rules: DeliveryRule[]) {
+export async function saveDeliverySettings(input: { deliveryFee: string; freeShippingThreshold: string }) {
   await requireAdminSession('admin')
-  if (!Array.isArray(rules) || rules.length > 30) throw new Error('Delivery rules are invalid.')
-  const parsed = rules.map((rule) => {
-    const min = requireText(rule.minSubtotal, 'Minimum subtotal', 16)
-    const max = rule.maxSubtotal === null || rule.maxSubtotal === '' ? null : requireText(rule.maxSubtotal, 'Maximum subtotal', 16)
-    const fee = requireText(rule.fee, 'Delivery fee', 16)
-    moneyToCents(min, 'Minimum subtotal'); if (max) moneyToCents(max, 'Maximum subtotal'); moneyToCents(fee, 'Delivery fee')
-    if (max && Number(max) < Number(min)) throw new Error('Maximum subtotal must be greater than minimum subtotal.')
-    return { minSubtotal: min, maxSubtotal: max, fee }
-  })
-  await db.insert(storeSettings).values({ key: 'delivery_rules', value: parsed }).onConflictDoUpdate({ target: storeSettings.key, set: { value: parsed, updatedAt: new Date() } })
+  const rules = buildDeliveryRules(input.deliveryFee, input.freeShippingThreshold)
+  await db.insert(storeSettings).values({ key: 'delivery_rules', value: rules }).onConflictDoUpdate({ target: storeSettings.key, set: { value: rules, updatedAt: new Date() } })
   await invalidateCache('catalog')
+  await invalidateCache('content')
+  return deliverySettingsFromRules(rules)
 }
-

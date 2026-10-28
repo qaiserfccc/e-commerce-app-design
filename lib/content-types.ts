@@ -61,6 +61,7 @@ export interface SeoSection {
 
 export interface SiteChrome {
   announcements: string[]
+  deliveryNotice: string | null
   contact: ContactSettings
   footer: FooterSettings
   loadError?: string

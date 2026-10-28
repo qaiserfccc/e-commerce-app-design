@@ -3,8 +3,9 @@
 import Link from 'next/link'
 import { ExternalLink } from 'lucide-react'
 import { AdminWorkspace } from '@/components/admin/admin-workspace'
+import type { AdminSectionId } from '@/lib/admin-sections'
 
-export function AdminShell() {
+export function AdminShell({ section = 'overview' }: { section?: AdminSectionId }) {
   return (
     <div className="admin-theme min-h-screen">
       <header className="bg-[#201b35] text-white">
@@ -13,7 +14,7 @@ export function AdminShell() {
           <Link href="/" className="inline-flex items-center gap-1.5 text-sm font-medium text-white/85 transition-colors hover:text-white hover:underline">View store <ExternalLink size={14} aria-hidden="true" /></Link>
         </div>
       </header>
-      <main className="mx-auto max-w-[1440px] px-5 py-6 sm:px-8 lg:px-12"><AdminWorkspace /></main>
+      <main className="mx-auto max-w-[1440px] px-5 py-6 sm:px-8 lg:px-12"><AdminWorkspace section={section} /></main>
     </div>
   )
 }

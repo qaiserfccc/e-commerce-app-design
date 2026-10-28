@@ -20,14 +20,14 @@ export default async function CheckoutConfirmationPage() {
     <main className="storefront-sky mx-auto min-h-[calc(100vh-72px)] max-w-[1000px] bg-[#edf4ef] px-5 pb-24 text-[#152a52] sm:px-8 lg:px-12">
       <header className="flex flex-wrap items-center justify-between gap-4 border-b border-[#152a52]/20 py-4">
         <Link href="/shop" className="text-xs font-bold uppercase tracking-[.1em] hover:text-[#16468a] focus-visible:outline-2 focus-visible:outline-[#16468a]">ISK Lenses / Products</Link>
-        <span className="font-mono text-[10px] uppercase tracking-[.15em] text-[#314a63]">Cash on delivery</span>
+        <span className="font-mono text-xs uppercase tracking-[.15em] text-[#314a63]">Cash on delivery</span>
       </header>
       {order ? (
         <article className="mx-auto max-w-2xl py-10 sm:py-14">
           <div className="flex items-start gap-4 border-b-2 border-[#152a52] pb-6">
             <CircleCheck className="mt-1 size-8 shrink-0 text-[#16468a]" aria-hidden="true" />
             <div>
-              <p className="font-mono text-[10px] uppercase tracking-[.16em] text-[#16468a]">Order received · pending confirmation</p>
+              <p className="font-mono text-xs uppercase tracking-[.16em] text-[#16468a]">Order received · pending confirmation</p>
               <h1 className="display-type mt-2 text-5xl uppercase leading-[.9] tracking-[-.025em]">Thank you.</h1>
               <p className="mt-3 text-sm leading-6 text-[#314a63]">Your cash-on-delivery order has been recorded. Keep this order reference for your records.</p>
             </div>
@@ -47,11 +47,13 @@ export default async function CheckoutConfirmationPage() {
           <div className="space-y-3 border-t border-[#152a52]/25 py-4 text-sm">
             <div className="flex justify-between gap-4"><span>Products subtotal</span><strong>{formatPrice(order.subtotal, order.currency)}</strong></div>
             <div className="flex justify-between gap-4 text-[#314a63]"><span>Delivery charge</span><span>{order.shippingFeeConfirmed ? formatPrice(order.shippingTotal, order.currency) : 'To be confirmed by store'}</span></div>
-            <div className="flex justify-between gap-4 border-t border-[#152a52]/20 pt-3 text-base font-bold"><span>Recorded COD total</span><strong>{formatPrice(order.total, order.currency)}</strong></div>
+            <div className="flex justify-between gap-4 border-t border-[#152a52]/20 pt-3 text-base font-bold"><span>Cash on delivery total</span><strong>{formatPrice(order.total, order.currency)}</strong></div>
           </div>
           <div className="border border-[#152a52]/20 bg-[#e5f0ec] px-4 py-4 text-sm leading-6 text-[#314a63]">
             <p className="font-semibold text-[#152a52]">Delivery and payment</p>
-            <p className="mt-2">Payment method: Cash on delivery. The current recorded amount is the product subtotal. The store must confirm any delivery charge and the final payable amount with you before dispatch. No online payment was collected.</p>
+            <p className="mt-2">{order.shippingFeeConfirmed
+              ? 'Payment method: Cash on delivery. The displayed total includes the delivery charge configured by the store. No online payment was collected.'
+              : 'Payment method: Cash on delivery. The store will confirm any delivery charge and the final payable amount before dispatch. No online payment was collected.'}</p>
             <p className="mt-3 font-semibold text-[#152a52]">Deliver to</p>
             <p>{order.shippingAddress.firstName} {order.shippingAddress.lastName}</p>
             <p>{order.shippingAddress.phone}</p>

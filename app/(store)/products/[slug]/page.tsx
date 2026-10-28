@@ -1,6 +1,11 @@
-import { permanentRedirect } from 'next/navigation'
+import ProductPage from '../../product/[slug]/page'
 
-export default async function ProductRedirect({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params
-  permanentRedirect(`/product/${encodeURIComponent(slug)}`)
+export default function ProductsProductPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>
+  searchParams: Promise<{ option?: string }>
+}) {
+  return <ProductPage params={params} searchParams={searchParams} />
 }

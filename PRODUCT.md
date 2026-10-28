@@ -27,7 +27,7 @@ The public reference site is https://isklenses.com/. Its FAQ says it serves Paki
 
 - The existing application uses Next.js App Router, React, TypeScript, Tailwind CSS, Neon Postgres through Drizzle and `pg`, and Vercel Blob.
 - Admin sessions are server-verified. The database-backed roles are owner, admin, and staff.
-- The storefront basket is in-memory only. Checkout supports cash-on-delivery orders for guests and registered shoppers; it does not collect online payments. Product subtotal is initially recorded without a delivery fee, which the store must confirm with the shopper before dispatch.
+- The storefront basket is in-memory only. Checkout supports cash-on-delivery orders for guests and registered shoppers; it does not collect online payments. Delivery pricing is configured by store operators and shown in the checkout total before the order is placed.
 - Shopper accounts use email and password without email verification or password recovery. Existing customer records without an account must use guest checkout unless the shopper can sign in.
 - Source-catalog imports create drafts for review. A later operator-directed publication changes status and stock, but does not mean the underlying specifications, media rights, or claims have been independently verified.
 - Imported specifications, prices, stock, and regulatory or clinical claims must not be guessed. The store operator must verify them before publication.
@@ -43,11 +43,11 @@ The public reference site is https://isklenses.com/. Its FAQ says it serves Paki
 - Public source site: https://isklenses.com/ (WordPress/WooCommerce; its public Store API exposes product names, categories, current prices, links, and source-image references).
 - The public Store API exposed 495 listings. Its product variation arrays were empty; the snapshot contains 757 image references and no video references. All 757 source-image references have been copied to Vercel Blob and are associated with 406 listings; no non-Blob image URLs remain in product image/hero fields. Thirty-three observed source categories and their hierarchy are stored in Neon. Eighty-nine listings lacked a source category.
 - No owner-provided product specifications, endorsements, or compliance documents have been supplied in this repository.
-- On 2026-10-10, the operator directed that all 495 imported records be published with a configured stock count of 5 each. This is operator-entered inventory, not independently verified stock or product validation. All 495 are active, and 89 source records without a category are labeled **Uncategorized**. There are no configured variant rows. Source descriptions and video files were not copied; all available product photos are stored in Vercel Blob and served to the storefront only through Blob URLs. Product-photo rights still require operator confirmation.
+- On 2026-10-10, the operator directed that all 495 imported records be published with a configured stock count of 5 each. This is operator-entered inventory, not independently verified stock or product validation. All 495 are active, and 89 source records without a category are labeled **Uncategorized**. There are no configured variant rows. Source descriptions and video files were not copied; product photos are stored in Vercel Blob and served through Blob URLs. The connected Blob store currently returns HTTP 403 ("Your store is blocked") for image reads; the store must be unblocked in Vercel before images can load. Product-photo rights still require operator confirmation.
 
 ## Product Principles
 
 - Keep product specifications and commercial terms traceable to a source and operator-reviewed before publication.
 - Treat lens parameters as structured product data rather than descriptive copy.
 - Distinguish verified catalog facts from imported, draft, or unknown information.
-- Keep online payment unavailable. Do not claim a final payable total until the store confirms delivery charges with the shopper.
+- Keep online payment unavailable. Show the configured delivery fee and cash-on-delivery total before the shopper places an order.

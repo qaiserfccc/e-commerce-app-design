@@ -22,6 +22,7 @@ const FILES_TO_CHECK = [
   'db/migrations/0012_isk_reference_taxonomy_and_brand_logos.sql',
   'db/migrations/0013_repeatable_catalog_sync.sql',
   'db/migrations/0014_lens_types.sql',
+  'db/migrations/0015_delivery_rules.sql',
   'scripts/bootstrap-admin.mjs',
   'app/actions/catalog-admin.ts',
   'app/actions/catalog-taxonomy.ts',

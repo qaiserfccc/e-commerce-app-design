@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Check, LoaderCircle, LockKeyhole, PackageCheck, Store } from 'lucide-react'
 import { getProductImageSources, StorefrontProductImage } from '@/components/storefront/product-image'
+import { getDeliveryFeeCents, getFreeShippingThreshold, moneyFromCents, moneyToCents, type DeliveryRule } from '@/lib/delivery'
 import { useProducts, type Product } from '@/lib/hooks/use-storefront-data'
 import { useStorefrontCart } from '@/lib/hooks/use-storefront-cart'
 import { reportError } from '@/lib/ui/notifications'
@@ -30,9 +31,9 @@ function linePrice(product: Product, variantId: string | undefined) {
   }
 }
 
-const inputClass = 'w-full min-w-0 border border-[#152a52]/30 bg-white px-3 py-3 text-base text-[#152a52] placeholder:text-[#52647a] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#16468a]'
+const inputClass = 'w-full min-w-0 border border-[#b8d4e0] bg-white px-3 py-3 text-base text-[#15384d] placeholder:text-[#526b7b] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#087ba5]'
 
-export function Checkout() {
+export function Checkout({ deliveryRules }: { deliveryRules: DeliveryRule[] }) {
   const router = useRouter()
   const { lines, count, clear, syncProducts } = useStorefrontCart()
   const { products, isLoading: productsLoading, isError: productsError, error: productsErrorValue, mutate: refreshProducts } = useProducts()
@@ -44,7 +45,6 @@ export function Checkout() {
   const [accountMessage, setAccountMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [orderError, setOrderError] = useState('')
-  const [confirmedDeliveryPolicy, setConfirmedDeliveryPolicy] = useState(false)
   const checkoutKey = useRef<string | null>(null)
 
   useEffect(() => {
@@ -71,10 +71,14 @@ export function Checkout() {
 
   const currencies = new Set(lines.map((line) => linePrice(line.product, line.variant?.id).currency))
   const currency = lines.length ? linePrice(lines[0].product, lines[0].variant?.id).currency : 'PKR'
-  const subtotal = lines.reduce((sum, line) => {
+  const subtotalCents = lines.reduce((sum, line) => {
     const { price } = linePrice(line.product, line.variant?.id)
-    return sum + Number(price) * line.quantity
+    return sum + (moneyToCents(price) ?? 0) * line.quantity
   }, 0)
+  const subtotal = subtotalCents / 100
+  const deliveryFeeCents = getDeliveryFeeCents(deliveryRules, subtotalCents)
+  const freeShippingThreshold = getFreeShippingThreshold(deliveryRules)
+  const orderTotalCents = deliveryFeeCents === null ? null : subtotalCents + deliveryFeeCents
 
   async function handleAccountSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -146,6 +150,11 @@ export function Checkout() {
       setSubmitting(false)
       return
     }
+    if (deliveryFeeCents === null) {
+      setOrderError('Delivery pricing is not configured for this order total. Please contact the store before placing your order.')
+      setSubmitting(false)
+      return
+    }
 
     const form = new FormData(event.currentTarget)
     checkoutKey.current ??= window.crypto.randomUUID()
@@ -176,6 +185,7 @@ export function Checkout() {
               quotedCurrency: lineCurrency,
             }
           }),
+          quotedDeliveryFee: moneyFromCents(deliveryFeeCents),
         }),
       })
       const body = await response.json()
@@ -222,15 +232,15 @@ export function Checkout() {
         <Link href="/shop" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.1em] hover:text-[#16468a] focus-visible:outline-2 focus-visible:outline-[#16468a]">
           <ArrowLeft size={15} aria-hidden="true" /> ISK Lenses / Products
         </Link>
-        <p className="font-mono text-[10px] uppercase tracking-[.16em] text-[#314a63]">Cash on delivery · Pakistan</p>
+        <p className="font-mono text-xs uppercase tracking-[.16em] text-[#314a63]">Cash on delivery · Pakistan</p>
       </nav>
 
       <header className="grid gap-4 border-b-2 border-[#152a52] py-7 sm:grid-cols-[1fr_auto] sm:items-end">
         <div>
           <h1 className="display-type text-5xl uppercase leading-[.9] tracking-[-.025em] sm:text-6xl">Checkout</h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-[#314a63]">Review your bag and delivery details. No online payment is collected.</p>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-[#314a63]">Review your bag and delivery details. The delivery charge is included in your cash-on-delivery total; no online payment is collected.</p>
         </div>
-        <p className="font-mono text-[10px] uppercase tracking-[.14em] text-[#314a63]">{count} {count === 1 ? 'item' : 'items'} in your bag</p>
+        <p className="font-mono text-xs uppercase tracking-[.14em] text-[#314a63]">{count} {count === 1 ? 'item' : 'items'} in your bag</p>
       </header>
 
       <div className="grid items-start gap-9 pt-7 lg:grid-cols-[minmax(0,1fr)_minmax(320px,.62fr)] lg:gap-12">
@@ -342,16 +352,20 @@ export function Checkout() {
                 <p className="mt-1 text-xs leading-5 text-[#314a63]">Cash is due on delivery. No card or online payment is available.</p>
               </div>
             </div>
-            <label className="mt-4 flex cursor-pointer items-start gap-3 text-sm leading-5 text-[#314a63]">
-              <input
-                type="checkbox"
-                required
-                checked={confirmedDeliveryPolicy}
-                onChange={(event) => setConfirmedDeliveryPolicy(event.target.checked)}
-                className="mt-0.5 size-4 shrink-0 accent-[#152a52] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16468a]"
-              />
-              I understand the delivery charge is not configured yet. The store must confirm the final amount with me before dispatch.
-            </label>
+            {deliveryFeeCents !== null && freeShippingThreshold ? (
+              <p className="mt-4 border border-[#cfe2eb] bg-[#e8f6fb] px-4 py-3 text-sm leading-6 text-[#15384d]">
+                {subtotalCents >= (moneyToCents(freeShippingThreshold) ?? Number.MAX_SAFE_INTEGER)
+                  ? 'Free delivery unlocked for this order.'
+                  : `Add ${formatPrice(((moneyToCents(freeShippingThreshold) ?? subtotalCents) - subtotalCents) / 100, currency)} to qualify for free delivery.`}
+              </p>
+            ) : deliveryFeeCents !== null && deliveryFeeCents === 0 ? (
+              <p className="mt-4 border border-[#cfe2eb] bg-[#e8f6fb] px-4 py-3 text-sm leading-6 text-[#15384d]">Free delivery applies to this order.</p>
+            ) : null}
+            {deliveryFeeCents === null && (
+              <p role="alert" className="mt-4 border border-[#a52d3c]/35 bg-[#fff4f2] px-4 py-3 text-sm leading-6 text-[#782b36]">
+                Delivery pricing is not configured for this order total. Please contact the store before placing your order.
+              </p>
+            )}
           </section>
 
           {orderError && <p role="alert" className="mb-4 border border-[#a52d3c]/35 bg-[#fff4f2] px-4 py-3 text-sm leading-6 text-[#782b36]">{orderError}</p>}
@@ -363,20 +377,20 @@ export function Checkout() {
           )}
           <button
             type="submit"
-            disabled={submitting || authLoading || Boolean(authError) || productsLoading || productsError || !confirmedDeliveryPolicy}
+            disabled={submitting || authLoading || Boolean(authError) || productsLoading || productsError || deliveryFeeCents === null}
             className="inline-flex min-h-14 w-full items-center justify-center gap-2 bg-[#152a52] px-5 py-4 text-sm font-black uppercase tracking-[.11em] text-[#d3ff48] hover:bg-[#16468a] focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#16468a] disabled:cursor-wait disabled:opacity-55 sm:w-auto sm:min-w-72"
           >
             {submitting ? <LoaderCircle size={17} className="animate-spin" /> : <PackageCheck size={17} aria-hidden="true" />}
             {submitting ? 'Placing COD order…' : 'Place COD order'}
           </button>
-          <p className="mt-3 max-w-2xl text-xs leading-5 text-[#314a63]">The order is recorded as pending. The current amount is the product subtotal only; the store will confirm the final payable amount before dispatch.</p>
+          <p className="mt-3 max-w-2xl text-xs leading-5 text-[#314a63]">The order is recorded as pending. The displayed COD total includes the configured delivery charge. No online payment is collected.</p>
           </form>
         </div>
 
         <aside aria-labelledby="summary-heading" className="min-w-0 border-y-2 border-[#152a52] bg-[#e5f0ec] px-4 py-5 sm:px-6 lg:sticky lg:top-24">
           <div className="flex items-end justify-between gap-3 border-b border-[#152a52]/25 pb-4">
             <h2 id="summary-heading" className="display-type text-3xl uppercase leading-none">Order docket</h2>
-            <span className="font-mono text-[10px] uppercase tracking-[.12em] text-[#314a63]">{lines.length} lines</span>
+            <span className="font-mono text-xs uppercase tracking-[.12em] text-[#314a63]">{lines.length} lines</span>
           </div>
           <ul className="divide-y divide-[#152a52]/15">
             {lines.map((line) => {
@@ -403,10 +417,10 @@ export function Checkout() {
           </ul>
           <div className="space-y-3 border-t border-[#152a52]/25 pt-4 text-sm">
             <div className="flex items-start justify-between gap-4"><span>Products subtotal</span><strong className="font-mono text-right">{formatPrice(subtotal, currency)}</strong></div>
-            <div className="flex items-start justify-between gap-4 text-[#314a63]"><span>Delivery charge</span><span className="max-w-40 text-right text-xs leading-5">To be confirmed by store</span></div>
-            <div className="flex items-start justify-between gap-4 border-t border-[#152a52]/20 pt-3 font-bold"><span>COD amount now recorded</span><strong className="font-mono text-right">{formatPrice(subtotal, currency)}</strong></div>
+            <div className="flex items-start justify-between gap-4 text-[#314a63]"><span>Delivery charge</span><strong className="font-mono text-right">{deliveryFeeCents === null ? 'Unavailable' : formatPrice(deliveryFeeCents / 100, currency)}</strong></div>
+            <div className="flex items-start justify-between gap-4 border-t border-[#152a52]/20 pt-3 font-bold"><span>Cash on delivery total</span><strong className="font-mono text-right">{orderTotalCents === null ? 'Unavailable' : formatPrice(orderTotalCents / 100, currency)}</strong></div>
           </div>
-          <p className="mt-4 border border-[#152a52]/15 bg-white/65 px-3 py-3 text-xs leading-5 text-[#314a63]">This amount does not include a delivery fee. The store must confirm the final payable total with you before dispatch. Nothing is charged online.</p>
+          <p className="mt-4 border border-[#152a52]/15 bg-white/65 px-3 py-3 text-xs leading-5 text-[#314a63]">The COD total includes the current delivery price for this order. Nothing is charged online.</p>
           <Link href="/shop" className="mt-5 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.1em] underline underline-offset-4 hover:text-[#16468a] focus-visible:outline-2 focus-visible:outline-[#16468a]">
             <Store size={14} aria-hidden="true" /> Edit your bag in Products
           </Link>

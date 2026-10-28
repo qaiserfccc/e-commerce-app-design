@@ -14,10 +14,12 @@ import type {
   SiteChrome,
 } from '@/lib/content-types'
 import { db } from '@/lib/db'
+import { getDeliveryAnnouncement, parseDeliveryRules } from '@/lib/delivery'
 import { storeBanners, storeReviews, storeSettings } from '@/lib/db/schema'
 
 export const CONTENT_NAMESPACE = 'content'
 const TTL_SECONDS = 300
+type StoredSettingKey = SettingKey | 'delivery_rules'
 const LEGACY_ANNOUNCEMENTS = [
   'Get exclusive discounts on top lens brands',
   'Delivery available all over Pakistan',
@@ -53,11 +55,11 @@ function storefrontFooter(value: unknown): FooterSettings {
 
 async function loadSettings() {
   const rows = await db.select().from(storeSettings)
-  return new Map(rows.map((row) => [row.key as SettingKey, row.value]))
+  return new Map(rows.map((row) => [row.key as StoredSettingKey, row.value]))
 }
 
 export function getSettings() {
-  return cached(CONTENT_NAMESPACE, 'settings', TTL_SECONDS, async () => Object.fromEntries(await loadSettings()) as Partial<Record<SettingKey, unknown>>)
+  return cached(CONTENT_NAMESPACE, 'settings', TTL_SECONDS, async () => Object.fromEntries(await loadSettings()) as Partial<Record<StoredSettingKey, unknown>>)
 }
 
 const asStrings = (value: unknown) => (Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [])
@@ -65,8 +67,10 @@ const asStrings = (value: unknown) => (Array.isArray(value) ? value.filter((item
 export async function getSiteChrome(): Promise<SiteChrome> {
   try {
     const settings = await getSettings()
+    const deliveryRules = parseDeliveryRules(settings.delivery_rules ?? [])
     return {
       announcements: asStrings(settings.announcements).filter((item) => !LEGACY_ANNOUNCEMENTS.includes(item)),
+      deliveryNotice: getDeliveryAnnouncement(deliveryRules),
       contact: (settings.contact ?? {}) as ContactSettings,
       footer: storefrontFooter(settings.footer),
     }
@@ -74,6 +78,7 @@ export async function getSiteChrome(): Promise<SiteChrome> {
     console.error('[site-content] Site chrome unavailable', error instanceof Error ? error.name : 'UnknownError')
     return {
       announcements: [],
+      deliveryNotice: null,
       contact: {},
       footer: {},
       loadError: 'Store announcements and contact details could not be loaded.',
