@@ -17,7 +17,7 @@ function LinkColumn({ title, links, homepage = false }: { title: string; links: 
   )
 }
 
-export function StoreFooter({ chrome, homepage = false, brands = [], categories = [] }: { chrome: SiteChrome; homepage?: boolean; brands?: Array<{ name: string }>; categories?: CategoryNode[] }) {
+export function StoreFooter({ chrome, homepage = false, brands = [], categories = [] }: { chrome: SiteChrome; homepage?: boolean; brands?: Array<{ name: string; slug?: string }>; categories?: CategoryNode[] }) {
   const { contact, footer } = chrome
   const phone = contact.phone ?? ''
   const email = contact.email ?? ''
@@ -49,7 +49,7 @@ export function StoreFooter({ chrome, homepage = false, brands = [], categories 
             </ul>
           </div>
           <LinkColumn title="Shop" links={shop} homepage />
-          {brands.length > 0 && <LinkColumn title="Brands" links={brands.map(({ name }) => [name, `/shop?q=${encodeURIComponent(name)}`])} homepage />}
+          {brands.length > 0 && <LinkColumn title="Brands" links={brands.map(({ name, slug: brandSlug }) => [name, `/shop?brand=${encodeURIComponent(brandSlug ?? slug(name))}`])} homepage />}
           <LinkColumn title="Help" links={help} homepage />
         </div>
         <div className="border-t border-[#e6dce1] py-3 text-xs text-[#686371]">
@@ -61,7 +61,9 @@ export function StoreFooter({ chrome, homepage = false, brands = [], categories 
   return (
     <footer className="mt-24 border-t border-[#e6dce1] bg-[#201b35] text-white">
       <div className="mx-auto grid max-w-[1440px] gap-10 px-4 py-14 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
-        {footer.brands?.length ? <LinkColumn title="Brands" links={footer.brands.map((name) => [name, `/product-category/${slug(name)}`])} /> : null}
+        {brands.length > 0
+          ? <LinkColumn title="Brands" links={brands.map(({ name, slug: brandSlug }) => [name, `/shop?brand=${encodeURIComponent(brandSlug ?? slug(name))}`])} />
+          : footer.brands?.length ? <LinkColumn title="Brands" links={footer.brands.map((name) => [name, `/shop?q=${encodeURIComponent(name)}`])} /> : null}
         <div className="space-y-10">
           {footer.collections?.length ? <LinkColumn title="More collections" links={footer.collections.map((name) => [name, `/product-category/${slug(name)}`])} /> : null}
           {footer.explore?.length ? <LinkColumn title="Explore more" links={footer.explore.map(([name, path]) => [name, `/product-category/${path}`])} /> : null}

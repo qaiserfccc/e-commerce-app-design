@@ -171,6 +171,7 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
   const { content, products, categories, brands, shades, lensTypes, reviews, loadError } = await loadHome()
   const banners = (placement: BannerContent['placement']) => content?.banners.filter((banner) => banner.placement === placement) ?? []
   const h = content?.headings ?? {}
+  const linkedBrands = brands.filter((brand) => brand.productCount > 0)
   const heroBanners = banners('hero')
   const heroSlides: BannerContent[] = heroBanners.length > 0
     ? heroBanners
@@ -187,9 +188,6 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
         sortOrder: index,
         isActive: true,
       }))
-  const brandLogos = new Map(brands.flatMap((brand) => brand.logoUrl
-    ? [[brand.name.trim().toLocaleLowerCase(), brand.logoUrl] as const]
-    : []))
   const categoryCards = categories
     .filter((category) => category.productCount > 0)
     .slice(0, 5)
@@ -254,19 +252,18 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
             eyebrow="International brands"
             first="Shop by"
             accent="brand"
-            description={brands.length > 0 ? 'Browse brands attached to active product listings.' : undefined}
-            href="/shop"
+            description={linkedBrands.length > 0 ? 'Browse active brands from the catalog.' : undefined}
+            href="/brands"
             hrefLabel="View all brands"
           />
-          {brands.length > 0 ? (
+          {linkedBrands.length > 0 ? (
             <ul className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 lg:gap-4">
-              {brands.slice(0, 12).map((brand) => {
-                const logo = brand.logoUrl ?? brandLogos.get(brand.name.trim().toLocaleLowerCase())
+              {linkedBrands.slice(0, 12).map((brand) => {
                 return (
                   <li key={brand.id}>
-                    <Link href={`/shop?q=${encodeURIComponent(brand.name)}`} className="group flex min-h-28 flex-col justify-center rounded-3xl border border-[#cfe2eb] bg-white px-4 py-3 transition-colors hover:border-[#087ba5] sm:min-h-32">
-                      {logo
-                        ? <Img src={logo} alt={`${brand.name} logo`} className="h-12 w-full object-contain" />
+                    <Link href={`/shop?brand=${encodeURIComponent(brand.slug)}`} className="group flex min-h-28 flex-col justify-center rounded-3xl border border-[#cfe2eb] bg-white px-4 py-3 transition-colors hover:border-[#087ba5] sm:min-h-32">
+                      {brand.logoUrl
+                        ? <Img src={brand.logoUrl} alt={`${brand.name} logo`} className="h-12 w-full object-contain" />
                         : <span className={`text-lg text-[#15384d] group-hover:text-[#006f9b] ${brandWordmarkClass(brand.name)}`}>{brand.name}</span>}
                       <span className="mt-2 text-xs text-[#526b7b]">{brand.productCount} active {brand.productCount === 1 ? 'listing' : 'listings'}</span>
                     </Link>
@@ -458,7 +455,7 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
                 : <div aria-hidden="true" className="grid aspect-square w-full max-w-[320px] place-items-center rounded-full bg-white/15 text-white"><Eye size={64} strokeWidth={1.2} /></div>}
             </div>
           </div>
-          <StoreFooter chrome={chrome} homepage brands={brands} categories={categories} />
+          <StoreFooter chrome={chrome} homepage brands={linkedBrands} categories={categories} />
         </div>
       </section>
 

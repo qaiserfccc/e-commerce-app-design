@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { SlidersHorizontal } from 'lucide-react'
 import { ProductCard, ProductGridSkeleton } from '@/components/storefront/product-card'
 import { descendantIds } from '@/lib/catalog-types'
+import type { StorefrontBrand } from '@/lib/data/catalog'
 import { useProducts } from '@/lib/hooks/use-storefront-data'
 import { useStorefrontCart } from '@/lib/hooks/use-storefront-cart'
 import { useStorefrontCategories, type ProductCategory } from '@/lib/hooks/use-storefront-categories'
@@ -14,10 +15,13 @@ import { categoryHref, categoryTree, isAvailable, lowestPrice, titleCase } from 
 const PAGE_SIZE = 24
 type Sort = 'default' | 'price-asc' | 'price-desc' | 'name'
 
-export function CatalogView({ categoryPath }: { categoryPath?: string }) {
+export function CatalogView({ categoryPath, brands }: { categoryPath?: string; brands: StorefrontBrand[] }) {
   const searchParams = useSearchParams()
+  const pathname = usePathname()
+  const router = useRouter()
   const query = searchParams.get('q')?.trim().slice(0, 100) ?? ''
-  const { products, isLoading, isError, error, mutate } = useProducts(undefined, query)
+  const brandSlug = searchParams.get('brand')?.trim().slice(0, 100) ?? ''
+  const { products, isLoading, isError, error, mutate } = useProducts(undefined, query, brandSlug)
   const { categories, isLoading: categoriesLoading } = useStorefrontCategories()
   const { syncProducts } = useStorefrontCart()
   const [sort, setSort] = useState<Sort>('default')
@@ -43,10 +47,10 @@ export function CatalogView({ categoryPath }: { categoryPath?: string }) {
   const parent = ancestors[ancestors.length - 1] ?? null
   const siblings = category ? tree.get(category.id) ?? [] : tree.get('root') ?? []
   useEffect(() => {
-    if (!isLoading && !isError && !query) syncProducts(products)
-  }, [isError, isLoading, products, query, syncProducts])
+    if (!isLoading && !isError && !query && !brandSlug) syncProducts(products)
+  }, [brandSlug, isError, isLoading, products, query, syncProducts])
 
-  useEffect(() => setVisible(PAGE_SIZE), [categoryPath, query, sort, inStockOnly])
+  useEffect(() => setVisible(PAGE_SIZE), [brandSlug, categoryPath, query, sort, inStockOnly])
 
   const filtered = useMemo(() => {
     const result = products.filter((product) => (!branch || (product.categoryIds ?? (product.categoryId ? [product.categoryId] : [])).some((id) => branch.has(id))) && (!inStockOnly || isAvailable(product)))
@@ -58,7 +62,17 @@ export function CatalogView({ categoryPath }: { categoryPath?: string }) {
   }, [branch, inStockOnly, products, sort])
 
   const missingCategory = Boolean(categoryPath) && !categoriesLoading && !category
-  const heading = query ? `Search results for “${query}”` : category ? titleCase(category.name) : 'Shop'
+  const selectedBrand = brands.find((item) => item.slug === brandSlug) ?? null
+  const heading = selectedBrand
+    ? `${selectedBrand.name} lenses`
+    : query ? `Search results for “${query}”` : category ? titleCase(category.name) : 'Shop'
+
+  function changeBrand(value: string) {
+    const params = new URLSearchParams(searchParams.toString())
+    if (value) params.set('brand', value)
+    else params.delete('brand')
+    router.push(`${pathname}${params.size ? `?${params}` : ''}`)
+  }
 
   const sidebar = (
     <nav aria-label="Categories">
@@ -76,6 +90,7 @@ export function CatalogView({ categoryPath }: { categoryPath?: string }) {
         <Link href="/" className="hover:underline">Home</Link> / <Link href="/shop" className="hover:underline">Shop</Link>
         {ancestors.map((item) => <span key={item.id}> / <Link href={categoryHref(item)} className="hover:underline">{titleCase(item.name)}</Link></span>)}
         {category && <> / <span className="font-semibold text-[#0a0a0a]">{titleCase(category.name)}</span></>}
+        {selectedBrand && <> / <span className="font-semibold text-[#0a0a0a]">{selectedBrand.name}</span></>}
       </nav>
       <div className="mt-4 flex flex-wrap items-end justify-between gap-4 border-b border-[#033473]/15 pb-5">
         <h1 className="text-3xl font-bold tracking-tight text-[#033473] sm:text-4xl">{heading}</h1>
@@ -95,6 +110,13 @@ export function CatalogView({ categoryPath }: { categoryPath?: string }) {
             <button type="button" onClick={() => setFiltersOpen((open) => !open)} aria-expanded={filtersOpen} className="inline-flex items-center gap-2 rounded-full border border-[#033473]/30 px-4 py-2 text-sm font-semibold lg:hidden">
               <SlidersHorizontal size={16} aria-hidden="true" /> Categories
             </button>
+            <label className="inline-flex min-w-0 items-center gap-2 text-sm">
+              <span className="shrink-0 text-[#4a5568]">Brand</span>
+              <select value={brandSlug} onChange={(event) => changeBrand(event.target.value)} className="min-w-0 max-w-[min(60vw,16rem)] rounded-full border border-[#033473]/30 bg-white px-3 py-2 text-sm">
+                <option value="">All brands</option>
+                {brands.map((brand) => <option key={brand.id} value={brand.slug}>{brand.name} ({brand.productCount})</option>)}
+              </select>
+            </label>
             <label className="inline-flex items-center gap-2 text-sm">
               <input type="checkbox" checked={inStockOnly} onChange={(event) => setInStockOnly(event.target.checked)} className="size-4 accent-[#033473]" /> In stock only
             </label>
@@ -119,8 +141,10 @@ export function CatalogView({ categoryPath }: { categoryPath?: string }) {
             <ProductGridSkeleton />
           ) : missingCategory ? (
             <EmptyState title="Collection not found" body="This collection does not exist or has been removed." />
+          ) : brandSlug && !selectedBrand ? (
+            <EmptyState title="Brand not found" body="This brand is inactive or is no longer available." />
           ) : filtered.length === 0 ? (
-            <EmptyState title="No products found" body={query ? 'Try a different search term.' : 'No products are available here right now.'} />
+            <EmptyState title="No products found" body={query ? 'Try a different search term.' : selectedBrand ? `No active products are currently linked to ${selectedBrand.name}.` : 'No products are available here right now.'} />
           ) : (
             <>
               <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 xl:grid-cols-4">

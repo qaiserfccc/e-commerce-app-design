@@ -167,7 +167,7 @@ export function StoreHeader({ chrome }: { chrome: SiteChrome }) {
               {roots.slice(0, 4).map((category) => (
                 <li key={category.id}><Link href={categoryHref(category)} className="text-sm font-medium text-[#201b35] transition-colors hover:text-[#b83f6b]">{category.name}</Link></li>
               ))}
-              <li><Link href="#brands" className="text-sm font-medium text-[#201b35] transition-colors hover:text-[#b83f6b]">Brands</Link></li>
+              <li><Link href="/brands" className="text-sm font-medium text-[#201b35] transition-colors hover:text-[#b83f6b]">Brands</Link></li>
               <li><Link href="/shop" className="text-sm font-medium text-[#d45782] transition-colors hover:text-[#b83f6b]">Catalog</Link></li>
             </ul>
           </nav>
@@ -191,6 +191,7 @@ export function StoreHeader({ chrome }: { chrome: SiteChrome }) {
         <ul className="mx-auto flex max-w-[1440px] items-center gap-1 px-6 text-xs font-semibold uppercase tracking-[0.12em]">
           <li><Link href="/" className="block px-3 py-3 hover:text-[#b83f6b]">Home</Link></li>
           <li><Link href="/shop" className="block px-3 py-3 hover:text-[#b83f6b]">Shop all</Link></li>
+          <li><Link href="/brands" className="block px-3 py-3 hover:text-[#b83f6b]">Brands</Link></li>
           {roots.slice(0, 8).map((root) => <DesktopItem key={root.id} node={root} tree={tree} top />)}
           <li className="ml-auto"><Link href="/blogs" className="block px-3 py-3 hover:text-[#b83f6b]">Blogs</Link></li>
         </ul>
@@ -205,7 +206,7 @@ export function StoreHeader({ chrome }: { chrome: SiteChrome }) {
               <button type="button" aria-label="Close menu" onClick={() => setMobileOpen(false)} className="grid size-11 place-items-center"><X size={22} /></button>
             </div>
             <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-2 text-sm font-semibold">
-              {[['/', 'Home'], ['/shop', 'Shop all'], ['/blogs', 'Blogs'], ['/faq', 'FAQ'], ['/contact-us', 'Contact us'], ['/my-account', 'My account']].map(([href, label]) => (
+              {[['/', 'Home'], ['/shop', 'Shop all'], ['/brands', 'Brands'], ['/blogs', 'Blogs'], ['/faq', 'FAQ'], ['/contact-us', 'Contact us'], ['/my-account', 'My account']].map(([href, label]) => (
                 <li key={href}><Link href={href} className="flex min-h-12 items-center border-b border-[#e6dce1] px-5 py-3.5">{label}</Link></li>
               ))}
               <li className="px-5 pb-1 pt-4 text-xs font-bold uppercase tracking-widest text-[#686371]">Categories</li>

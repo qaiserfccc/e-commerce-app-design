@@ -142,7 +142,7 @@ async function enrich<T extends { id: string; categoryId: string; lensShadeId: s
   }))
 }
 
-async function loadCatalog(categorySlug: string | null, query: string | null) {
+async function loadCatalog(categorySlug: string | null, query: string | null, brandSlug: string | null) {
   const conditions = [eq(storeProducts.status, 'active'), eq(storeCategories.isActive, true)]
   if (categorySlug) {
     const all = await getCategories()
@@ -162,10 +162,12 @@ async function loadCatalog(categorySlug: string | null, query: string | null) {
       ilike(storeLensTypes.name, like),
     )!)
   }
+  if (brandSlug) conditions.push(eq(storeBrands.slug, brandSlug), eq(storeBrands.isActive, true))
   const rows = await db
     .select(productColumns)
     .from(storeProducts)
     .innerJoin(storeCategories, eq(storeCategories.id, storeProducts.categoryId))
+    .leftJoin(storeBrands, eq(storeBrands.id, storeProducts.brandId))
     .leftJoin(storeLensShades, eq(storeLensShades.id, storeProducts.lensShadeId))
     .leftJoin(storeLensTypes, eq(storeLensTypes.id, storeProducts.lensTypeId))
     .where(and(...conditions))
@@ -173,11 +175,12 @@ async function loadCatalog(categorySlug: string | null, query: string | null) {
   return enrich(rows)
 }
 
-export function getCatalog(category: string | null = null, query: string | null = null) {
-  return cached(CATALOG_NAMESPACE, `products:${category ?? ''}:${(query ?? '').toLowerCase()}`, 300, () => loadCatalog(category, query))
+export function getCatalog(category: string | null = null, query: string | null = null, brand: string | null = null) {
+  return cached(CATALOG_NAMESPACE, `products:${category ?? ''}:${(query ?? '').toLowerCase()}:${brand ?? ''}`, 300, () => loadCatalog(category, query, brand))
 }
 
 export type CatalogProduct = Awaited<ReturnType<typeof loadCatalog>>[number]
+export type StorefrontBrand = Awaited<ReturnType<typeof getStorefrontBrands>>[number]
 
 async function loadHomeCatalog() {
   const rows = await db
@@ -206,12 +209,12 @@ async function loadStorefrontBrands() {
       name: storeBrands.name,
       slug: storeBrands.slug,
       logoUrl: storeBrands.logoUrl,
-      productCount: sql<number>`count(${storeProducts.id})::int`,
+      productCount: sql<number>`count(distinct case when ${storeProducts.status} = 'active' and ${storeCategories.isActive} then ${storeProducts.id} end)::int`,
     })
     .from(storeBrands)
-    .innerJoin(storeProducts, and(eq(storeProducts.brandId, storeBrands.id), eq(storeProducts.status, 'active')))
-    .innerJoin(storeCategories, eq(storeCategories.id, storeProducts.categoryId))
-    .where(and(eq(storeBrands.isActive, true), eq(storeCategories.isActive, true)))
+    .leftJoin(storeProducts, eq(storeProducts.brandId, storeBrands.id))
+    .leftJoin(storeCategories, eq(storeCategories.id, storeProducts.categoryId))
+    .where(eq(storeBrands.isActive, true))
     .groupBy(storeBrands.id, storeBrands.name, storeBrands.slug, storeBrands.logoUrl)
     .orderBy(asc(storeBrands.name))
 }

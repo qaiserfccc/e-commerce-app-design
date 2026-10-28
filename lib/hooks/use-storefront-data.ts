@@ -92,10 +92,11 @@ interface ProductsResponse {
  * Hook for fetching active products with real-time updates via SWR
  * Revalidates every 60 seconds for fresh inventory
  */
-export function useProducts(category?: string, search?: string) {
+export function useProducts(category?: string, search?: string, brand?: string) {
   const params = new URLSearchParams()
   if (category) params.set('category', category)
   if (search?.trim()) params.set('q', search.trim())
+  if (brand?.trim()) params.set('brand', brand.trim())
   const suffix = params.size ? `?${params.toString()}` : ''
   const url = `/api/products${suffix}`
 
