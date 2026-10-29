@@ -292,3 +292,26 @@ export const storeSettings = pgTable('store_settings', {
   value: jsonb('value').$type<unknown>().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
+
+export const storeCrmLeads = pgTable('store_crm_leads', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  source: text('source').notNull().default('manual'),
+  status: text('status').notNull().default('new'),
+  fullName: text('full_name'),
+  email: text('email'),
+  phone: text('phone'),
+  notes: text('notes'),
+  followUpAt: timestamp('follow_up_at', { withTimezone: true }),
+  matchedCustomerId: uuid('matched_customer_id').references(() => storeCustomers.id, { onDelete: 'set null' }),
+  metaLeadId: text('meta_lead_id'),
+  metaPageId: text('meta_page_id'),
+  metaFormId: text('meta_form_id'),
+  metaAdId: text('meta_ad_id'),
+  metaCampaignId: text('meta_campaign_id'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  metaLeadUnique: uniqueIndex('store_crm_leads_meta_lead_id_unique').on(table.metaLeadId).where(sql`${table.metaLeadId} IS NOT NULL`),
+  statusCreatedIdx: index('store_crm_leads_status_created_at_idx').on(table.status, table.createdAt),
+  customerIdx: index('store_crm_leads_matched_customer_id_idx').on(table.matchedCustomerId),
+}))

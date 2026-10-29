@@ -37,6 +37,7 @@ const REQUIRED_TABLES = [
   'store_lens_types',
   'store_error_logs',
   'store_media_objects',
+  'store_crm_leads',
 ]
 
 const TABLE_SCHEMAS = {
@@ -118,6 +119,10 @@ const TABLE_SCHEMAS = {
   store_lens_types: ['id', 'name', 'source_category_id', 'is_active', 'created_at', 'updated_at'],
   store_error_logs: ['id', 'source', 'error_name', 'message', 'stack', 'created_at'],
   store_media_objects: ['pathname', 'content_type', 'byte_length', 'digest', 'content', 'created_at', 'updated_at'],
+  store_crm_leads: [
+    'id', 'source', 'status', 'full_name', 'email', 'phone', 'notes', 'follow_up_at', 'matched_customer_id',
+    'meta_lead_id', 'meta_page_id', 'meta_form_id', 'meta_ad_id', 'meta_campaign_id', 'created_at', 'updated_at',
+  ],
   store_admin_users: [
     'id',
     'email',
@@ -197,6 +202,7 @@ async function validateSchema() {
       'store_customers_updated_at',
       'store_orders_updated_at',
       'store_product_variants_updated_at',
+      'store_crm_leads_updated_at',
     ]
 
     for (const trigger of requiredTriggers) {

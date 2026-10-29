@@ -24,6 +24,7 @@ const FILES_TO_CHECK = [
   'db/migrations/0014_lens_types.sql',
   'db/migrations/0015_delivery_rules.sql',
   'db/migrations/0016_database_media_store.sql',
+  'db/migrations/0017_crm_meta_leads.sql',
   'lib/server/media-storage.mjs',
   'lib/media-url.mjs',
   'app/api/media/[...path]/route.ts',
@@ -45,9 +46,13 @@ const FILES_TO_CHECK = [
   'app/(store)/products/[slug]/page.tsx',
   'components/storefront/product-image.tsx',
   'app/api/admin/metrics/route.ts',
+  'app/api/admin/crm/route.ts',
+  'app/api/webhooks/meta-leads/route.ts',
   'app/api/admin/session/route.ts',
   'lib/auth/admin.ts',
   'components/admin/admin-workspace.tsx',
+  'components/admin/crm-workspace.tsx',
+  'lib/server/meta-leads.ts',
   'components/admin/product-variant-manager.tsx',
   'components/storefront/checkout.tsx',
   'app/(store)/checkout/page.tsx',
@@ -125,6 +130,7 @@ try {
     'storeErrorLogs',
     'storeAdminUsers',
     'storeMediaObjects',
+    'storeCrmLeads',
   ]
 
   for (const table of exportedTables) {

@@ -10,6 +10,7 @@ export const ADMIN_SECTION_IDS = [
   'catalog-settings',
   'orders',
   'customers',
+  'crm',
   'analytics',
   'content',
   'delivery',

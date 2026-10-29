@@ -21,8 +21,10 @@ import {
   storeProductVariants,
   storeAdminUsers,
   storeSettings,
+  storeCrmLeads,
 } from '@/lib/db/schema'
 import { clearAdminSession, hashAdminPassword, requireAdminSession } from '@/lib/auth/admin'
+import { getMetaLeadAdsSetupStatus } from '@/lib/server/meta-leads'
 
 const productStatuses = ['active', 'draft', 'archived'] as const
 const orderStatuses = ['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'] as const
@@ -761,6 +763,166 @@ export async function updateCustomer(
       payload: { updatedFields: Object.keys(changes) },
     })
     return customer
+  })
+}
+
+const crmStatuses = ['new', 'contacted', 'qualified', 'converted', 'lost'] as const
+
+export async function getCrmLeads(limit = 50, offset = 0, query = '', status = '') {
+  await requireAdminSession()
+  const pageSize = boundedLimit(limit, 50, 100)
+  if (!Number.isSafeInteger(offset) || offset < 0 || offset > 1_000_000) throw new Error('Lead page is invalid.')
+  if (typeof query !== 'string' || query.length > 100) throw new Error('Lead search is invalid.')
+  if (typeof status !== 'string' || (status && !crmStatuses.includes(status as (typeof crmStatuses)[number]))) {
+    throw new Error('Lead status filter is invalid.')
+  }
+  const terms = query.trim()
+  const conditions = [
+    status ? eq(storeCrmLeads.status, status) : undefined,
+    terms ? or(
+      ilike(storeCrmLeads.fullName, `%${terms}%`),
+      ilike(storeCrmLeads.email, `%${terms}%`),
+      ilike(storeCrmLeads.phone, `%${terms}%`),
+      ilike(storeCrmLeads.metaCampaignId, `%${terms}%`),
+      ilike(storeCrmLeads.metaFormId, `%${terms}%`),
+    ) : undefined,
+  ].filter(Boolean)
+  const where = conditions.length ? and(...conditions) : undefined
+  const [leads, countRows] = await Promise.all([
+    db.select({
+      lead: storeCrmLeads,
+      customer: {
+        id: storeCustomers.id,
+        email: storeCustomers.email,
+        firstName: storeCustomers.firstName,
+        lastName: storeCustomers.lastName,
+      },
+    })
+      .from(storeCrmLeads)
+      .leftJoin(storeCustomers, eq(storeCrmLeads.matchedCustomerId, storeCustomers.id))
+      .where(where)
+      .orderBy(desc(storeCrmLeads.createdAt))
+      .limit(pageSize)
+      .offset(offset),
+    where
+      ? db.select({ total: sql<number>`count(*)::int` }).from(storeCrmLeads).where(where)
+      : db.select({ total: sql<number>`count(*)::int` }).from(storeCrmLeads),
+  ])
+  const customerIds = [...new Set(leads.flatMap(({ customer }) => customer ? [customer.id] : []))]
+  const orderCounts = customerIds.length
+    ? await db.select({
+        customerId: storeOrders.customerId,
+        orderCount: sql<number>`count(*)::int`,
+      }).from(storeOrders).where(inArray(storeOrders.customerId, customerIds)).groupBy(storeOrders.customerId)
+    : []
+  const countsByCustomer = new Map(orderCounts.map((item) => [item.customerId, Number(item.orderCount)]))
+  return {
+    items: leads.map(({ lead, customer }) => ({
+      ...lead,
+      customer: customer ? {
+        id: customer.id,
+        email: customer.email,
+        fullName: [customer.firstName, customer.lastName].filter(Boolean).join(' ') || null,
+        orderCount: countsByCustomer.get(customer.id) ?? 0,
+      } : null,
+    })),
+    total: Number(countRows[0]?.total ?? 0),
+    metaSetup: getMetaLeadAdsSetupStatus(),
+  }
+}
+
+export async function createCrmLead(input: {
+  fullName: string
+  email?: string
+  phone?: string
+  notes?: string
+  followUpAt?: string
+}) {
+  const actor = await requireAdminSession('admin')
+  if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Lead details are required.')
+  if (typeof input.fullName !== 'string') throw new Error('Lead name is required and must be at most 180 characters.')
+  const optionalText = (value: unknown, label: string, maximum: number) => {
+    if (value === undefined || value === null || value === '') return null
+    if (typeof value !== 'string' || value.length > maximum) throw new Error(`${label} must be at most ${maximum} characters.`)
+    return value.trim() || null
+  }
+  const fullName = input.fullName.trim()
+  const email = optionalText(input.email, 'Email', 254)?.toLowerCase() ?? null
+  const phone = optionalText(input.phone, 'Phone', 80)
+  const notes = optionalText(input.notes, 'Notes', 5000)
+  if (!fullName || fullName.length > 180) throw new Error('Lead name is required and must be at most 180 characters.')
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Enter a valid email address.')
+  if (input.followUpAt !== undefined && typeof input.followUpAt !== 'string') throw new Error('Follow-up date is invalid.')
+  const followUpAt = input.followUpAt ? new Date(input.followUpAt) : null
+  if (followUpAt && !Number.isFinite(followUpAt.getTime())) throw new Error('Follow-up date is invalid.')
+  const [customer] = email
+    ? await db.select({ id: storeCustomers.id }).from(storeCustomers)
+        .where(sql`lower(${storeCustomers.email}) = ${email}`).limit(1)
+    : []
+  return db.transaction(async (tx) => {
+    const [lead] = await tx.insert(storeCrmLeads).values({
+      source: 'manual',
+      status: 'new',
+      fullName,
+      email,
+      phone,
+      notes,
+      followUpAt,
+      matchedCustomerId: customer?.id ?? null,
+    }).returning()
+    await tx.insert(storeActivityEvents).values({
+      entityType: 'crm_lead',
+      entityId: lead.id,
+      eventType: 'created',
+      payload: { source: 'manual', actorId: actor.userId },
+    })
+    return lead
+  })
+}
+
+export async function updateCrmLead(
+  leadId: string,
+  changes: { status?: string; notes?: string; followUpAt?: string | null },
+) {
+  const actor = await requireAdminSession('admin')
+  validateUuid(leadId, 'Lead ID')
+  if (!changes || typeof changes !== 'object') throw new Error('Lead changes are required.')
+  const update: Partial<typeof storeCrmLeads.$inferInsert> = {}
+  if (changes.status !== undefined) {
+    if (!crmStatuses.includes(changes.status as (typeof crmStatuses)[number])) throw new Error('Lead status is invalid.')
+    update.status = changes.status
+  }
+  if (changes.notes !== undefined) {
+    if (typeof changes.notes !== 'string' || changes.notes.length > 5000) throw new Error('Notes must be at most 5000 characters.')
+    update.notes = changes.notes.trim() || null
+  }
+  if (changes.followUpAt !== undefined) {
+    if (changes.followUpAt === null || changes.followUpAt === '') update.followUpAt = null
+    else {
+      if (typeof changes.followUpAt !== 'string') throw new Error('Follow-up date is invalid.')
+      const date = new Date(changes.followUpAt)
+      if (!Number.isFinite(date.getTime())) throw new Error('Follow-up date is invalid.')
+      update.followUpAt = date
+    }
+  }
+  if (!Object.keys(update).length) throw new Error('No lead changes were supplied.')
+  return db.transaction(async (tx) => {
+    const [lead] = await tx.update(storeCrmLeads)
+      .set({ ...update, updatedAt: new Date() })
+      .where(eq(storeCrmLeads.id, leadId))
+      .returning()
+    if (!lead) throw new Error('Lead not found.')
+    await tx.insert(storeActivityEvents).values({
+      entityType: 'crm_lead',
+      entityId: leadId,
+      eventType: 'updated',
+      payload: {
+        updatedFields: Object.keys(update),
+        ...(update.status ? { status: update.status } : {}),
+        actorId: actor.userId,
+      },
+    })
+    return lead
   })
 }
 

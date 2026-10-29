@@ -41,6 +41,7 @@ import { CatalogSyncManager } from '@/components/admin/catalog-sync-manager'
 import { ProjectKanban } from '@/components/admin/project-kanban'
 import { DeliveryManager } from '@/components/admin/delivery-manager'
 import { ProductVariantManager } from '@/components/admin/product-variant-manager'
+import { CrmWorkspace } from '@/components/admin/crm-workspace'
 import { DataTable, type DataTableBulkAction, type DataTableColumn } from '@/components/admin/data-table'
 import { Pagination } from '@/components/ui/pagination'
 import { getProductImageSources } from '@/components/storefront/product-image'
@@ -61,6 +62,7 @@ const sections: Array<{ id: Section; label: string; icon: typeof LayoutDashboard
   { id: 'catalog-settings', label: 'Reviews & product page', icon: ClipboardList },
   { id: 'orders', label: 'Orders', icon: ShoppingBag },
   { id: 'customers', label: 'Customers', icon: Users },
+  { id: 'crm', label: 'CRM', icon: Users },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   { id: 'content', label: 'Storefront content', icon: Tags },
   { id: 'delivery', label: 'Delivery', icon: Truck },
@@ -1114,6 +1116,7 @@ export function AdminWorkspace({ section = 'overview' }: { section?: AdminSectio
     products: <ProductWorkspace canEdit={session.role === 'owner' || session.role === 'admin'} />,
     orders: <OrdersWorkspace canEdit={session.role === 'owner' || session.role === 'admin'} />,
     customers: <CustomersWorkspace />,
+    crm: <CrmWorkspace canEdit={session.role === 'owner' || session.role === 'admin'} />,
     analytics: <AnalyticsWorkspace />,
     content: <ContentManager canEdit={session.role === 'owner' || session.role === 'admin'} />,
     delivery: <DeliveryManager canEdit={session.role === 'owner' || session.role === 'admin'} />,
