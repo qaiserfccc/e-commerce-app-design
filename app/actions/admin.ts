@@ -2,8 +2,8 @@
 
 import { createHash, randomUUID } from 'node:crypto'
 import { and, asc, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm'
-import { del } from '@vercel/blob'
 import { invalidateCache } from '@/lib/cache'
+import { isOwnedMediaUrl } from '@/lib/server/media-storage.mjs'
 import { db } from '@/lib/db'
 import {
   buildDeliveryRules,
@@ -300,9 +300,8 @@ async function addProductAssetImpl(
   const text = altText?.trim() || null
   if (text && text.length > 500) throw new Error('Image description must be at most 500 characters.')
   if (mediaType !== 'image' && mediaType !== 'video') throw new Error('Media type is invalid.')
-  const url = new URL(blobUrl)
-  if (url.protocol !== 'https:' || !url.hostname.endsWith('.blob.vercel-storage.com')) {
-    throw new Error('Only public Vercel Blob image URLs can be saved.')
+  if (!isOwnedMediaUrl(blobUrl)) {
+    throw new Error('Media must be uploaded to the site media library.')
   }
 
   return db.transaction(async (tx) => {
@@ -320,7 +319,7 @@ async function addProductAssetImpl(
       .values({
         productId,
         blobPathname: pathname,
-        blobUrl: url.toString(),
+        blobUrl,
         altText: text,
         mediaType,
         sortOrder: (lastAsset?.sortOrder ?? -1) + 1,

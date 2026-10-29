@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto'
-import { put } from '@vercel/blob'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/auth/admin'
 import { adminApiError } from '@/lib/auth/admin-api'
+import { uploadMedia } from '@/lib/server/media-storage.mjs'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -45,8 +45,8 @@ export async function POST(request: NextRequest) {
     if (!extension) return NextResponse.json({ error: 'Use a JPEG, PNG, WebP, or AVIF image.' }, { status: 415 })
     if (file.size < 1 || file.size > maximumSize) return NextResponse.json({ error: 'Images must be smaller than 4 MB.' }, { status: 413 })
     if (!(await matches(file))) return NextResponse.json({ error: 'The file contents do not match the image type.' }, { status: 415 })
-    const blob = await put(`content/${randomUUID()}.${extension}`, file, { access: 'public', addRandomSuffix: false, contentType: file.type })
-    return NextResponse.json({ data: { url: blob.url, pathname: blob.pathname } }, { status: 201, headers: { 'Cache-Control': 'no-store' } })
+    const stored = await uploadMedia(`content/${randomUUID()}.${extension}`, Buffer.from(await file.arrayBuffer()), file.type)
+    return NextResponse.json({ data: stored }, { status: 201, headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {
     return adminApiError(error)
   }

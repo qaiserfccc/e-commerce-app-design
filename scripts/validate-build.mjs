@@ -23,6 +23,10 @@ const FILES_TO_CHECK = [
   'db/migrations/0013_repeatable_catalog_sync.sql',
   'db/migrations/0014_lens_types.sql',
   'db/migrations/0015_delivery_rules.sql',
+  'db/migrations/0016_database_media_store.sql',
+  'lib/server/media-storage.mjs',
+  'lib/media-url.mjs',
+  'app/api/media/[...path]/route.ts',
   'scripts/bootstrap-admin.mjs',
   'app/actions/catalog-admin.ts',
   'app/actions/catalog-taxonomy.ts',
@@ -37,20 +41,17 @@ const FILES_TO_CHECK = [
   'app/api/product-categories/route.ts',
   'app/api/orders/route.ts',
   'app/api/storefront/session/route.ts',
-  'app/products/page.tsx',
-  'app/products/[slug]/page.tsx',
-  'components/storefront/product-index.tsx',
+  'app/(store)/products/page.tsx',
+  'app/(store)/products/[slug]/page.tsx',
   'components/storefront/product-image.tsx',
   'app/api/admin/metrics/route.ts',
   'app/api/admin/session/route.ts',
   'lib/auth/admin.ts',
   'components/admin/admin-workspace.tsx',
   'components/admin/product-variant-manager.tsx',
-  'components/storefront/storefront-panel.tsx',
-  'components/storefront/storefront-bag.tsx',
   'components/storefront/checkout.tsx',
-  'app/checkout/page.tsx',
-  'app/checkout/confirmation/page.tsx',
+  'app/(store)/checkout/page.tsx',
+  'app/(store)/checkout/confirmation/page.tsx',
   'lib/auth/store-customer.ts',
   'lib/auth/public-rate-limit.ts',
   'lib/http/json-body.ts',
@@ -58,10 +59,9 @@ const FILES_TO_CHECK = [
   'lib/hooks/use-storefront-cart.tsx',
   'lib/hooks/use-storefront-data.ts',
   'lib/hooks/use-admin-data.ts',
-  'app/api/admin/products/import/route.ts',
-  'app/api/admin/product-categories/sync/route.ts',
   'lib/hooks/use-storefront-categories.ts',
   'scripts/rehost-source-product-images.mjs',
+  'scripts/restore-content-images.mjs',
   'scripts/import-isk-reference-taxonomy.mjs',
   'scripts/sync-isk-catalog.mjs',
   'lib/server/isk-catalog-sync.mjs',
@@ -69,9 +69,10 @@ const FILES_TO_CHECK = [
   'components/admin/catalog-sync-manager.tsx',
 ]
 
-const REQUIRED_PACKAGES = ['drizzle-orm', 'pg', 'swr', 'next', '@vercel/blob']
+const REQUIRED_PACKAGES = ['drizzle-orm', 'pg', 'swr', 'next']
 
 console.log('🔍 Validating build configuration...\n')
+let failures = 0
 
 // Check files exist
 console.log('📁 Checking files...')
@@ -81,6 +82,7 @@ for (const file of FILES_TO_CHECK) {
     console.log(`✅ ${file}`)
   } else {
     console.log(`❌ ${file} (missing)`)
+    failures += 1
   }
 }
 
@@ -94,6 +96,7 @@ try {
       console.log(`✅ ${pkg}`)
     } else {
       console.log(`❌ ${pkg} (missing)`)
+      failures += 1
     }
   }
 } catch (error) {
@@ -115,14 +118,13 @@ try {
     'storeProductAssets',
     'storeProductCategories',
     'storeProductVariants',
-    'storeProductImportRuns',
-    'storeProductImportItems',
     'storeActivityEvents',
     'storeBrands',
     'storeLensShades',
     'storeLensTypes',
     'storeErrorLogs',
     'storeAdminUsers',
+    'storeMediaObjects',
   ]
 
   for (const table of exportedTables) {
@@ -130,6 +132,7 @@ try {
       console.log(`✅ ${table}`)
     } else {
       console.log(`❌ ${table} (not exported)`)
+      failures += 1
     }
   }
 } catch (error) {
@@ -137,4 +140,9 @@ try {
   process.exit(1)
 }
 
-console.log('\n✅ Build validation passed - Ready to deploy!')
+if (failures) {
+  console.error(`\n❌ Build validation failed with ${failures} missing requirement(s).`)
+  process.exitCode = 1
+} else {
+  console.log('\n✅ Build validation passed - Ready to deploy!')
+}

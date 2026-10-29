@@ -6,28 +6,13 @@ type ProductImageData = {
   }[]
 }
 
-function trustedBlobUrl(blobUrl: string | null | undefined) {
-  if (!blobUrl) return null
-  try {
-    const url = new URL(blobUrl)
-    if (
-      url.protocol === 'https:' &&
-      (url.hostname.endsWith('.public.blob.vercel-storage.com') ||
-        url.hostname.endsWith('.blob.vercel-storage.com'))
-    ) {
-      return url.toString()
-    }
-  } catch {
-    return null
-  }
-  return null
-}
+import { isManagedMediaUrl } from '@/lib/media-url.mjs'
 
 export function getProductImageSources(product: ProductImageData) {
   return [...new Set([
-    trustedBlobUrl(product.heroImageUrl),
+    isManagedMediaUrl(product.heroImageUrl) ? product.heroImageUrl : null,
     ...(product.assets ?? [])
       .filter((asset) => asset.mediaType === 'image')
-      .map((asset) => trustedBlobUrl(asset.blobUrl)),
+      .map((asset) => isManagedMediaUrl(asset.blobUrl) ? asset.blobUrl : null),
   ].filter((source): source is string => Boolean(source)))]
 }

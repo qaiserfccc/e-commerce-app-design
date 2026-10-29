@@ -83,7 +83,7 @@ function BannerEditor({ banner, canEdit, onChanged, onError }: { banner?: Banner
         <label className="text-xs">Body<input disabled={!canEdit} value={body} maxLength={500} onChange={(e) => setBody(e.target.value)} className={inputClass} /></label>
         <label className="text-xs">Link (/path or https)<input disabled={!canEdit} value={href} maxLength={500} onChange={(e) => setHref(e.target.value)} className={inputClass} /></label>
         <label className="text-xs sm:col-span-2">Image URL <span aria-hidden="true" className="text-red-600">*</span><input disabled={!canEdit} required value={imageUrl} onChange={(e) => { setImageUrl(e.target.value); setBlobPathname('') }} className={inputClass} /></label>
-        <label className="text-xs">Upload to Blob (max 4 MB)<input disabled={!canEdit || busy} type="file" accept="image/avif,image/jpeg,image/png,image/webp" onChange={(e) => void upload(e.target.files?.[0])} className="block w-full text-xs" /></label>
+        <label className="text-xs">Upload image (max 4 MB)<input disabled={!canEdit || busy} type="file" accept="image/avif,image/jpeg,image/png,image/webp" onChange={(e) => void upload(e.target.files?.[0])} className="block w-full text-xs" /></label>
         <div className="flex items-end gap-3">
           <label className="w-24 text-xs">Order<input disabled={!canEdit} type="number" min={0} value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} className={inputClass} /></label>
           <label className="flex items-center gap-2 pb-2 text-xs"><input disabled={!canEdit} type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />Active</label>
@@ -198,7 +198,7 @@ export function ContentManager({ canEdit }: { canEdit: boolean }) {
     <section className="min-w-0 flex-1 space-y-8" aria-labelledby="content-heading">
       <div>
         <h1 id="content-heading" className="text-2xl font-semibold">Storefront content</h1>
-        <p className="mt-1 text-sm text-[#68675f]">Everything on the homepage, header and footer is read from the database. Uploaded images are stored in Vercel Blob; changes appear within minutes after cache refresh.</p>
+        <p className="mt-1 text-sm text-[#68675f]">Everything on the homepage, header and footer is read from the database. Uploaded images are stored in the ISK media library; changes appear within minutes after cache refresh.</p>
       </div>
       {!canEdit && <p role="status" className="rounded-lg bg-[#f1efe6] p-3 text-sm">Staff accounts can view content but not change it.</p>}
       {error && <p role="alert" className="rounded-lg bg-[#fdecec] p-3 text-sm text-[#9b2c2c]">{error}</p>}

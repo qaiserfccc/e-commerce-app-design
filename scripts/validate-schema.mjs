@@ -36,6 +36,7 @@ const REQUIRED_TABLES = [
   'store_lens_shades',
   'store_lens_types',
   'store_error_logs',
+  'store_media_objects',
 ]
 
 const TABLE_SCHEMAS = {
@@ -116,6 +117,7 @@ const TABLE_SCHEMAS = {
   store_lens_shades: ['id', 'name', 'hex', 'image_url', 'source_image_url', 'is_active', 'created_at', 'updated_at'],
   store_lens_types: ['id', 'name', 'source_category_id', 'is_active', 'created_at', 'updated_at'],
   store_error_logs: ['id', 'source', 'error_name', 'message', 'stack', 'created_at'],
+  store_media_objects: ['pathname', 'content_type', 'byte_length', 'digest', 'content', 'created_at', 'updated_at'],
   store_admin_users: [
     'id',
     'email',

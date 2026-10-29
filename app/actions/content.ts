@@ -1,12 +1,12 @@
 'use server'
 
-import { del } from '@vercel/blob'
 import { asc, eq } from 'drizzle-orm'
 import { requireAdminSession } from '@/lib/auth/admin'
 import { BANNER_PLACEMENTS, SETTING_KEYS, type BannerPlacement, type SettingKey } from '@/lib/content-types'
 import { invalidateCache } from '@/lib/cache'
 import { db } from '@/lib/db'
 import { storeActivityEvents, storeBanners, storeReviews, storeSettings } from '@/lib/db/schema'
+import { deleteMedia, isOwnedMediaUrl, mediaPathFromOwnedUrl } from '@/lib/server/media-storage.mjs'
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
@@ -43,6 +43,11 @@ function httpsUrl(value: unknown, label: string) {
   return url.toString()
 }
 
+function imageUrl(value: unknown) {
+  const raw = text(value, 'Image URL', 2000)
+  return isOwnedMediaUrl(raw) ? raw : httpsUrl(raw, 'Image URL')
+}
+
 function link(value: unknown) {
   const raw = text(value, 'Link', 500, false)
   if (!raw) return null
@@ -65,12 +70,12 @@ async function logChange(entityType: string, entityId: string, eventType: string
   await db.insert(storeActivityEvents).values({ entityType, entityId, eventType, payload: {} })
 }
 
-async function removeBlob(pathname: string | null | undefined, url: string) {
-  if (!pathname) return
+async function removeStoredMedia(pathname: string | null | undefined, url: string) {
+  if (!pathname || mediaPathFromOwnedUrl(url) !== pathname) return
   try {
-    await del(url)
+    await deleteMedia(pathname)
   } catch (error) {
-    console.error('[content] Blob cleanup failed', error instanceof Error ? error.name : 'UnknownError')
+    console.error('[content] Media cleanup failed', error instanceof Error ? error.name : 'UnknownError')
   }
 }
 
@@ -95,7 +100,7 @@ export async function saveBanner(input: BannerInput) {
     placement: input.placement as BannerPlacement,
     title: text(input.title, 'Title', 200, false),
     body: text(input.body, 'Body', 500, false) || null,
-    imageUrl: httpsUrl(input.imageUrl, 'Image URL'),
+    imageUrl: imageUrl(input.imageUrl),
     blobPathname: text(input.blobPathname, 'Blob path', 500, false) || null,
     href: link(input.href),
     sortOrder: order(input.sortOrder),
@@ -108,7 +113,7 @@ export async function saveBanner(input: BannerInput) {
     const [existing] = await db.select().from(storeBanners).where(eq(storeBanners.id, id)).limit(1)
     if (!existing) throw new Error('Banner not found.')
     await db.update(storeBanners).set(values).where(eq(storeBanners.id, id))
-    if (existing.blobPathname && existing.imageUrl !== values.imageUrl) await removeBlob(existing.blobPathname, existing.imageUrl)
+    if (existing.blobPathname && existing.imageUrl !== values.imageUrl) await removeStoredMedia(existing.blobPathname, existing.imageUrl)
   } else {
     const [created] = await db.insert(storeBanners).values(values).returning({ id: storeBanners.id })
     id = created.id
@@ -123,7 +128,7 @@ export async function deleteBanner(id: string) {
   const bannerId = requireId(id)
   const [removed] = await db.delete(storeBanners).where(eq(storeBanners.id, bannerId)).returning()
   if (!removed) throw new Error('Banner not found.')
-  await removeBlob(removed.blobPathname, removed.imageUrl)
+  await removeStoredMedia(removed.blobPathname, removed.imageUrl)
   await logChange('banner', bannerId, 'banner.deleted')
   await invalidateCache('content')
 }

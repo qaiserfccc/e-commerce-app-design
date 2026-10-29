@@ -91,7 +91,7 @@ const columns = [
         area: 'Storage',
         icon: FileUp,
         description:
-          'Admin uploads validate image/video file contents and size, store media in Vercel Blob, and persist metadata. Source catalog image URLs are also shown directly as fallbacks; they are not copied into Blob.',
+          'Admin uploads validate image/video file contents and size, store bytes in the database media library, and persist metadata. Source catalog image URLs are not shown directly as storefront fallbacks.',
         files: 'app/api/admin/products/ · store_product_assets',
       },
       {
@@ -162,7 +162,7 @@ export function ProjectKanban() {
                         <span className="rounded-full bg-[#f2f1ed] px-2.5 py-1 text-xs font-medium text-[#5f5d57]">
                           {task.area}
                         </span>
-                        <span className="max-w-full break-words text-[10px] leading-4 text-[#8c8a82]">
+                        <span className="max-w-full break-words text-xs leading-4 text-[#8c8a82]">
                           {task.files}
                         </span>
                       </div>

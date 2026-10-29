@@ -1,5 +1,7 @@
-import { bigint, boolean, index, integer, jsonb, numeric, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
+import { bigint, boolean, customType, index, integer, jsonb, numeric, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => 'bytea' })
 
 export const storeCategories = pgTable('store_categories', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -261,6 +263,16 @@ export const storeBanners = pgTable('store_banners', {
   href: text('href'),
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const storeMediaObjects = pgTable('store_media_objects', {
+  pathname: text('pathname').primaryKey(),
+  contentType: text('content_type').notNull(),
+  byteLength: integer('byte_length').notNull(),
+  digest: bytea('digest').notNull(),
+  content: bytea('content').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })

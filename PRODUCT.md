@@ -25,7 +25,7 @@ The public reference site is https://isklenses.com/. Its FAQ says it serves Paki
 
 ## Capabilities and Constraints
 
-- The existing application uses Next.js App Router, React, TypeScript, Tailwind CSS, Neon Postgres through Drizzle and `pg`, and Vercel Blob.
+- The existing application uses Next.js App Router, React, TypeScript, Tailwind CSS, and Neon Postgres through Drizzle and `pg`. Media is stored in the same database and served through cacheable same-origin routes; no hosted object-storage service is required.
 - Admin sessions are server-verified. The database-backed roles are owner, admin, and staff.
 - The storefront basket is in-memory only. Checkout supports cash-on-delivery orders for guests and registered shoppers; it does not collect online payments. Delivery pricing is configured by store operators and shown in the checkout total before the order is placed.
 - Shopper accounts use email and password without email verification or password recovery. Existing customer records without an account must use guest checkout unless the shopper can sign in.
@@ -41,9 +41,9 @@ The public reference site is https://isklenses.com/. Its FAQ says it serves Paki
 ## Evidence on Hand
 
 - Public source site: https://isklenses.com/ (WordPress/WooCommerce; its public Store API exposes product names, categories, current prices, links, and source-image references).
-- The public Store API exposed 495 listings. Its product variation arrays were empty; the snapshot contains 757 image references and no video references. All 757 source-image references have been copied to Vercel Blob and are associated with 406 listings; no non-Blob image URLs remain in product image/hero fields. Thirty-three observed source categories and their hierarchy are stored in Neon. Eighty-nine listings lacked a source category.
+- The public Store API exposed 495 listings. Its product variation arrays were empty; the snapshot contains 757 image references and no video references. All 757 available source-image references are now stored in the Neon media library. Thirty-three observed source categories and their hierarchy are stored in Neon. Eighty-nine listings lacked a source category.
 - No owner-provided product specifications, endorsements, or compliance documents have been supplied in this repository.
-- On 2026-10-10, the operator directed that all 495 imported records be published with a configured stock count of 5 each. This is operator-entered inventory, not independently verified stock or product validation. All 495 are active, and 89 source records without a category are labeled **Uncategorized**. There are no configured variant rows. Source descriptions and video files were not copied; product photos are stored in Vercel Blob and served through Blob URLs. The connected Blob store currently returns HTTP 403 ("Your store is blocked") for image reads; the store must be unblocked in Vercel before images can load. Product-photo rights still require operator confirmation.
+- On 2026-10-10, the operator directed that all 495 imported records be published with a configured stock count of 5 each. This is operator-entered inventory, not independently verified stock or product validation. All 495 are active, and 89 source records without a category are labeled **Uncategorized**. There are no configured variant rows. Source descriptions and video files were not copied. Product photos are served from the Neon-backed media library; product-photo rights still require operator confirmation.
 
 ## Product Principles
 

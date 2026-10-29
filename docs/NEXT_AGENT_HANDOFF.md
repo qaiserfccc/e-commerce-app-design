@@ -9,7 +9,7 @@ This document is the operational handoff for continuing the ecommerce storefront
 - Framework: Next.js 16 App Router, React 19, Tailwind CSS 4.
 - Package manager: `pnpm@12.3.4`.
 - Primary database: Neon Postgres.
-- File storage: Vercel Blob.
+- File storage: Neon `store_media_objects`, served through the cacheable same-origin `/api/media/[...path]` route.
 - AI integration: Vercel AI Gateway is connected, but no AI feature is currently required by the storefront/admin data layer.
 - Deployment target: Vercel. The project is already linked in `.vercel/`.
 - Database migration history: `db/migrations/`.
@@ -21,10 +21,10 @@ This document is the operational handoff for continuing the ecommerce storefront
 - Sync notes: `docs/DATABASE_SYNC.md`.
 - GitHub Actions: no workflow files are currently tracked in `.github/workflows/`.
 - GitHub operation identity: project agents must verify and use `@qaiserfccc` for GitHub mutations; see `AGENTS.md`.
-- The ISK Lenses storefront and admin screens use the shared Neon database. Product variants, published product details, image/video galleries, a protected public-catalog draft importer, and a full `/products` index are implemented. Imported product photos have been copied into Vercel Blob; public product responses and storefront image components serve only Blob URLs. The storefront has a multi-level source category browser and a sky/ice-blue palette. Migration `0006_store_product_categories.sql` is applied and schema validation passes.
+- The ISK Lenses storefront and admin screens use the shared Neon database. Product variants, published product details, image/video galleries, a protected public-catalog draft importer, and a full `/products` index are implemented. Product media uses the Neon-backed media library and public product responses expose only same-origin media URLs. The storefront has a multi-level source category browser and a sky/ice-blue palette. Migrations `0006_store_product_categories.sql` and `0016_database_media_store.sql` are applied and schema validation passes.
 - COD checkout and shopper sign-in/registration are implemented in the application: guests and account holders can submit inventory-checked orders, with no online payment. Checkout includes the configured delivery fee and prevents orders until delivery pricing covers the subtotal. Shopper accounts do not verify email, provide password reset, or expose order history.
 - Admin access now uses database-backed owner/admin/staff accounts, scrypt password hashes, and revocable signed sessions. Migration `0002_store_admin_users.sql` is applied to the connected Neon main branch, and an initial owner exists.
-- Migrations `0003_isk_lens_catalog.sql`, `0004_isk_source_snapshot_import.sql`, and `0006_store_product_categories.sql` are applied to the connected Neon database and schema validation passes. The full replacement import was verified on 2026-10-10: 495 distinct products, 757 source-image links across 406 listings, 374 records with extracted table specifications, and no source video links. On the same date, the operator directed that all 495 products be published at a configured stock of 5 each. All are active; this operator-entered quantity is not verified physical stock. Migration 0006 seeds the 33 observed source categories and their parent relationships. All 757 available source-image references now have Vercel Blob assets across 406 products; all stored product-image and hero URLs are Blob-backed. Twelve initial network fetch failures succeeded on an idempotent retry. No video files were available in the imported source snapshot; no product videos were added. There are zero configured lens-option rows. Descriptions were not copied. Existing orders, order items, customers, and the one admin account were preserved.
+- Migrations `0003_isk_lens_catalog.sql`, `0004_isk_source_snapshot_import.sql`, `0006_store_product_categories.sql`, and `0016_database_media_store.sql` are applied to the connected Neon database and schema validation passes. The full replacement import was verified on 2026-10-10: 495 distinct products, 757 source-image links across 406 listings, 374 records with extracted table specifications, and no source video links. On the same date, the operator directed that all 495 products be published at a configured stock of 5 each. All are active; this operator-entered quantity is not verified physical stock. Migration 0006 seeds the 33 observed source categories and their parent relationships. All 757 available product-image references, 28 banners, and the footer logo have been restored into Neon media storage. Inaccessible legacy Blob URL references were cleared while preserving asset metadata. No video files were available in the imported source snapshot; no product videos were added. There are zero configured lens-option rows. Descriptions were not copied. Existing orders, order items, customers, and the one admin account were preserved.
 - Migration `0005_cod_checkout_and_customer_accounts.sql` adds shopper credentials/session versions, COD and delivery-fee fields, order idempotency, and stock-reservation metadata. It is applied to the connected Neon database and schema validation passes; apply it separately to other target environments before enabling checkout there.
 
 ## Connected integrations
@@ -32,7 +32,7 @@ This document is the operational handoff for continuing the ecommerce storefront
 Verified through the project integration inventory:
 
 1. **Neon** — connected and supplies the Postgres connection variables below.
-2. **Blob** — connected and supplies `BLOB_READ_WRITE_TOKEN`.
+2. **Neon** — supplies the database connection used for both application data and media objects. Vercel Blob is no longer used by the runtime.
 3. **Vercel AI Gateway** — connected and available for future AI features.
 
 Do not replace Neon with another database unless explicitly requested. Do not add a second database driver or use `@neondatabase/serverless`; this project uses `pg` + Drizzle.
@@ -46,7 +46,6 @@ The variables are managed by the Vercel/v0 project environment and mirrored into
 | Variable | Source | Usage |
 |---|---|---|
 | `DATABASE_URL` | Neon | Primary pooled Postgres connection used by `lib/db/index.ts`. |
-| `BLOB_READ_WRITE_TOKEN` | Vercel Blob | Server-side Blob uploads/deletes/list operations. |
 | `ADMIN_SESSION_SECRET` | Project environment | HMAC key for signed admin session cookies; set a cryptographically random value of at least 32 characters in each environment. |
 | `CUSTOMER_SESSION_SECRET` | Project environment (optional) | Separate shopper-session HMAC source; if unset, the app derives a domain-separated shopper key from `ADMIN_SESSION_SECRET`. |
 
@@ -103,9 +102,9 @@ The current schema includes products, product assets, source product categories,
 - Storefront reads flow through SWR hooks to `/api/products`, then Drizzle/Neon.
 - Admin metrics, products, orders, customers, and activity flow through session-protected `/api/admin/*` routes.
 - Every admin server action checks the signed session independently. Mutations validate inputs and write audit events transactionally.
-- Product image/video upload, reorder, and delete use authenticated Next.js route handlers and Vercel Blob; only Blob URLs and metadata are persisted.
-- Public catalog/detail responses include active lens options, supported uploaded media, and source-category IDs. Product photography is exposed only as Vercel Blob URLs; source image URLs are not returned for storefront display. Other import provenance is admin-only.
-- The public WooCommerce Store API importer is authenticated and stages all pages of 50 records before atomically replacing the product catalog. It retains structured fields, extracted table specifications, pricing, categories, availability, and image/video URL references; it excludes descriptive copy and does not download/rehost media. After an import, `node --env-file=.env.local scripts/rehost-source-product-images.mjs` copies approved ISK upload images into Blob; it is bounded, retries transient failures, and is safe to rerun. The source snapshot contained no video links. Each new import creates drafts with zero stock. The current catalog was separately published at the operator's direction; verify listing details and source media rights before relying on or adding claims.
+- Product image/video upload, reorder, and delete use authenticated Next.js route handlers and Neon `store_media_objects`; media paths and product metadata are persisted in the catalog.
+- Public catalog/detail responses include active lens options, supported uploaded media, and source-category IDs. Product photography is exposed only through same-origin `/api/media/...` URLs; source image URLs are not returned for storefront display. Other import provenance is admin-only.
+- The public WooCommerce Store API importer is authenticated and stages all pages of 50 records before atomically replacing the product catalog. It retains structured fields, extracted table specifications, pricing, categories, availability, and image/video URL references; it excludes descriptive copy and does not download/rehost media. After an import, `node --env-file=.env.local scripts/rehost-source-product-images.mjs` copies approved ISK upload images into the database media library; it is bounded, retries transient failures, and is safe to rerun. The source snapshot contained no video links. Each new import creates drafts with zero stock. The current catalog was separately published at the operator's direction; verify listing details and source media rights before relying on or adding claims.
 - After a successful admin mutation, call the relevant SWR `mutate()`/refresh function for immediate UI consistency.
 - Current UI synchronization is polling/revalidation, not database WebSockets. Treat “realtime” as sync-ready periodic refresh unless a future agent adds an approved realtime transport.
 - Admin access is a database-backed owner/admin/staff system with scrypt-hashed passwords and revocable signed sessions; it is not SSO.
@@ -117,8 +116,8 @@ The current schema includes products, product assets, source product categories,
 - Use the Vercel project UI for normal preview/production publishing.
 - If CLI deployment is explicitly needed, run commands from `/vercel/share/v0-project` with the project’s authenticated Vercel CLI context; use `pnpm` for package commands.
 - Do not deploy from or commit the `.env` files.
-- Before deployment, verify the Vercel project has the Neon and Blob integrations attached for the target environment (Development, Preview, and Production as appropriate).
-- After deployment, verify `/`, `/api/products`, and `/api/admin/metrics` in the deployed environment and inspect Vercel logs if a runtime database/storage error appears.
+- Before deployment, verify Neon is configured for the target environment and apply all numbered database migrations.
+- After deployment, verify `/`, `/api/products`, `/api/media/...`, and `/api/admin/metrics` in the deployed environment and inspect runtime logs if a database error appears.
 
 ## Validation checklist
 
@@ -159,13 +158,13 @@ _Verified in the repository on 2026-10-10._
 - Admin sign-in uses database-backed identities and a signed HTTP-only cookie. Product/order/customer reads, admin mutations, and image endpoints verify the session on the server.
 - Admin sign-in uses database-backed owner/admin/staff accounts and signed HTTP-only cookies; owner-only user management is available in the workspace. The admin migration and initial owner have been provisioned in Neon.
 - Product, order, customer, and analytics screens are connected to authenticated database routes; mutations validate inputs and log metadata-only audit events.
-- Product image/video upload, preview, reorder, and deletion are wired to Vercel Blob and `store_product_assets`. Lens-option management is database-backed. COD order creation uses an idempotency key and transactional stock reservation; cancellation restores reserved inventory. Admin-managed delivery prices are included in checkout quotes and orders; admins can adjust delivery fees and mark payment received after delivery. The connected Blob store currently responds with HTTP 403 ("Your store is blocked") for reads, even though its objects remain listed by the configured token; image serving requires the Vercel store to be unblocked. There is no online payment, email verification, password reset, customer order history, configured tax calculation, or automatic delivery-fee notification.
+- Product image/video upload, preview, reorder, and deletion use Neon `store_media_objects` and `store_product_assets`; media responses carry ETags and shared-cache headers. Product and content media restoration scripts are `scripts/rehost-source-product-images.mjs` and `scripts/restore-content-images.mjs`. Lens-option management is database-backed. COD order creation uses an idempotency key and transactional stock reservation; cancellation restores reserved inventory. Admin-managed delivery prices are included in checkout quotes and orders; admins can adjust delivery fees and mark payment received after delivery. There is no online payment, email verification, password reset, customer order history, configured tax calculation, or automatic delivery-fee notification.
 - `components/admin/project-kanban.tsx` is a read-only snapshot of requirements versus repository status. Its task definitions are code-level project context, not order/customer records or persistent task data. It deliberately does not mutate business data.
 
 ## Next recommended work
 
 1. Replace the provisional owner credentials in **System users** before normal team use; apply edge-level sign-in rate limiting before production exposure.
-2. Review the published listings and verify lens specifications, prices, imagery, claims, media rights, and configured stock; the operator-entered quantity of 5 does not attest to physical inventory. All available source photos were copied to Blob, but the 89 uncategorized products have no source categories and some listings have no photo references.
+2. Review the published listings and verify lens specifications, prices, imagery, claims, media rights, and configured stock; the operator-entered quantity of 5 does not attest to physical inventory. One listing has no available source image; the 89 uncategorized products have no source categories.
 3. Set the actual delivery fee and optional free-delivery minimum in Admin → Delivery before enabling checkout. Migration `0015_delivery_rules.sql` adds the delivery key to the settings constraint for target databases that enforce one; the connected database currently has no `store_settings` key check constraint. Configure edge-level rate limiting before production exposure.
 4. Manage repository collaborator access in GitHub settings if repository-wide operator exclusivity is required.
 5. If GitHub Actions workflows are introduced, gate every job to `github.actor == 'qaiserfccc' && github.triggering_actor == 'qaiserfccc'`.
@@ -206,15 +205,15 @@ This file is a reference, not a secret store. The authoritative environment valu
 
 - Roles: admin side (`owner > admin > staff`, `lib/auth/admin.ts`), buyer (customer account, `lib/auth/store-customer.ts`, `/my-account` incl. "My orders" via `/api/storefront/orders`), and guest COD checkout.
 - Migration `db/migrations/0007_storefront_content.sql` adds `store_banners`, `store_reviews`, `store_settings` (seeded from the former dummy homepage data). **Must be applied to Neon** before the home page, header and footer show content.
-- Home, header and footer are loaded from the DB via `lib/data/site-content.ts`; the catalog via `lib/data/catalog.ts`. Admin edits them under "Storefront content" (`app/actions/content.ts`, upload to Vercel Blob at `/api/admin/content/upload`).
+- Home, header and footer are loaded from the DB via `lib/data/site-content.ts`; the catalog via `lib/data/catalog.ts`. Admin edits them under "Storefront content" (`app/actions/content.ts`, media upload at `/api/admin/content/upload`).
 - Cache (`lib/cache.ts`): Redis REST when `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` (or `KV_REST_API_URL`/`KV_REST_API_TOKEN`) are set, else per-process memory. Namespaces `catalog` (300s/600s) and `content` (300s); invalidated on admin/checkout writes.
-- Seeded image URLs still point at eyelenses.pk until re-uploaded to Blob by an admin.
+- Seeded source-image references are restored by `scripts/restore-content-images.mjs` into the database media library.
 
 ### Applied to Neon (main branch, only branch)
-Migration 0007 applied and schema validated. `scripts/mirror-content-images.mjs` mirrored all seeded banner/footer-logo images into Vercel Blob and rewrote DB URLs (re-runnable; needs `DATABASE_URL` + `BLOB_READ_WRITE_TOKEN`). Product images were already on Blob.
+Migration 0007 applied and schema validated. `scripts/mirror-content-images.mjs` remains as a compatibility wrapper for `scripts/restore-content-images.mjs`, which rewrites seeded banner/footer image URLs to the database media library.
 
 ### Auth now fully DB-backed
-Admin and customer credentials live in `store_admin_users` / `store_customers`. The session signing secret is stored in `store_secrets` (migration 0008, lazily created by `lib/auth/secret.ts`); `ADMIN_SESSION_SECRET`, `CUSTOMER_SESSION_SECRET`, `ADMIN_EMAIL/PASSWORD/LOGIN_PREFILL` are no longer used. Optional recovery key: row `admin_recovery_key` in `store_secrets`. Create owners with `SEED_EMAIL=... SEED_PASSWORD=... node scripts/seed-admin.mjs`. Only `DATABASE_URL` and `BLOB_READ_WRITE_TOKEN` remain required env.
+Admin and customer credentials live in `store_admin_users` / `store_customers`. The session signing secret is stored in `store_secrets` (migration 0008, lazily created by `lib/auth/secret.ts`); `ADMIN_SESSION_SECRET`, `CUSTOMER_SESSION_SECRET`, `ADMIN_EMAIL/PASSWORD/LOGIN_PREFILL` are no longer used. Optional recovery key: row `admin_recovery_key` in `store_secrets`. Create owners with `SEED_EMAIL=... SEED_PASSWORD=... node scripts/seed-admin.mjs`. No media-provider credentials are required; the database connection is used for media storage.
 
 ## Nested categories and category-bound catalog (migration 0009, applied to Neon)
 

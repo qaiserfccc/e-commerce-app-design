@@ -8,7 +8,7 @@ Short summary of key technical choices and where the important code lives.
 - Styling: Tailwind CSS 4.
 - Package manager: `pnpm`.
 - Database: Neon Postgres via `pg` and Drizzle ORM.
-- File storage: Vercel Blob (`BLOB_READ_WRITE_TOKEN`).
+- File storage: database-backed media objects in Neon Postgres, delivered through cacheable same-origin routes.
 
 ## Code layout
 
@@ -21,7 +21,8 @@ Short summary of key technical choices and where the important code lives.
 
 - `scripts/validate-build.mjs` — build validation.
 - `scripts/validate-schema.mjs` — schema validation (requires `DATABASE_URL`).
-- `scripts/rehost-source-product-images.mjs` — rehosts product images into Blob.
+- `scripts/rehost-source-product-images.mjs` — restores product photos into the database-backed media library.
+- `scripts/restore-content-images.mjs` — restores seeded storefront images into the database-backed media library.
 
 ## Security notes
 

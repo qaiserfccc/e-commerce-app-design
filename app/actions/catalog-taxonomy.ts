@@ -5,6 +5,7 @@ import { invalidateCache } from '@/lib/cache'
 import { requireAdminSession } from '@/lib/auth/admin'
 import { db } from '@/lib/db'
 import { storeBrands, storeErrorLogs, storeLensShades, storeLensTypes, storeProducts } from '@/lib/db/schema'
+import { isOwnedMediaUrl } from '@/lib/server/media-storage.mjs'
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
@@ -41,17 +42,8 @@ export async function saveBrand(input: { id?: string; name: unknown; logoUrl?: u
   const slug = slugify(name)
   if (!slug) throw new Error('Brand name must contain letters or numbers.')
   const logoUrl = input.logoUrl == null || input.logoUrl === '' ? null : requiredText(input.logoUrl, 'Brand logo', 2048)
-  if (logoUrl) {
-    let parsed: URL
-    try {
-      parsed = new URL(logoUrl)
-    } catch {
-      throw new Error('Brand logo must be uploaded to Vercel Blob.')
-    }
-    if (parsed.protocol !== 'https:' || parsed.username || parsed.password ||
-        !/^[a-z0-9-]+\.public\.blob\.vercel-storage\.com$/i.test(parsed.hostname)) {
-      throw new Error('Brand logo must be uploaded to Vercel Blob.')
-    }
+  if (logoUrl && !isOwnedMediaUrl(logoUrl)) {
+    throw new Error('Brand logo must be uploaded to the store media library.')
   }
   const values = { name, slug, logoUrl, isActive: input.isActive !== false, updatedAt: new Date() }
   try {

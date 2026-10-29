@@ -53,7 +53,7 @@ function BrandForm({ brand, onDone, onCancel }: { brand?: Brand; onDone: () => v
   return (
     <form onSubmit={submit} className="mb-5 grid gap-4 rounded-2xl border border-[#cfe2eb] bg-white p-5 sm:grid-cols-[1fr_minmax(220px,1.2fr)_auto_auto] sm:items-end">
       <Field label="Brand name" required><input name="name" required maxLength={100} defaultValue={brand?.name ?? ''} className={inputClass} /></Field>
-      <Field label="Brand logo (stored in Blob)">
+      <Field label="Brand logo">
         <div className="flex items-center gap-3">
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -61,7 +61,7 @@ function BrandForm({ brand, onDone, onCancel }: { brand?: Brand; onDone: () => v
           ) : <span className="grid size-11 shrink-0 place-items-center rounded-lg border border-dashed border-[#b8d4e0] bg-[#f7fcff] text-xs text-[#526b7b]">No logo</span>}
           <div className="min-w-0 flex-1">
             <input type="file" accept="image/avif,image/jpeg,image/png,image/webp" disabled={busy} onChange={(event) => void uploadLogo(event.target.files?.[0])} className="block w-full text-xs file:mr-2 file:rounded-full file:border-0 file:bg-[#e8f6fb] file:px-3 file:py-2 file:text-xs file:font-medium file:text-[#15384d] hover:file:bg-[#b8e8f5]" />
-            <p className="mt-1 text-xs leading-4 text-[#526b7b]">JPEG, PNG, WebP, or AVIF; max 4 MB. Uploaded to Vercel Blob.</p>
+            <p className="mt-1 text-xs leading-4 text-[#526b7b]">JPEG, PNG, WebP, or AVIF; max 4 MB. Stored in the site media library.</p>
           </div>
           {logoUrl && <button type="button" onClick={() => setLogoUrl('')} className="rounded-full px-2 py-1 text-xs text-[#753b2d] hover:bg-[#f8eeeb]">Remove</button>}
         </div>

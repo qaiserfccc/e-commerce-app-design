@@ -1,8 +1,8 @@
-import { del } from '@vercel/blob'
 import { NextRequest, NextResponse } from 'next/server'
 import { deleteProductAsset, getProductAssetById, moveProductAsset } from '@/app/actions/admin'
 import { requireAdminSession } from '@/lib/auth/admin'
 import { adminApiError } from '@/lib/auth/admin-api'
+import { deleteMedia, mediaPathFromOwnedUrl } from '@/lib/server/media-storage.mjs'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -26,13 +26,8 @@ export async function DELETE(
     const asset = await getProductAssetById(assetId)
     if (!asset) return NextResponse.json({ error: 'Product media not found.' }, { status: 404 })
 
-    if (asset.blobUrl) {
-      const url = new URL(asset.blobUrl)
-      if (url.protocol !== 'https:' || !url.hostname.endsWith('.blob.vercel-storage.com')) {
-        return NextResponse.json({ error: 'Stored media URL is not a valid Vercel Blob URL.' }, { status: 409 })
-      }
-      await del(url.toString())
-    }
+    const pathname = mediaPathFromOwnedUrl(asset.blobUrl)
+    if (pathname) await deleteMedia(pathname)
     await deleteProductAsset(assetId)
     return NextResponse.json({ success: true }, { headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {

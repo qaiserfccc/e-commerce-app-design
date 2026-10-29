@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto'
-import { del, put } from '@vercel/blob'
 import { NextRequest, NextResponse } from 'next/server'
 import { addProductAsset } from '@/app/actions/admin'
 import { getAdminProduct } from '@/app/actions/catalog-admin'
 import { requireAdminSession } from '@/lib/auth/admin'
 import { adminApiError } from '@/lib/auth/admin-api'
+import { deleteMedia, uploadMedia } from '@/lib/server/media-storage.mjs'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -55,7 +55,7 @@ export async function POST(
     return NextResponse.json({ error: 'Cross-origin upload requests are not allowed.' }, { status: 403 })
   }
 
-  let uploadedUrl: string | undefined
+  let uploadedPathname: string | undefined
   try {
     await requireAdminSession('admin')
     const { productId } = await params
@@ -84,26 +84,22 @@ export async function POST(
     }
 
     const pathname = `products/${productId}/${randomUUID()}.${media.extension}`
-    const blob = await put(pathname, file, {
-      access: 'public',
-      addRandomSuffix: false,
-      contentType: file.type,
-    })
-    uploadedUrl = blob.url
+    const stored = await uploadMedia(pathname, Buffer.from(await file.arrayBuffer()), file.type)
+    uploadedPathname = stored.pathname
     const asset = await addProductAsset(
       productId,
-      blob.pathname,
-      blob.url,
+      stored.pathname,
+      stored.url,
       typeof altText === 'string' ? altText : undefined,
       media.mediaType,
     )
     return NextResponse.json({ data: asset }, { status: 201, headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {
-    if (uploadedUrl) {
+    if (uploadedPathname) {
       try {
-        await del(uploadedUrl)
+        await deleteMedia(uploadedPathname)
       } catch (cleanupError) {
-        console.error('[admin-upload] Blob cleanup failed', cleanupError instanceof Error ? cleanupError.name : 'UnknownError')
+        console.error('[admin-upload] Media cleanup failed', cleanupError instanceof Error ? cleanupError.name : 'UnknownError')
       }
     }
     return adminApiError(error)

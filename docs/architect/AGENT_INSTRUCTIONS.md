@@ -2,7 +2,7 @@
 
 This file is the canonical agent-facing instructions for working on this repository.
 
-- **Repository scope**: Next.js App Router + React + TypeScript storefront and admin for ISK Lenses. Data is persisted in Neon Postgres via Drizzle ORM. Assets are stored in Vercel Blob.
+- **Repository scope**: Next.js App Router + React + TypeScript storefront and admin for ISK Lenses. Data and media objects are persisted in Neon Postgres via Drizzle/`pg`.
 - **Primary branches**: `main` is canonical. Work on topic branches, open PRs to `main` when ready.
 - **GitHub identity**: All GitHub mutations must be performed as `@qaiserfccc` — verify with:
 
@@ -27,7 +27,7 @@ pnpm build
 - **Runtime & operations**:
   - Admin sessions require `ADMIN_SESSION_SECRET`. Shopper sessions use `CUSTOMER_SESSION_SECRET` or derive from admin secret.
   - Admin password recovery (`/admin/forgot-password`) is enabled only when `ADMIN_RECOVERY_KEY` (8+ characters) is set; owners can also reset other accounts from the System users panel.
-  - Uploads use `BLOB_READ_WRITE_TOKEN` for Vercel Blob.
+  - Media uploads are stored in `store_media_objects` in Neon and served through `/api/media/[...path]`. Do not reintroduce a hosted object-store dependency.
   - Do not commit secret values; use the Vercel UI for environment variables.
 
 - **Areas of responsibility**:

@@ -5,6 +5,7 @@ import { invalidateCache } from '@/lib/cache'
 import { requireAdminSession } from '@/lib/auth/admin'
 import { buildCategoryPaths, DEFAULT_PRODUCT_PAGE, descendantIds, SECTION_SOURCES, type ProductPageSettings } from '@/lib/catalog-types'
 import { db } from '@/lib/db'
+import { deleteMedia, mediaPathFromOwnedUrl } from '@/lib/server/media-storage.mjs'
 import {
   storeActivityEvents,
   storeBrands,
@@ -395,15 +396,23 @@ export async function updateProduct(id: string, input: AdminProductInput) {
 export async function deleteProduct(id: string) {
   await requireAdminSession('admin')
   uuid(id, 'Product')
-  const { del } = await import('@vercel/blob')
-  const assets = await db.select({ url: storeProductAssets.blobUrl }).from(storeProductAssets).where(eq(storeProductAssets.productId, id))
+  const assets = await db.select({
+    url: storeProductAssets.blobUrl,
+    pathname: storeProductAssets.blobPathname,
+  }).from(storeProductAssets).where(eq(storeProductAssets.productId, id))
   await db.transaction(async (tx) => {
     await tx.delete(storeProductAssets).where(eq(storeProductAssets.productId, id))
     await tx.delete(storeProductVariants).where(eq(storeProductVariants.productId, id))
     await tx.delete(storeProducts).where(eq(storeProducts.id, id))
   })
-  const urls = assets.map((asset) => asset.url).filter((url): url is string => Boolean(url))
-  if (urls.length) await del(urls).catch(() => undefined)
+  for (const asset of assets) {
+    if (mediaPathFromOwnedUrl(asset.url) !== asset.pathname) continue
+    try {
+      await deleteMedia(asset.pathname)
+    } catch (error) {
+      console.error('[product-delete] Media cleanup failed', error instanceof Error ? error.name : 'UnknownError')
+    }
+  }
   await log('product', id, 'deleted')
   bust()
 }

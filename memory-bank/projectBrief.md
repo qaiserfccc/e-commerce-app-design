@@ -11,7 +11,7 @@ Describe who will use this.
 
 ## Project Summary
 
-E-commerce storefront and admin for ISK Lenses. Next.js App Router + React + TypeScript; Drizzle ORM with Neon Postgres; Vercel Blob for assets. Canonical docs consolidated under `docs/architect/`. GitHub operations must use @qaiserfccc identity. Use `pnpm` and follow migration rules for DB schema.
+E-commerce storefront and admin for ISK Lenses. Next.js App Router + React + TypeScript; Drizzle ORM with Neon Postgres. Product and storefront media bytes live in Neon `store_media_objects` and are served through `/api/media/[...path]`. Canonical docs consolidated under `docs/architect/`. GitHub operations must use @qaiserfccc identity. Use `pnpm` and follow migration rules for DB schema.
 
 
 
@@ -29,4 +29,3 @@ E-commerce storefront and admin for ISK Lenses. Next.js App Router + React + Typ
 - Do not hardcode secrets
 - Do not rewrite applied migrations
 - Admin GitHub mutations must be done as `@qaiserfccc`
-

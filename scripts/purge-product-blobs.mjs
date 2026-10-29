@@ -1,14 +1,16 @@
-// Deletes the Vercel Blob files referenced by product assets (run before wiping products).
-import { del } from '@vercel/blob'
+// Deletes database-backed media referenced by products (run only before wiping products).
 import pg from 'pg'
 
 const client = new pg.Client({ connectionString: process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL })
 await client.connect()
 const { rows } = await client.query(
-  `select blob_url as url from store_product_assets where blob_url like 'https://%.blob.vercel-storage.com/%'
-   union select hero_image_url from store_products where hero_image_url like 'https://%.blob.vercel-storage.com/%'`,
+  `select blob_pathname as pathname from store_product_assets
+   union select substring(hero_image_url from '^/api/media/(.*)$')
+     from store_products where hero_image_url like '/api/media/%'`,
 )
-const urls = rows.map((row) => row.url)
-for (let i = 0; i < urls.length; i += 100) await del(urls.slice(i, i + 100))
-console.log('deleted blobs:', urls.length)
+const pathnames = rows.map((row) => row.pathname).filter(Boolean)
+const deleted = pathnames.length
+  ? await client.query('delete from store_media_objects where pathname = any($1::text[])', [pathnames])
+  : { rowCount: 0 }
+console.log('deleted media objects:', deleted.rowCount)
 await client.end()

@@ -42,7 +42,7 @@ const jobs: Array<{
   {
     id: 'categories',
     title: 'Categories',
-    description: 'Refresh the source category tree and save available category photos to Blob.',
+    description: 'Refresh the source category tree and save available category photos to the media library.',
     icon: Tags,
     detail: 'Existing local categories are kept; missing source categories are added without deleting anything.',
   },
@@ -56,7 +56,7 @@ const jobs: Array<{
   {
     id: 'lens-shades',
     title: 'Lens shades',
-    description: 'Refresh shade names and save a representative source product photo for each shade to Blob.',
+    description: 'Refresh shade names and save a representative source product photo for each shade to the media library.',
     icon: ImageIcon,
     detail: 'Shade photos are reused from the product gallery when available; shade colors are never guessed.',
   },
@@ -72,7 +72,7 @@ const jobs: Array<{
 function resultLines(result: SyncResult) {
   const lines = [`${result.created} new`, `${result.updated} updated`, `${result.skipped} unchanged`]
   if (typeof result.imagesUploaded === 'number') lines.push(`${result.imagesUploaded} images uploaded`)
-  if (typeof result.imagesReused === 'number' && result.imagesReused > 0) lines.push(`${result.imagesReused} Blob images reused`)
+  if (typeof result.imagesReused === 'number' && result.imagesReused > 0) lines.push(`${result.imagesReused} stored images reused`)
   if (typeof result.linked === 'number') lines.push(`${result.linked} product links refreshed`)
   if (result.lensTypeSync) lines.push(`${result.lensTypeSync.source} lens types refreshed`)
   return lines.join(' · ')
@@ -181,7 +181,7 @@ export function CatalogSyncManager({ canEdit }: { canEdit: boolean }) {
 
       {running && (
         <p role="status" className="mt-4 text-sm text-[#526b7b]">
-          Syncing source data and Blob images. Product galleries can take a few minutes; if a request times out, run it again to continue from saved records.
+          Syncing source data and images. Product galleries can take a few minutes; if a request times out, run it again to continue from saved records.
         </p>
       )}
       {!canEdit && <p className="mt-4 text-sm text-[#526b7b]">Your account can view sync status but needs admin access to start a sync.</p>}

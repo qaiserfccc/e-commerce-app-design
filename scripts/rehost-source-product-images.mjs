@@ -1,12 +1,17 @@
 #!/usr/bin/env node
 
 import { createHash } from 'node:crypto'
-import { put } from '@vercel/blob'
 import { Pool } from 'pg'
+import {
+  assertMediaStorageConfigured,
+  getMediaPublicUrl,
+  mediaObjectExists,
+  uploadMedia,
+} from '../lib/server/media-storage.mjs'
 
 const databaseUrl = process.env.DATABASE_URL
 if (!databaseUrl) throw new Error('DATABASE_URL is required.')
-if (!process.env.BLOB_READ_WRITE_TOKEN) throw new Error('BLOB_READ_WRITE_TOKEN is required.')
+assertMediaStorageConfigured()
 
 const maxImageBytes = 12 * 1024 * 1024
 const allowedHosts = new Set(['isklenses.com', 'www.isklenses.com'])
@@ -104,8 +109,15 @@ try {
     ORDER BY p.source_product_id NULLS LAST, p.id, image.ordinality
   `)
   const mediaRows = result.rows.slice(0, limit)
-  const existing = await pool.query('SELECT blob_pathname FROM store_product_assets')
-  const existingPathnames = new Set(existing.rows.map((row) => row.blob_pathname))
+  const existing = await pool.query(
+    "SELECT product_id, blob_pathname, blob_url FROM store_product_assets WHERE media_type = 'image'",
+  )
+  const existingByProduct = new Map()
+  for (const asset of existing.rows) {
+    const assets = existingByProduct.get(asset.product_id) ?? []
+    assets.push(asset)
+    existingByProduct.set(asset.product_id, assets)
+  }
   let nextIndex = 0
 
   async function worker() {
@@ -121,19 +133,17 @@ try {
       try {
         const digest = createHash('sha256').update(sourceUrl.toString()).digest('hex')
         const pathnamePrefix = `products/${row.product_id}/catalog-${digest}`
-        const existingPath = [...existingPathnames].find((pathname) => pathname.startsWith(`${pathnamePrefix}.`))
-        if (existingPath) {
-          skipped += 1
+        const existingAsset = (existingByProduct.get(row.product_id) ?? [])
+          .find((asset) => asset.blob_pathname.startsWith(`${pathnamePrefix}.`))
+        if (existingAsset && await mediaObjectExists(existingAsset.blob_pathname)) {
+          const publicUrl = getMediaPublicUrl(existingAsset.blob_pathname)
           await pool.query(
-            `UPDATE store_products
-             SET hero_image_url = COALESCE(hero_image_url, (
-               SELECT blob_url FROM store_product_assets
-               WHERE product_id = $1 AND blob_pathname = $2 AND media_type = 'image'
-               LIMIT 1
-             ))
-             WHERE id = $1`,
-            [row.product_id, existingPath],
+            `UPDATE store_product_assets SET blob_url = $3
+             WHERE product_id = $1 AND blob_pathname = $2`,
+            [row.product_id, existingAsset.blob_pathname, publicUrl],
           )
+          existingAsset.blob_url = publicUrl
+          skipped += 1
           continue
         }
 
@@ -150,13 +160,8 @@ try {
         }
         if (!downloaded) throw lastError ?? new Error('The source image could not be downloaded.')
 
-        const blobPathname = `${pathnamePrefix}.${downloaded.extension}`
-        const blob = await put(blobPathname, downloaded.bytes, {
-          access: 'public',
-          addRandomSuffix: false,
-          contentType: downloaded.contentType,
-          cacheControlMaxAge: 31_536_000,
-        })
+        const pathname = existingAsset?.blob_pathname ?? `${pathnamePrefix}.${downloaded.extension}`
+        const stored = await uploadMedia(pathname, downloaded.bytes, downloaded.contentType)
         const client = await pool.connect()
         try {
           await client.query('BEGIN')
@@ -164,16 +169,20 @@ try {
             `INSERT INTO store_product_assets
               (product_id, blob_pathname, blob_url, alt_text, media_type, sort_order)
              VALUES ($1, $2, $3, $4, 'image', $5)
-             ON CONFLICT (product_id, blob_pathname) DO NOTHING`,
-            [row.product_id, blob.pathname, blob.url, String(row.alt_text).slice(0, 500), row.sort_order],
-          )
-          await client.query(
-            `UPDATE store_products SET hero_image_url = COALESCE(hero_image_url, $2), updated_at = now()
-             WHERE id = $1`,
-            [row.product_id, blob.url],
+              ON CONFLICT (product_id, blob_pathname) DO UPDATE SET
+                blob_url = EXCLUDED.blob_url,
+                alt_text = EXCLUDED.alt_text,
+                sort_order = EXCLUDED.sort_order`,
+            [row.product_id, stored.pathname, stored.url, String(row.alt_text).slice(0, 500), row.sort_order],
           )
           await client.query('COMMIT')
-          existingPathnames.add(blob.pathname)
+          const assets = existingByProduct.get(row.product_id) ?? []
+          if (!existingAsset) {
+            assets.push({ blob_pathname: stored.pathname, blob_url: stored.url })
+            existingByProduct.set(row.product_id, assets)
+          } else {
+            existingAsset.blob_url = stored.url
+          }
           uploaded += 1
         } catch (error) {
           await client.query('ROLLBACK')
@@ -195,6 +204,60 @@ try {
   }
 
   await Promise.all(Array.from({ length: Math.min(concurrency, mediaRows.length) }, () => worker()))
+  await pool.query(
+    `UPDATE store_products AS product
+     SET hero_image_url = (
+       SELECT asset.blob_url
+       FROM store_product_assets AS asset
+       WHERE asset.product_id = product.id
+         AND asset.media_type = 'image'
+         AND asset.blob_url LIKE '/api/media/%'
+       ORDER BY asset.sort_order, asset.created_at
+       LIMIT 1
+     ), updated_at = now()
+     WHERE (product.hero_image_url IS NULL OR product.hero_image_url LIKE '%blob.vercel-storage.com%')
+       AND EXISTS (
+         SELECT 1 FROM store_product_assets AS asset
+         WHERE asset.product_id = product.id
+           AND asset.media_type = 'image'
+           AND asset.blob_url LIKE '/api/media/%'
+       )`,
+  )
+  await pool.query(
+    `UPDATE store_lens_shades AS shade
+     SET image_url = (
+       SELECT product.hero_image_url
+       FROM store_products AS product
+       WHERE product.lens_shade_id = shade.id
+         AND product.hero_image_url LIKE '/api/media/%'
+       ORDER BY product.is_featured DESC, product.updated_at DESC
+       LIMIT 1
+     ), updated_at = now()
+     WHERE (shade.image_url IS NULL OR shade.image_url LIKE '%blob.vercel-storage.com%')
+       AND EXISTS (
+         SELECT 1 FROM store_products AS product
+         WHERE product.lens_shade_id = shade.id
+           AND product.hero_image_url LIKE '/api/media/%'
+       )`,
+  )
+  await pool.query(
+       `UPDATE store_products AS product
+        SET hero_image_url = (
+          SELECT asset.blob_url
+          FROM store_product_assets AS asset
+          WHERE asset.product_id = product.id
+            AND asset.media_type = 'image'
+            AND asset.blob_url LIKE '/api/media/%'
+          ORDER BY asset.sort_order, asset.created_at
+          LIMIT 1
+        ), updated_at = now()
+        WHERE product.hero_image_url LIKE '%blob.vercel-storage.com/%'`,
+  )
+  await pool.query(
+       `UPDATE store_product_assets
+        SET blob_url = NULL
+        WHERE blob_url LIKE '%blob.vercel-storage.com/%'`,
+  )
   console.log(JSON.stringify({
     sourceImageReferences: result.rowCount,
     attempted: mediaRows.length,

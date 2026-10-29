@@ -7,7 +7,7 @@ This file contains the architectural decisions and design patterns for the Memor
 
 - Canonical docs consolidated under `docs/architect/` and redundant root `AGENTS.md` removed.
 - Use Neon Postgres + Drizzle as single DB path; migrations must be new numbered SQL files.
-- Vercel Blob is the only supported file store for product assets; persist only Blob URLs and metadata.
+- Media bytes, MIME type, length, and SHA-256 are stored in Neon `store_media_objects`; expose them only through the same-origin cacheable `/api/media/[...path]` route. Do not add a hosted object-storage dependency.
 
 
 
@@ -46,14 +46,13 @@ Primary relational DB with migrations in `db/migrations/` and mirrored schema in
 - Persist products, orders, customers, admin users
 - Migration history and schema validation
 
-### Vercel Blob
+### Database media library
 
-Asset storage for product images and site media.
+Media storage for product images and site content.
 
 **Responsibilities:**
 
-- Store media files
-- Provide Blob URLs saved in database metadata
-
+- Store media bytes and asset metadata in Neon Postgres
+- Serve path-validated media with ETags and shared-cache headers
 
 
