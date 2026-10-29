@@ -41,6 +41,8 @@ import { CatalogSyncManager } from '@/components/admin/catalog-sync-manager'
 import { ProjectKanban } from '@/components/admin/project-kanban'
 import { DeliveryManager } from '@/components/admin/delivery-manager'
 import { ProductVariantManager } from '@/components/admin/product-variant-manager'
+import { DataTable, type DataTableBulkAction, type DataTableColumn } from '@/components/admin/data-table'
+import { Pagination } from '@/components/ui/pagination'
 import { getProductImageSources } from '@/components/storefront/product-image'
 import { reportError } from '@/lib/ui/notifications'
 import type { AdminSectionId } from '@/lib/admin-sections'
@@ -105,21 +107,6 @@ function LoadingRows({ label }: { label: string }) {
   return (
     <div className="space-y-3" role="status" aria-label={label}>
       {[0, 1, 2].map((item) => <div key={item} className="h-14 animate-pulse rounded-xl bg-[#e8e6e0]" />)}
-    </div>
-  )
-}
-
-function PageControls({ offset, total, pageSize, onChange }: { offset: number; total: number; pageSize: number; onChange: (offset: number) => void }) {
-  if (total <= pageSize) return null
-  const start = offset + 1
-  const end = Math.min(offset + pageSize, total)
-  return (
-    <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-      <p className="text-xs text-[#68675f]">Showing {start}–{end} of {total}</p>
-      <div className="flex gap-2">
-        <button type="button" disabled={offset === 0} onClick={() => onChange(Math.max(0, offset - pageSize))} className={secondaryButton}>Previous</button>
-        <button type="button" disabled={end >= total} onClick={() => onChange(offset + pageSize)} className={secondaryButton}>Next</button>
-      </div>
     </div>
   )
 }
@@ -377,7 +364,7 @@ function ProductWorkspace({ canEdit }: { canEdit: boolean }) {
           ))}
         </div>
       )}
-      <PageControls offset={offset} total={filtered.length} pageSize={20} onChange={setOffset} />
+      <Pagination total={filtered.length} page={Math.floor(offset / 20) + 1} pageSize={20} onPageChange={(page) => setOffset((page - 1) * 20)} itemLabel="products" className="mt-4" />
     </section>
   )
 }
@@ -598,7 +585,7 @@ function OrdersWorkspace({ canEdit }: { canEdit: boolean }) {
           ))}
         </div>
       )}
-      <PageControls offset={offset} total={total} pageSize={50} onChange={setOffset} />
+      <Pagination total={total} page={Math.floor(offset / 50) + 1} pageSize={50} onPageChange={(page) => setOffset((page - 1) * 50)} itemLabel="orders" className="mt-4" />
     </section>
   )
 }
@@ -714,38 +701,35 @@ function CustomersWorkspace() {
 
   return (
     <section className="min-w-0 flex-1">
-      <PanelHeading title="Customers" description={`${total ? `Showing ${offset + 1}–${Math.min(offset + customers.length, total)} of ${total}` : 'No customer records'} from the shared database. Personal data is shown only to signed-in admins.`} />
+      <PanelHeading title="Customers" description="Customer records from the shared database. Personal data is shown only to signed-in admins." />
       {(message || isError) && <div className="mb-4"><Notice>{message || errorMessage(error)}</Notice></div>}
-      <label className="mb-4 flex max-w-lg items-center gap-2 rounded-xl border border-[#1c1c1a]/10 bg-white px-3">
-        <Search size={16} className="text-[#68675f]" />
-        <span className="sr-only">Search customers</span>
-        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name or email" className="w-full bg-transparent py-3 text-sm outline-none" />
-      </label>
       {isLoading ? <LoadingRows label="Loading customers" /> : isError ? null : customers.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-[#1c1c1a]/20 bg-white/60 px-5 py-10 text-center text-sm text-[#68675f]">{deferredQuery ? 'No customers match this search.' : 'No customer records are in the database.'}</div>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-[#1c1c1a]/10 bg-white">
-          <table className="w-full min-w-[700px] text-left text-sm">
-            <thead className="bg-[#f2f1ed] text-xs text-[#55544e]"><tr><th className="px-4 py-3 font-medium">Customer</th><th className="px-4 py-3 font-medium">Phone</th><th className="px-4 py-3 font-medium">Joined</th><th className="px-4 py-3 font-medium">Marketing</th></tr></thead>
-            <tbody className="divide-y divide-[#1c1c1a]/10">
-              {customers.map((customer) => (
-                <tr key={customer.id}>
-                  <td className="px-4 py-3"><p>{[customer.firstName, customer.lastName].filter(Boolean).join(' ') || 'Name not provided'}</p><p className="mt-1 text-xs text-[#68675f]">{customer.email}</p></td>
-                  <td className="px-4 py-3 text-[#68675f]">{customer.phone || '—'}</td>
-                  <td className="px-4 py-3 text-xs text-[#68675f]">{new Date(customer.createdAt).toLocaleDateString()}</td>
-                  <td className="px-4 py-3">
-                    <label className="flex items-center gap-2 text-xs">
-                      <input type="checkbox" checked={customer.marketingOptIn} disabled={saving === customer.id} onChange={(event) => void updateMarketing(customer, event.target.checked)} className="size-4 accent-[#52624f]" />
-                      {customer.marketingOptIn ? 'Opted in' : 'Not opted in'}
-                    </label>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          rows={customers}
+          getRowId={(customer) => customer.id}
+          itemLabel="customers"
+          emptyMessage="No customer records are available."
+          searchable={false}
+          toolbarContent={<label className="flex min-w-[min(100%,16rem)] flex-1 items-center gap-2 rounded-xl border border-[#b8d4e0] bg-white px-3">
+            <Search size={16} className="shrink-0 text-[#526b7b]" aria-hidden="true" />
+            <span className="sr-only">Search customers</span>
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name or email" className="w-full bg-transparent py-2.5 text-sm text-[#15384d] outline-none placeholder:text-[#526b7b]" />
+          </label>}
+          serverPagination={{ total, offset, pageSize: 50, onOffsetChange: setOffset }}
+          columns={[
+            { id: 'customer', header: 'Customer', sortValue: (customer) => [customer.firstName, customer.lastName].filter(Boolean).join(' ') || customer.email, searchValue: (customer) => `${customer.firstName ?? ''} ${customer.lastName ?? ''} ${customer.email}`, className: 'min-w-[220px]', cell: (customer) => <><p className="font-medium">{[customer.firstName, customer.lastName].filter(Boolean).join(' ') || 'Name not provided'}</p><p className="mt-1 text-xs text-[#526b7b]">{customer.email}</p></> },
+            { id: 'phone', header: 'Phone', searchValue: (customer) => customer.phone ?? '', cell: (customer) => customer.phone || '—' },
+            { id: 'joined', header: 'Joined', sortValue: (customer) => new Date(customer.createdAt).getTime(), className: 'text-xs', cell: (customer) => new Date(customer.createdAt).toLocaleDateString() },
+            { id: 'marketing', header: 'Marketing', sortValue: (customer) => Number(customer.marketingOptIn), cell: (customer) => <label className="flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={customer.marketingOptIn} disabled={saving === customer.id} onChange={(event) => void updateMarketing(customer, event.target.checked)} className="size-4 accent-[#006f9b]" />
+              {customer.marketingOptIn ? 'Opted in' : 'Not opted in'}
+            </label> },
+          ] as DataTableColumn<AdminCustomer>[]}
+          exportRow={(customer) => ({ Email: customer.email, Name: [customer.firstName, customer.lastName].filter(Boolean).join(' '), Phone: customer.phone, 'Marketing opt-in': customer.marketingOptIn, 'Joined at': customer.createdAt })}
+        />
       )}
-      <PageControls offset={offset} total={total} pageSize={50} onChange={setOffset} />
     </section>
   )
 }
@@ -823,6 +807,24 @@ function SystemUsersWorkspace({ signedInUserId, signedInEmail }: { signedInUserI
       setMessage(reportError(updateError, 'The user could not be updated.'))
     } finally {
       setBusyUserId('')
+    }
+  }
+
+  async function changeSelectedUsersState(selected: AdminSystemUser[], isActive: boolean) {
+    setMessage('')
+    try {
+      for (const user of selected) {
+        if (user.isActive === isActive) continue
+        const updated = await setSystemUserActive(user.id, isActive)
+        setUsers((current) => current.map((entry) => entry.id === updated.id ? updated : entry))
+      }
+      setMessageTone('info')
+      setMessage(isActive ? 'Selected system users activated.' : 'Selected system users deactivated; their sessions were revoked.')
+    } catch (error) {
+      setMessageTone('error')
+      setMessage(reportError(error, 'Some system users could not be updated.'))
+      await refreshUsers()
+      throw error
     }
   }
 
@@ -908,43 +910,57 @@ function SystemUsersWorkspace({ signedInUserId, signedInEmail }: { signedInUserI
       {loading ? <LoadingRows label="Loading system users" /> : loadError ? null : users.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-[#1c1c1a]/20 bg-white/60 px-5 py-10 text-center text-sm text-[#68675f]">No system users have been provisioned.</div>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-[#1c1c1a]/10 bg-white">
-          <table className="w-full min-w-[650px] text-left text-sm">
-            <thead className="bg-[#f2f1ed] text-xs text-[#55544e]"><tr><th className="px-4 py-3 font-medium">Account</th><th className="px-4 py-3 font-medium">Role</th><th className="px-4 py-3 font-medium">Last sign in</th><th className="px-4 py-3 font-medium">Status</th><th className="px-4 py-3 font-medium">Action</th></tr></thead>
-            <tbody className="divide-y divide-[#1c1c1a]/10">
-              {users.map((user) => (
-                <tr key={user.id}>
-                  <td className="px-4 py-3 break-all">{user.email}{user.id === signedInUserId && <span className="ml-2 text-xs text-[#68675f]">(you)</span>}</td>
-                  <td className="px-4 py-3 capitalize">{user.role}</td>
-                  <td className="px-4 py-3 text-xs text-[#68675f]">{user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : 'Never'}</td>
-                  <td className="px-4 py-3">{user.isActive ? 'Active' : 'Inactive'}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                    {user.id !== signedInUserId && (resetTargetId === user.id ? (
-                      <form onSubmit={(event) => void submitPasswordReset(event, user)} className="flex flex-wrap items-center gap-2">
-                        <input required autoFocus type="password" maxLength={256} autoComplete="new-password" placeholder="New password" aria-label={`New password for ${user.email}`} value={resetPassword} onChange={(event) => setResetPassword(event.target.value)} className={`${inputClass} !w-48`} />
-                        <button type="submit" disabled={busyUserId === user.id} className={primaryButton}>Save</button>
-                        <button type="button" onClick={() => { setResetTargetId(''); setResetPassword('') }} className={secondaryButton}>Cancel</button>
-                      </form>
-                    ) : (
-                      <button type="button" onClick={() => { setResetTargetId(user.id); setResetPassword('') }} className={secondaryButton} aria-label={`Reset password for ${user.email}`}>Reset password</button>
-                    ))}
-                    <button
-                      type="button"
-                      disabled={busyUserId === user.id || user.id === signedInUserId}
-                      onClick={() => void changeActiveState(user)}
-                      className={user.isActive ? 'rounded-full border border-[#9b4a36]/30 px-3 py-2 text-xs text-[#753b2d] hover:bg-[#f8eeeb] disabled:cursor-not-allowed disabled:opacity-50' : secondaryButton}
-                      aria-label={`${user.isActive ? 'Deactivate' : 'Activate'} ${user.email}`}
-                    >
-                      {busyUserId === user.id ? 'Saving…' : user.isActive ? 'Deactivate' : 'Activate'}
-                    </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          rows={users}
+          getRowId={(user) => user.id}
+          getSearchValue={(user) => `${user.email} ${user.role} ${user.isActive ? 'active' : 'inactive'}`}
+          canSelectRow={(user) => user.id !== signedInUserId}
+          itemLabel="system users"
+          emptyMessage="No system users are available."
+          filters={[
+            { id: 'status', label: 'Status', options: [{ label: 'Active', value: 'active' }, { label: 'Inactive', value: 'inactive' }], value: (user) => user.isActive ? 'active' : 'inactive' },
+            { id: 'role', label: 'Role', options: [{ label: 'Admin', value: 'admin' }, { label: 'Staff', value: 'staff' }, { label: 'Owner', value: 'owner' }], value: (user) => user.role },
+          ]}
+          columns={[
+            { id: 'email', header: 'Account', sortValue: (user) => user.email, searchValue: (user) => user.email, className: 'min-w-[220px] break-all', cell: (user) => <>{user.email}{user.id === signedInUserId && <span className="ml-2 text-xs text-[#526b7b]">(you)</span>}</> },
+            { id: 'role', header: 'Role', sortValue: (user) => user.role, cell: (user) => <span className="capitalize">{user.role}</span> },
+            { id: 'lastLogin', header: 'Last sign in', sortValue: (user) => user.lastLoginAt?.getTime() ?? 0, className: 'text-xs', cell: (user) => user.lastLoginAt ? user.lastLoginAt.toLocaleString() : 'Never' },
+            { id: 'status', header: 'Status', sortValue: (user) => Number(user.isActive), cell: (user) => <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${user.isActive ? 'bg-[#e8f6fb] text-[#006f9b]' : 'bg-[#f3f5f6] text-[#526b7b]'}`}>{user.isActive ? 'Active' : 'Inactive'}</span> },
+            { id: 'actions', header: 'Actions', className: 'min-w-[270px]', cell: (user) => user.id === signedInUserId ? <span className="text-xs text-[#526b7b]">Your account</span> : <div className="flex flex-wrap items-center gap-2">
+              {resetTargetId === user.id ? (
+                <form onSubmit={(event) => void submitPasswordReset(event, user)} className="flex flex-wrap items-center gap-2">
+                  <input required autoFocus type="password" maxLength={256} autoComplete="new-password" placeholder="New password" aria-label={`New password for ${user.email}`} value={resetPassword} onChange={(event) => setResetPassword(event.target.value)} className={`${inputClass} !w-48`} />
+                  <button type="submit" disabled={busyUserId === user.id} className={primaryButton}>Save</button>
+                  <button type="button" onClick={() => { setResetTargetId(''); setResetPassword('') }} className={secondaryButton}>Cancel</button>
+                </form>
+              ) : <button type="button" onClick={() => { setResetTargetId(user.id); setResetPassword('') }} className={secondaryButton} aria-label={`Reset password for ${user.email}`}>Reset password</button>}
+              <button
+                type="button"
+                disabled={busyUserId === user.id}
+                onClick={() => void changeActiveState(user)}
+                className={user.isActive ? 'rounded-full border border-[#9b4a36]/30 px-3 py-2 text-xs text-[#753b2d] hover:bg-[#f8eeeb] disabled:cursor-not-allowed disabled:opacity-50' : secondaryButton}
+                aria-label={`${user.isActive ? 'Deactivate' : 'Activate'} ${user.email}`}
+              >
+                {busyUserId === user.id ? 'Saving…' : user.isActive ? 'Deactivate' : 'Activate'}
+              </button>
+            </div> },
+          ] as DataTableColumn<AdminSystemUser>[]}
+          exportRow={(user) => ({ Email: user.email, Role: user.role, Status: user.isActive ? 'Active' : 'Inactive', 'Last sign in': user.lastLoginAt?.toISOString() ?? '' })}
+          bulkActions={[
+            {
+              label: 'Activate selected',
+              disabled: (selected) => selected.every((user) => user.isActive),
+              confirm: (selected) => `Activate ${selected.length} selected account${selected.length === 1 ? '' : 's'}? This restores their admin access.`,
+              run: (selected) => changeSelectedUsersState(selected, true),
+            },
+            {
+              label: 'Deactivate selected',
+              disabled: (selected) => selected.every((user) => !user.isActive),
+              confirm: (selected) => `Deactivate ${selected.length} selected account${selected.length === 1 ? '' : 's'}? Their active admin sessions will be revoked.`,
+              run: (selected) => changeSelectedUsersState(selected, false),
+            },
+          ] satisfies DataTableBulkAction<AdminSystemUser>[]}
+        />
       )}
     </section>
   )

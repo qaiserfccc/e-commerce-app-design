@@ -172,6 +172,9 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
   const banners = (placement: BannerContent['placement']) => content?.banners.filter((banner) => banner.placement === placement) ?? []
   const h = content?.headings ?? {}
   const linkedBrands = brands.filter((brand) => brand.productCount > 0)
+  const featuredBrands = [...brands]
+    .sort((left, right) => right.productCount - left.productCount || left.name.localeCompare(right.name))
+    .slice(0, 12)
   const heroBanners = banners('hero')
   const heroSlides: BannerContent[] = heroBanners.length > 0
     ? heroBanners
@@ -252,21 +255,28 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
             eyebrow="International brands"
             first="Shop by"
             accent="brand"
-            description={linkedBrands.length > 0 ? 'Browse active brands from the catalog.' : undefined}
+            description={featuredBrands.length > 0 ? 'Explore a selection from the full brand directory.' : undefined}
             href="/brands"
             hrefLabel="View all brands"
           />
-          {linkedBrands.length > 0 ? (
+          {featuredBrands.length > 0 ? (
             <ul className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 lg:gap-4">
-              {linkedBrands.slice(0, 12).map((brand) => {
+              {featuredBrands.map((brand, index) => {
+                const visibility = index < 4 ? '' : index < 6 ? 'hidden sm:block' : 'hidden lg:block'
+                const card = (
+                  <>
+                    {brand.logoUrl
+                      ? <Img src={brand.logoUrl} alt={`${brand.name} logo`} className="h-12 w-full object-contain" />
+                      : <span className={`text-lg text-[#15384d] ${brandWordmarkClass(brand.name)}`}>{brand.name}</span>}
+                    <span className="mt-2 text-xs text-[#526b7b]">{brand.productCount > 0 ? `${brand.productCount} active ${brand.productCount === 1 ? 'listing' : 'listings'}` : 'No active listings'}</span>
+                  </>
+                )
+                const cardClass = 'flex min-h-28 flex-col justify-center rounded-3xl border border-[#cfe2eb] bg-white px-4 py-3 sm:min-h-32'
                 return (
-                  <li key={brand.id}>
-                    <Link href={`/shop?brand=${encodeURIComponent(brand.slug)}`} className="group flex min-h-28 flex-col justify-center rounded-3xl border border-[#cfe2eb] bg-white px-4 py-3 transition-colors hover:border-[#087ba5] sm:min-h-32">
-                      {brand.logoUrl
-                        ? <Img src={brand.logoUrl} alt={`${brand.name} logo`} className="h-12 w-full object-contain" />
-                        : <span className={`text-lg text-[#15384d] group-hover:text-[#006f9b] ${brandWordmarkClass(brand.name)}`}>{brand.name}</span>}
-                      <span className="mt-2 text-xs text-[#526b7b]">{brand.productCount} active {brand.productCount === 1 ? 'listing' : 'listings'}</span>
-                    </Link>
+                  <li key={brand.id} className={visibility}>
+                    {brand.productCount > 0
+                      ? <Link href={`/shop?brand=${encodeURIComponent(brand.slug)}`} className={`group ${cardClass} transition-colors hover:border-[#087ba5]`}>{card}</Link>
+                      : <div className={`${cardClass} cursor-default`}>{card}</div>}
                   </li>
                 )
               })}

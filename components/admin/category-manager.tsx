@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from 'react'
 import useSWR from 'swr'
 import { ArrowDown, ArrowUp, LoaderCircle, Pencil, Plus, Trash2 } from 'lucide-react'
+import { DataTable, type DataTableBulkAction, type DataTableColumn } from '@/components/admin/data-table'
 import { createCategory, deleteCategory, getAdminCategories, moveCategory, updateCategory } from '@/app/actions/catalog-admin'
 import { Alert, errorText, Field, flattenCategories, inputClass, primaryButton, secondaryButton, type AdminCategory } from '@/components/admin/admin-ui'
 import { reportError } from '@/lib/ui/notifications'
@@ -128,25 +129,42 @@ export function CategoryManager({ canEdit }: { canEdit: boolean }) {
       {isLoading ? <p className="text-sm text-[#68675f]">Loading categories…</p> : flat.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-[#1c1c1a]/20 bg-white/60 px-5 py-10 text-center text-sm text-[#68675f]">No categories yet. Add one to start building the catalog.</p>
       ) : (
-        <ul className="space-y-2">
-          {flat.map((row) => (
-            <li key={row.id} style={{ marginLeft: row.depth * 24 }} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#1c1c1a]/10 bg-white px-4 py-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{row.name} {!row.isActive && <span className="ml-1 rounded bg-[#f2f1ed] px-1.5 py-0.5 text-xs uppercase">Hidden</span>}{!row.showInMenu && <span className="ml-1 rounded bg-[#f2f1ed] px-1.5 py-0.5 text-xs uppercase">Not in menu</span>}</p>
-                <p className="text-xs text-[#68675f]">/product-category/{row.path} · {row.productCount} direct product{row.productCount === 1 ? '' : 's'}</p>
-              </div>
-              {canEdit && (
-                <div className="flex items-center gap-1">
-                  <button type="button" aria-label={`Move ${row.name} up`} onClick={() => void run(() => moveCategory(row.id, 'up'))} className="grid size-9 place-items-center rounded-full hover:bg-[#f2f1ed]"><ArrowUp size={15} /></button>
-                  <button type="button" aria-label={`Move ${row.name} down`} onClick={() => void run(() => moveCategory(row.id, 'down'))} className="grid size-9 place-items-center rounded-full hover:bg-[#f2f1ed]"><ArrowDown size={15} /></button>
-                  <button type="button" aria-label={`Add sub-category under ${row.name}`} onClick={() => setEditing({ parentId: row.id })} className="grid size-9 place-items-center rounded-full hover:bg-[#f2f1ed]"><Plus size={15} /></button>
-                  <button type="button" aria-label={`Edit ${row.name}`} onClick={() => setEditing(row)} className="grid size-9 place-items-center rounded-full hover:bg-[#f2f1ed]"><Pencil size={15} /></button>
-                  <button type="button" aria-label={`Delete ${row.name}`} onClick={() => { if (window.confirm(`Delete category ${row.name}?`)) void run(() => deleteCategory(row.id)) }} className="grid size-9 place-items-center rounded-full text-[#753b2d] hover:bg-[#f8eeeb]"><Trash2 size={15} /></button>
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
+        <DataTable
+          rows={flat}
+          getRowId={(category) => category.id}
+          getSearchValue={(category) => `${category.name} ${category.path}`}
+          itemLabel="categories"
+          emptyMessage="No categories are available."
+          filters={[
+            { id: 'visibility', label: 'Visibility', options: [{ label: 'Active', value: 'active' }, { label: 'Hidden', value: 'hidden' }], value: (category) => category.isActive ? 'active' : 'hidden' },
+            { id: 'menu', label: 'Navigation', options: [{ label: 'In menu', value: 'menu' }, { label: 'Not in menu', value: 'not-menu' }], value: (category) => category.showInMenu ? 'menu' : 'not-menu' },
+          ]}
+          columns={[
+            { id: 'category', header: 'Category', sortValue: (category) => category.name, searchValue: (category) => `${category.name} ${category.path}`, className: 'min-w-[280px]', cell: (category) => <div style={{ paddingInlineStart: category.depth * 20 }}>
+              <p className="font-medium">{category.name} {!category.isActive && <span className="ml-1 rounded-full bg-[#f3f5f6] px-2 py-0.5 text-xs text-[#526b7b]">Hidden</span>}{!category.showInMenu && <span className="ml-1 rounded-full bg-[#f3f5f6] px-2 py-0.5 text-xs text-[#526b7b]">Not in menu</span>}</p>
+              <p className="mt-1 text-xs text-[#526b7b]">/product-category/{category.path}</p>
+            </div> },
+            { id: 'products', header: 'Products', sortValue: (category) => category.productCount, cell: (category) => `${category.productCount} direct` },
+            { id: 'actions', header: 'Actions', className: 'w-48 text-right', cell: (category) => canEdit ? <div className="flex justify-end gap-0.5">
+              <button type="button" aria-label={`Move ${category.name} up`} onClick={() => void run(() => moveCategory(category.id, 'up'))} className="grid size-9 place-items-center rounded-full hover:bg-[#e8f6fb]"><ArrowUp size={15} /></button>
+              <button type="button" aria-label={`Move ${category.name} down`} onClick={() => void run(() => moveCategory(category.id, 'down'))} className="grid size-9 place-items-center rounded-full hover:bg-[#e8f6fb]"><ArrowDown size={15} /></button>
+              <button type="button" aria-label={`Add sub-category under ${category.name}`} onClick={() => setEditing({ parentId: category.id })} className="grid size-9 place-items-center rounded-full hover:bg-[#e8f6fb]"><Plus size={15} /></button>
+              <button type="button" aria-label={`Edit ${category.name}`} onClick={() => setEditing(category)} className="grid size-9 place-items-center rounded-full hover:bg-[#e8f6fb]"><Pencil size={15} /></button>
+              <button type="button" aria-label={`Delete ${category.name}`} onClick={() => { if (window.confirm(`Delete category ${category.name}?`)) void run(() => deleteCategory(category.id)) }} className="grid size-9 place-items-center rounded-full text-[#753b2d] hover:bg-[#f8eeeb]"><Trash2 size={15} /></button>
+            </div> : null },
+          ] as DataTableColumn<AdminCategory>[]}
+          exportRow={(category) => ({ Name: category.name, Path: category.path, Active: category.isActive, 'Shown in menu': category.showInMenu, 'Direct products': category.productCount })}
+          bulkActions={canEdit ? [{
+            label: 'Delete selected',
+            disabled: (selected) => selected.some((category) => category.productCount > 0 || flat.some((other) => other.parentId === category.id && !selected.some((picked) => picked.id === other.id))),
+            confirm: (selected) => `Delete ${selected.length} selected categor${selected.length === 1 ? 'y' : 'ies'}? Categories with products or unselected sub-categories cannot be removed.`,
+            run: async (selected) => {
+              const ordered = [...selected].sort((left, right) => right.depth - left.depth)
+              try { for (const category of ordered) await deleteCategory(category.id) }
+              finally { await mutate() }
+            },
+          } satisfies DataTableBulkAction<AdminCategory>] : []}
+        />
       )}
     </section>
   )

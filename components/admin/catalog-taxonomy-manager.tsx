@@ -6,6 +6,7 @@ import { LoaderCircle, Pencil, Plus, Trash2 } from 'lucide-react'
 import {
   deleteBrand, deleteLensShade, deleteLensType, getAdminBrands, getAdminLensShades, getAdminLensTypes, getRecentErrorLogs, saveBrand, saveLensShade, saveLensType,
 } from '@/app/actions/catalog-taxonomy'
+import { DataTable, type DataTableBulkAction, type DataTableColumn } from '@/components/admin/data-table'
 import { Alert, Field, inputClass, primaryButton, secondaryButton } from '@/components/admin/admin-ui'
 import { reportError } from '@/lib/ui/notifications'
 
@@ -125,19 +126,38 @@ export function BrandManager({ canEdit }: { canEdit: boolean }) {
       {(message || error) && <div className="mb-4"><Alert>{message || (error instanceof Error ? error.message : 'Brands could not be loaded.')}</Alert></div>}
       {editing && <BrandForm brand={editing === 'new' ? undefined : editing} onCancel={() => setEditing(null)} onDone={() => { setEditing(null); void mutate() }} />}
       {isLoading ? <p className="text-sm text-[#68675f]">Loading brands…</p> : !data?.length ? <p className="rounded-2xl border border-dashed border-[#1c1c1a]/20 bg-white/60 px-5 py-10 text-center text-sm text-[#68675f]">No brands yet. Add one to make it available in product forms.</p> : (
-        <ul className="space-y-2">{data.map((brand) => <li key={brand.id} className="flex items-center justify-between gap-3 rounded-xl border border-[#1c1c1a]/10 bg-white px-4 py-3">
-          <div className="flex items-center gap-3">
-            {brand.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={brand.logoUrl} alt="" className="size-10 rounded-lg border border-[#cfe2eb] bg-[#f7fcff] object-contain p-1" />
-            ) : <span className="grid size-10 place-items-center rounded-lg border border-dashed border-[#b8d4e0] text-xs text-[#526b7b]">No logo</span>}
-            <p className="text-sm font-medium">{brand.name}{!brand.isActive && <span className="ml-2 text-xs text-[#68675f]">Inactive</span>}</p>
-          </div>
-          {canEdit && <div className="flex">
-            <button type="button" aria-label={`Edit ${brand.name}`} onClick={() => setEditing(brand)} className="grid size-9 place-items-center rounded-full hover:bg-[#f2f1ed]"><Pencil size={15} /></button>
-            <button type="button" aria-label={`Delete ${brand.name}`} onClick={() => void remove(brand)} className="grid size-9 place-items-center rounded-full text-[#753b2d] hover:bg-[#f8eeeb]"><Trash2 size={15} /></button>
-          </div>}
-        </li>)}</ul>
+        <DataTable
+          rows={data}
+          getRowId={(brand) => brand.id}
+          getSearchValue={(brand) => `${brand.name} ${brand.slug}`}
+          itemLabel="brands"
+          emptyMessage="No brands are available."
+          filters={[{ id: 'active', label: 'Status', options: [{ label: 'Active', value: 'active' }, { label: 'Inactive', value: 'inactive' }], value: (brand) => brand.isActive ? 'active' : 'inactive' }]}
+          columns={[
+            { id: 'brand', header: 'Brand', sortValue: (brand) => brand.name, searchValue: (brand) => brand.name, className: 'min-w-[220px]', cell: (brand) => <div className="flex items-center gap-3">
+              {brand.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={brand.logoUrl} alt="" className="size-10 rounded-lg border border-[#cfe2eb] bg-[#f7fcff] object-contain p-1" />
+              ) : <span className="grid size-10 place-items-center rounded-lg border border-dashed border-[#b8d4e0] text-xs text-[#526b7b]">No logo</span>}
+              <span className="font-medium">{brand.name}</span>
+            </div> },
+            { id: 'slug', header: 'Slug', sortValue: (brand) => brand.slug, searchValue: (brand) => brand.slug, className: 'text-[#526b7b]', cell: (brand) => brand.slug },
+            { id: 'status', header: 'Status', sortValue: (brand) => Number(brand.isActive), cell: (brand) => <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${brand.isActive ? 'bg-[#e8f6fb] text-[#006f9b]' : 'bg-[#f3f5f6] text-[#526b7b]'}`}>{brand.isActive ? 'Active' : 'Inactive'}</span> },
+            { id: 'actions', header: 'Actions', className: 'w-24 text-right', cell: (brand) => canEdit ? <div className="flex justify-end">
+              <button type="button" aria-label={`Edit ${brand.name}`} onClick={() => setEditing(brand)} className="grid size-9 place-items-center rounded-full hover:bg-[#e8f6fb]"><Pencil size={15} /></button>
+              <button type="button" aria-label={`Delete ${brand.name}`} onClick={() => void remove(brand)} className="grid size-9 place-items-center rounded-full text-[#753b2d] hover:bg-[#f8eeeb]"><Trash2 size={15} /></button>
+            </div> : null },
+          ] as DataTableColumn<Brand>[]}
+          exportRow={(brand) => ({ Name: brand.name, Slug: brand.slug, Active: brand.isActive })}
+          bulkActions={canEdit ? [{
+            label: 'Delete selected',
+            confirm: (selected) => `Delete ${selected.length} selected brand${selected.length === 1 ? '' : 's'}? Products using them will have their brand cleared.`,
+            run: async (selected) => {
+              try { for (const brand of selected) await deleteBrand(brand.id) }
+              finally { await mutate() }
+            },
+          } satisfies DataTableBulkAction<Brand>] : []}
+        />
       )}
     </section>
   )
@@ -161,19 +181,38 @@ export function LensShadeManager({ canEdit }: { canEdit: boolean }) {
       {(message || error) && <div className="mb-4"><Alert>{message || (error instanceof Error ? error.message : 'Lens shades could not be loaded.')}</Alert></div>}
       {editing && <LensShadeForm shade={editing === 'new' ? undefined : editing} onCancel={() => setEditing(null)} onDone={() => { setEditing(null); void mutate() }} />}
       {isLoading ? <p className="text-sm text-[#68675f]">Loading lens shades…</p> : !data?.length ? <p className="rounded-2xl border border-dashed border-[#1c1c1a]/20 bg-white/60 px-5 py-10 text-center text-sm text-[#68675f]">No shades yet. Add a shade to make it available in product forms.</p> : (
-        <ul className="space-y-2">{data.map((shade) => <li key={shade.id} className="flex items-center justify-between gap-3 rounded-xl border border-[#1c1c1a]/10 bg-white px-4 py-3">
-          <div className="flex items-center gap-3">
-            {shade.imageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={shade.imageUrl} alt="" className="size-10 rounded-full border border-[#cfe2eb] object-cover" />
-            ) : shade.hex ? <span className="size-8 rounded-full border border-black/15" style={{ backgroundColor: shade.hex }} /> : <span className="grid size-8 place-items-center rounded-full border border-dashed border-[#b8d4e0] text-xs text-[#526b7b]">N/A</span>}
-            <p className="text-sm font-medium">{shade.name}{shade.hex && <span className="ml-2 text-xs text-[#68675f]">{shade.hex}</span>}{!shade.isActive && <span className="ml-2 text-xs text-[#68675f]">Inactive</span>}</p>
-          </div>
-          {canEdit && <div className="flex">
-            <button type="button" aria-label={`Edit ${shade.name}`} onClick={() => setEditing(shade)} className="grid size-9 place-items-center rounded-full hover:bg-[#f2f1ed]"><Pencil size={15} /></button>
-            <button type="button" aria-label={`Delete ${shade.name}`} onClick={() => void remove(shade)} className="grid size-9 place-items-center rounded-full text-[#753b2d] hover:bg-[#f8eeeb]"><Trash2 size={15} /></button>
-          </div>}
-        </li>)}</ul>
+        <DataTable
+          rows={data}
+          getRowId={(shade) => shade.id}
+          getSearchValue={(shade) => `${shade.name} ${shade.hex ?? ''}`}
+          itemLabel="lens shades"
+          emptyMessage="No lens shades are available."
+          filters={[{ id: 'active', label: 'Status', options: [{ label: 'Active', value: 'active' }, { label: 'Inactive', value: 'inactive' }], value: (shade) => shade.isActive ? 'active' : 'inactive' }]}
+          columns={[
+            { id: 'shade', header: 'Shade', sortValue: (shade) => shade.name, searchValue: (shade) => shade.name, className: 'min-w-[220px]', cell: (shade) => <div className="flex items-center gap-3">
+              {shade.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={shade.imageUrl} alt="" className="size-10 rounded-full border border-[#cfe2eb] object-cover" />
+              ) : shade.hex ? <span className="size-8 rounded-full border border-black/15" style={{ backgroundColor: shade.hex }} /> : <span className="grid size-8 place-items-center rounded-full border border-dashed border-[#b8d4e0] text-xs text-[#526b7b]">N/A</span>}
+              <span className="font-medium">{shade.name}</span>
+            </div> },
+            { id: 'color', header: 'Display color', sortValue: (shade) => shade.hex ?? '', searchValue: (shade) => shade.hex ?? '', cell: (shade) => shade.hex ?? '—' },
+            { id: 'status', header: 'Status', sortValue: (shade) => Number(shade.isActive), cell: (shade) => <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${shade.isActive ? 'bg-[#e8f6fb] text-[#006f9b]' : 'bg-[#f3f5f6] text-[#526b7b]'}`}>{shade.isActive ? 'Active' : 'Inactive'}</span> },
+            { id: 'actions', header: 'Actions', className: 'w-24 text-right', cell: (shade) => canEdit ? <div className="flex justify-end">
+              <button type="button" aria-label={`Edit ${shade.name}`} onClick={() => setEditing(shade)} className="grid size-9 place-items-center rounded-full hover:bg-[#e8f6fb]"><Pencil size={15} /></button>
+              <button type="button" aria-label={`Delete ${shade.name}`} onClick={() => void remove(shade)} className="grid size-9 place-items-center rounded-full text-[#753b2d] hover:bg-[#f8eeeb]"><Trash2 size={15} /></button>
+            </div> : null },
+          ] as DataTableColumn<LensShade>[]}
+          exportRow={(shade) => ({ Name: shade.name, Hex: shade.hex, Active: shade.isActive })}
+          bulkActions={canEdit ? [{
+            label: 'Delete selected',
+            confirm: (selected) => `Delete ${selected.length} selected lens shade${selected.length === 1 ? '' : 's'}? Products using them will have their shade cleared.`,
+            run: async (selected) => {
+              try { for (const shade of selected) await deleteLensShade(shade.id) }
+              finally { await mutate() }
+            },
+          } satisfies DataTableBulkAction<LensShade>] : []}
+        />
       )}
     </section>
   )
@@ -227,13 +266,31 @@ export function LensTypeManager({ canEdit }: { canEdit: boolean }) {
       {(message || error) && <div className="mb-4"><Alert>{message || (error instanceof Error ? error.message : 'Lens types could not be loaded.')}</Alert></div>}
       {editing && <LensTypeForm lensType={editing === 'new' ? undefined : editing} onCancel={() => setEditing(null)} onDone={() => { setEditing(null); void mutate() }} />}
       {isLoading ? <p className="text-sm text-[#526b7b]">Loading lens types…</p> : !data?.length ? <p className="rounded-2xl border border-dashed border-[#b8d4e0] bg-white/60 px-5 py-10 text-center text-sm text-[#526b7b]">No lens types yet. Sync the source catalog or add a type to make it available in product forms.</p> : (
-        <ul className="space-y-2">{data.map((lensType) => <li key={lensType.id} className="flex items-center justify-between gap-3 rounded-xl border border-[#cfe2eb] bg-white px-4 py-3">
-          <p className="text-sm font-medium text-[#15384d]">{lensType.name}{!lensType.isActive && <span className="ml-2 text-xs text-[#526b7b]">Inactive</span>}</p>
-          {canEdit && <div className="flex">
-            <button type="button" aria-label={`Edit ${lensType.name}`} onClick={() => setEditing(lensType)} className="grid size-9 place-items-center rounded-full hover:bg-[#e8f6fb]"><Pencil size={15} /></button>
-            <button type="button" aria-label={`Delete ${lensType.name}`} onClick={() => void remove(lensType)} className="grid size-9 place-items-center rounded-full text-[#753b2d] hover:bg-[#f8eeeb]"><Trash2 size={15} /></button>
-          </div>}
-        </li>)}</ul>
+        <DataTable
+          rows={data}
+          getRowId={(lensType) => lensType.id}
+          getSearchValue={(lensType) => lensType.name}
+          itemLabel="lens types"
+          emptyMessage="No lens types are available."
+          filters={[{ id: 'active', label: 'Status', options: [{ label: 'Active', value: 'active' }, { label: 'Inactive', value: 'inactive' }], value: (lensType) => lensType.isActive ? 'active' : 'inactive' }]}
+          columns={[
+            { id: 'name', header: 'Lens type', sortValue: (lensType) => lensType.name, searchValue: (lensType) => lensType.name, className: 'min-w-[220px]', cell: (lensType) => <span className="font-medium">{lensType.name}</span> },
+            { id: 'status', header: 'Status', sortValue: (lensType) => Number(lensType.isActive), cell: (lensType) => <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${lensType.isActive ? 'bg-[#e8f6fb] text-[#006f9b]' : 'bg-[#f3f5f6] text-[#526b7b]'}`}>{lensType.isActive ? 'Active' : 'Inactive'}</span> },
+            { id: 'actions', header: 'Actions', className: 'w-24 text-right', cell: (lensType) => canEdit ? <div className="flex justify-end">
+              <button type="button" aria-label={`Edit ${lensType.name}`} onClick={() => setEditing(lensType)} className="grid size-9 place-items-center rounded-full hover:bg-[#e8f6fb]"><Pencil size={15} /></button>
+              <button type="button" aria-label={`Delete ${lensType.name}`} onClick={() => void remove(lensType)} className="grid size-9 place-items-center rounded-full text-[#753b2d] hover:bg-[#f8eeeb]"><Trash2 size={15} /></button>
+            </div> : null },
+          ] as DataTableColumn<LensType>[]}
+          exportRow={(lensType) => ({ Name: lensType.name, Active: lensType.isActive })}
+          bulkActions={canEdit ? [{
+            label: 'Delete selected',
+            confirm: (selected) => `Delete ${selected.length} selected lens type${selected.length === 1 ? '' : 's'}? Products using them will have their type cleared.`,
+            run: async (selected) => {
+              try { for (const lensType of selected) await deleteLensType(lensType.id) }
+              finally { await mutate() }
+            },
+          } satisfies DataTableBulkAction<LensType>] : []}
+        />
       )}
     </section>
   )
@@ -241,6 +298,7 @@ export function LensTypeManager({ canEdit }: { canEdit: boolean }) {
 
 export function ErrorLogManager() {
   const { data, error, isLoading, mutate } = useSWR('admin-error-logs', () => getRecentErrorLogs(), { refreshInterval: 30000 })
+  type ErrorLog = Awaited<ReturnType<typeof getRecentErrorLogs>>[number]
   return (
     <section className="min-w-0 flex-1">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
@@ -249,12 +307,24 @@ export function ErrorLogManager() {
       </div>
       {error && <div className="mb-4"><Alert>{error instanceof Error ? error.message : 'Error logs could not be loaded.'}</Alert></div>}
       {isLoading ? <p className="text-sm text-[#68675f]">Loading error logs…</p> : !data?.length ? <p className="rounded-2xl border border-dashed border-[#1c1c1a]/20 bg-white/60 px-5 py-10 text-center text-sm text-[#68675f]">No errors recorded in the last 24 hours.</p> : (
-        <ul className="space-y-3">{data.map((entry) => <li key={entry.id} className="rounded-xl border border-[#9b4a36]/20 bg-white p-4">
-          <div className="flex flex-wrap justify-between gap-2"><p className="font-medium text-[#753b2d]">{entry.errorName}</p><time className="text-xs text-[#68675f]" dateTime={entry.createdAt.toISOString()}>{entry.createdAt.toLocaleString()}</time></div>
-          <p className="mt-2 whitespace-pre-wrap break-words text-sm">{entry.message}</p>
-          <p className="mt-2 text-xs text-[#68675f]">Source: {entry.source}</p>
-          {entry.stack && <details className="mt-2"><summary className="cursor-pointer text-xs">Stack trace</summary><pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-[#f2f1ed] p-3 text-xs">{entry.stack}</pre></details>}
-        </li>)}</ul>
+        <DataTable
+          rows={data}
+          getRowId={(entry) => String(entry.id)}
+          getSearchValue={(entry) => `${entry.errorName} ${entry.message} ${entry.source}`}
+          itemLabel="error logs"
+          initialPageSize={25}
+          emptyMessage="No error logs are available."
+          columns={[
+            { id: 'error', header: 'Error', sortValue: (entry) => entry.errorName, searchValue: (entry) => entry.errorName, className: 'min-w-[220px]', cell: (entry) => <span className="font-semibold text-[#9b1c34]">{entry.errorName}</span> },
+            { id: 'message', header: 'Message', searchValue: (entry) => entry.message, className: 'min-w-[280px] max-w-[42rem]', cell: (entry) => <div className="max-w-[42rem]">
+              <p className="line-clamp-2 whitespace-pre-wrap break-words">{entry.message}</p>
+              <p className="mt-1 text-xs text-[#526b7b]">Source: {entry.source}</p>
+              {entry.stack && <details className="mt-2"><summary className="cursor-pointer text-xs underline underline-offset-2">Stack trace</summary><pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-[#f7fcff] p-3 text-xs">{entry.stack}</pre></details>}
+            </div> },
+            { id: 'createdAt', header: 'Recorded', sortValue: (entry) => entry.createdAt.getTime(), className: 'min-w-[180px] text-xs', cell: (entry) => <time dateTime={entry.createdAt.toISOString()}>{entry.createdAt.toLocaleString()}</time> },
+          ] as DataTableColumn<ErrorLog>[]}
+          exportRow={(entry) => ({ Error: entry.errorName, Message: entry.message, Source: entry.source, Recorded: entry.createdAt.toISOString() })}
+        />
       )}
     </section>
   )

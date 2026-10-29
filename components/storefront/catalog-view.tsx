@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { SlidersHorizontal } from 'lucide-react'
 import { ProductCard, ProductGridSkeleton } from '@/components/storefront/product-card'
+import { Pagination } from '@/components/ui/pagination'
 import { descendantIds } from '@/lib/catalog-types'
 import type { StorefrontBrand } from '@/lib/data/catalog'
 import { useProducts } from '@/lib/hooks/use-storefront-data'
@@ -26,8 +27,8 @@ export function CatalogView({ categoryPath, brands }: { categoryPath?: string; b
   const { syncProducts } = useStorefrontCart()
   const [sort, setSort] = useState<Sort>('default')
   const [inStockOnly, setInStockOnly] = useState(false)
-  const [visible, setVisible] = useState(PAGE_SIZE)
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const requestedPage = Math.max(1, Number.parseInt(searchParams.get('page') ?? '1', 10) || 1)
 
   const tree = useMemo(() => categoryTree(categories), [categories])
   const category = categoryPath ? categories.find((item) => item.path === categoryPath) ?? null : null
@@ -50,8 +51,6 @@ export function CatalogView({ categoryPath, brands }: { categoryPath?: string; b
     if (!isLoading && !isError && !query && !brandSlug) syncProducts(products)
   }, [brandSlug, isError, isLoading, products, query, syncProducts])
 
-  useEffect(() => setVisible(PAGE_SIZE), [brandSlug, categoryPath, query, sort, inStockOnly])
-
   const filtered = useMemo(() => {
     const result = products.filter((product) => (!branch || (product.categoryIds ?? (product.categoryId ? [product.categoryId] : [])).some((id) => branch.has(id))) && (!inStockOnly || isAvailable(product)))
     const price = (product: (typeof result)[number]) => Number(lowestPrice(product).price)
@@ -60,6 +59,24 @@ export function CatalogView({ categoryPath, brands }: { categoryPath?: string; b
     else if (sort === 'name') result.sort((a, b) => a.name.localeCompare(b.name))
     return result
   }, [branch, inStockOnly, products, sort])
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const currentPage = Math.min(requestedPage, pageCount)
+  const pageProducts = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+
+  useEffect(() => {
+    if (requestedPage === currentPage) return
+    const params = new URLSearchParams(searchParams.toString())
+    if (currentPage === 1) params.delete('page')
+    else params.set('page', String(currentPage))
+    router.replace(`${pathname}${params.size ? `?${params}` : ''}`, { scroll: false })
+  }, [currentPage, pathname, requestedPage, router, searchParams])
+
+  function changePage(page: number) {
+    const params = new URLSearchParams(searchParams.toString())
+    if (page <= 1) params.delete('page')
+    else params.set('page', String(page))
+    router.push(`${pathname}${params.size ? `?${params}` : ''}`, { scroll: false })
+  }
 
   const missingCategory = Boolean(categoryPath) && !categoriesLoading && !category
   const selectedBrand = brands.find((item) => item.slug === brandSlug) ?? null
@@ -69,6 +86,7 @@ export function CatalogView({ categoryPath, brands }: { categoryPath?: string; b
 
   function changeBrand(value: string) {
     const params = new URLSearchParams(searchParams.toString())
+    params.delete('page')
     if (value) params.set('brand', value)
     else params.delete('brand')
     router.push(`${pathname}${params.size ? `?${params}` : ''}`)
@@ -118,11 +136,11 @@ export function CatalogView({ categoryPath, brands }: { categoryPath?: string; b
               </select>
             </label>
             <label className="inline-flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={inStockOnly} onChange={(event) => setInStockOnly(event.target.checked)} className="size-4 accent-[#033473]" /> In stock only
+              <input type="checkbox" checked={inStockOnly} onChange={(event) => { setInStockOnly(event.target.checked); changePage(1) }} className="size-4 accent-[#033473]" /> In stock only
             </label>
             <label className="ml-auto inline-flex items-center gap-2 text-sm">
               <span className="text-[#4a5568]">Sort by</span>
-              <select value={sort} onChange={(event) => setSort(event.target.value as Sort)} className="rounded-full border border-[#033473]/30 bg-white px-3 py-2 text-sm">
+              <select value={sort} onChange={(event) => { setSort(event.target.value as Sort); changePage(1) }} className="rounded-full border border-[#033473]/30 bg-white px-3 py-2 text-sm">
                 <option value="default">Default</option>
                 <option value="price-asc">Price: low to high</option>
                 <option value="price-desc">Price: high to low</option>
@@ -148,15 +166,9 @@ export function CatalogView({ categoryPath, brands }: { categoryPath?: string; b
           ) : (
             <>
               <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 xl:grid-cols-4">
-                {filtered.slice(0, visible).map((product) => <ProductCard key={product.id} product={product} />)}
+                {pageProducts.map((product) => <ProductCard key={product.id} product={product} />)}
               </div>
-              {visible < filtered.length && (
-                <div className="mt-10 text-center">
-                  <button type="button" onClick={() => setVisible((value) => value + PAGE_SIZE)} className="rounded-full border border-[#033473] px-8 py-3 text-sm font-semibold text-[#033473] hover:bg-[#033473] hover:text-white">
-                    Load more ({filtered.length - visible} remaining)
-                  </button>
-                </div>
-              )}
+              <Pagination total={filtered.length} page={currentPage} pageSize={PAGE_SIZE} onPageChange={changePage} itemLabel="products" className="mt-8" />
             </>
           )}
         </section>
