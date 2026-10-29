@@ -220,6 +220,22 @@
   to { transform: translateX(-50%); }
 }
 
+@keyframes isk-home-hero-settle {
+  from { transform: scale(1.045); }
+  to { transform: scale(1); }
+}
+
+@keyframes isk-home-iris-reveal {
+  from {
+    clip-path: ellipse(0% 0% at 0% 50%);
+    opacity: .65;
+  }
+  to {
+    clip-path: ellipse(160% 150% at 0% 50%);
+    opacity: 1;
+  }
+}
+
 .isk-home {
   height: calc(100svh - var(--isk-header-height, 133px));
   scrollbar-width: none;
@@ -246,9 +262,34 @@
   animation-play-state: paused;
 }
 
+.isk-home-hero-image {
+  animation: isk-home-hero-settle 8s cubic-bezier(.16, 1, .3, 1) both;
+}
+
+.isk-home-hero-copy {
+  animation: isk-home-iris-reveal 850ms cubic-bezier(.16, 1, .3, 1) both;
+}
+
+.isk-home-aperture-reveal {
+  transition: clip-path 850ms cubic-bezier(.16, 1, .3, 1);
+}
+
+.isk-home-motion-ready .isk-home-aperture-reveal:not([data-open='true']) {
+  clip-path: circle(0% at 50% 50%);
+}
+
+.isk-home-motion-ready .isk-home-aperture-reveal[data-open='true'] {
+  clip-path: circle(75% at 50% 50%);
+}
+
 @media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .isk-home .scroll-smooth { scroll-behavior: auto !important; }
   .isk-marquee { animation: none; }
   .isk-review-track { animation: none; }
+  .isk-home-hero-image,
+  .isk-home-hero-copy { animation: none; }
+  .isk-home-aperture-reveal { clip-path: none !important; transition: none; }
 }
 
 @media (max-height: 800px) and (min-width: 768px) {

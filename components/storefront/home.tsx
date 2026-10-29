@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { ArrowRight, BookOpen, Compass, Eye, Headphones, ShoppingBag, Star, type LucideIcon } from 'lucide-react'
 import { Slider } from '@/components/storefront/home/slider'
 import { SectionProgress } from '@/components/storefront/home/section-progress'
+import { HomeScrollMotion } from '@/components/storefront/home/scroll-motion'
 import { TrendingProducts } from '@/components/storefront/home/trending-products'
 import { StoreFooter } from '@/components/storefront/shell/store-footer'
 import { RuntimeErrorNotice } from '@/components/ui/app-notifications'
@@ -25,7 +26,6 @@ function Img({ src, alt, className, priority = false }: { src: string; alt: stri
 }
 
 function Heading({
-  eyebrow,
   first,
   accent,
   description,
@@ -34,7 +34,6 @@ function Heading({
   inverse = false,
   id,
 }: {
-  eyebrow?: string
   first: string
   accent?: string
   description?: string
@@ -44,17 +43,16 @@ function Heading({
   id?: string
 }) {
   return (
-    <div className={`flex flex-col gap-5 md:flex-row md:items-end md:justify-between ${inverse ? 'text-white' : 'text-[#201b35]'}`}>
+    <div className={`flex flex-col gap-5 md:flex-row md:items-end md:justify-between ${inverse ? 'text-white' : 'text-[#15384d]'}`}>
       <div className="max-w-3xl">
-        {eyebrow && <p className={`mb-2 text-xs font-semibold uppercase tracking-[0.22em] ${inverse ? 'text-[#f3b4c9]' : 'text-[#b83f6b]'}`}>{eyebrow}</p>}
         <h2 id={id} className="text-balance text-4xl font-extrabold leading-[0.98] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
           {first}
-          {accent && <span className="ml-2 font-serif font-normal italic text-[#d45782]">{` ${accent}`}</span>}
+          {accent && <span className={`ml-2 font-serif font-normal italic ${inverse ? 'text-[#b8e8f5]' : 'text-[#087ba5]'}`}>{` ${accent}`}</span>}
         </h2>
-        {description && <p className={`mt-4 max-w-2xl text-base leading-7 sm:text-lg ${inverse ? 'text-white/75' : 'text-[#686371]'}`}>{description}</p>}
+        {description && <p className={`mt-4 max-w-2xl text-base leading-7 sm:text-lg ${inverse ? 'text-white/75' : 'text-[#526b7b]'}`}>{description}</p>}
       </div>
       {href && (
-        <Link href={href} className={`inline-flex shrink-0 items-center gap-2 text-sm font-semibold transition ${inverse ? 'text-[#f3b4c9] hover:text-white' : 'text-[#201b35] hover:text-[#b83f6b]'}`}>
+        <Link href={href} className={`inline-flex shrink-0 items-center gap-2 text-sm font-semibold transition-colors ${inverse ? 'text-[#b8e8f5] hover:text-white' : 'text-[#006f9b] hover:text-[#15384d]'}`}>
           {hrefLabel ?? 'Browse all'} <ArrowRight size={17} aria-hidden="true" />
         </Link>
       )}
@@ -133,15 +131,15 @@ function Hero({ slides }: { slides: BannerContent[] }) {
         <Slider label="Featured lens collections" autoPlayMs={5500} dots arrows editorialControls fullHeight>
           {slides.map((slide, index) => (
             <div key={slide.id} className="relative h-full min-h-full overflow-hidden bg-[#15384d]">
-              <Img src={slide.imageUrl} alt={slide.title || 'ISK Lenses collection'} priority={index === 0} className="absolute inset-0 size-full object-cover object-[68%_center]" />
+              <Img src={slide.imageUrl} alt={slide.title || 'ISK Lenses collection'} priority={index === 0} className={`absolute inset-0 size-full object-cover object-[68%_center] ${index === 0 ? 'isk-home-hero-image' : ''}`} />
               <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(90deg,rgba(21,56,77,.94)_0%,rgba(21,56,77,.72)_42%,rgba(21,56,77,.08)_100%)]" />
               <div className="relative mx-auto flex h-full min-h-full w-full min-w-0 max-w-[1440px] items-center px-5 pb-28 pt-12 sm:px-10 lg:px-12">
-                <div className="w-full min-w-0 max-w-[650px] text-white">
+                <div className={`w-full min-w-0 max-w-[650px] text-white ${index === 0 ? 'isk-home-hero-copy' : ''}`}>
                   <h1 className="text-balance text-[clamp(2.6rem,7.6vw,6rem)] font-extrabold leading-[0.94] tracking-[-0.055em]">
                     {slide.title || 'ISK Lenses'}
                   </h1>
                   {slide.body && <p className="mt-6 w-full min-w-0 max-w-xl text-lg leading-8 text-white/85 sm:text-xl">{slide.body}</p>}
-                  <Link href={slide.href || '/shop'} className="group mt-8 inline-flex min-h-14 items-center gap-3 rounded-full bg-[#087ba5] px-7 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-[#006f9b]">
+                  <Link href={slide.href || '/shop'} className="group mt-8 inline-flex min-h-14 items-center gap-3 rounded-full bg-[#087ba5] px-7 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-[#006f9b] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
                     {slide.href?.startsWith('/product/') ? 'View product' : 'Browse collection'}
                     <ArrowRight className="transition-transform group-hover:translate-x-1" size={18} aria-hidden="true" />
                   </Link>
@@ -205,7 +203,8 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
   const contactProduct = products.find((product) => productImage(product))
   const contactImage = productImage(contactProduct)
   return (
-    <main id="isk-home-scroll" tabIndex={0} aria-label="Homepage sections, scroll to explore" className="isk-home snap-y snap-mandatory overflow-x-hidden overflow-y-auto overscroll-y-contain scroll-smooth bg-[#fffaf8] text-[#201b35]">
+    <main id="isk-home-scroll" tabIndex={0} aria-label="Homepage sections, scroll to explore" className="isk-home snap-y snap-mandatory overflow-x-hidden overflow-y-auto overscroll-y-contain scroll-smooth bg-[#f7fcff] text-[#15384d]">
+      <HomeScrollMotion />
       <RuntimeErrorNotice message={loadError} />
       <Hero slides={heroSlides} />
       <SectionProgress />
@@ -229,7 +228,7 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
               {categoryCards.map(({ category, image }, index) => (
                 <li key={category.id} className={index % 2 ? 'lg:translate-y-12' : ''}>
                   <Link href={categoryHref(category)} className="group block text-center">
-                    <span className="relative block overflow-hidden rounded-[50%] bg-[#cfe2eb]">
+                    <span className="isk-home-aperture-reveal relative block overflow-hidden rounded-[50%] bg-[#cfe2eb]">
                       {image ? (
                         <Img src={image} alt={category.name} className="aspect-[.68/1] w-full object-cover transition duration-500 group-hover:scale-[1.04]" />
                       ) : (
@@ -248,11 +247,10 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
         </div>
       </section>
 
-      <section id="brands" aria-labelledby="brands-heading" className="isk-home-section min-h-full snap-start snap-always bg-[#fffaf8] py-8 sm:py-10 lg:flex lg:items-center">
+      <section id="brands" aria-labelledby="brands-heading" className="isk-home-section min-h-full snap-start snap-always bg-[#f7fcff] py-8 sm:py-10 lg:flex lg:items-center">
         <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-8 lg:px-12">
           <Heading
             id="brands-heading"
-            eyebrow="International brands"
             first="Shop by"
             accent="brand"
             description={featuredBrands.length > 0 ? 'Explore a selection from the full brand directory.' : undefined}
@@ -271,11 +269,11 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
                     <span className="mt-2 text-xs text-[#526b7b]">{brand.productCount > 0 ? `${brand.productCount} active ${brand.productCount === 1 ? 'listing' : 'listings'}` : 'No active listings'}</span>
                   </>
                 )
-                const cardClass = 'flex min-h-28 flex-col justify-center rounded-3xl border border-[#cfe2eb] bg-white px-4 py-3 sm:min-h-32'
+                const cardClass = 'flex min-h-28 flex-col justify-center rounded-3xl border border-[#cfe2eb] bg-white px-4 py-3 transition-all duration-300 hover:-translate-y-1 hover:border-[#087ba5] hover:shadow-[0_12px_30px_rgba(21,56,77,.10)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#087ba5] sm:min-h-32'
                 return (
                   <li key={brand.id} className={visibility}>
                     {brand.productCount > 0
-                      ? <Link href={`/shop?brand=${encodeURIComponent(brand.slug)}`} className={`group ${cardClass} transition-colors hover:border-[#087ba5]`}>{card}</Link>
+                      ? <Link href={`/shop?brand=${encodeURIComponent(brand.slug)}`} className={`group ${cardClass}`}>{card}</Link>
                       : <div className={`${cardClass} cursor-default`}>{card}</div>}
                   </li>
                 )
@@ -291,7 +289,6 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
         <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-8 lg:px-12">
           <Heading
             id="shades-heading"
-            eyebrow="Find your color"
             first="Shop by"
             accent="shade"
             description={shadeCards.length > 0 ? 'Each shade is linked to an active product listing.' : undefined}
@@ -306,7 +303,7 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
                 return (
                   <li key={shade.id}>
                     <Link href={`/shop?q=${encodeURIComponent(shade.name)}`} className="group block text-center">
-                      <span className="block overflow-hidden rounded-full border-[5px] border-white bg-[#e8f6fb]">
+                      <span className="isk-home-aperture-reveal block overflow-hidden rounded-full border-[5px] border-white bg-[#e8f6fb]">
                         {image
                           ? <Img src={image} alt={`${shade.name} lens listing`} className="aspect-square w-full object-cover transition duration-500 group-hover:scale-105" />
                           : <span className="grid aspect-square w-full place-items-center"><span aria-hidden="true" className="size-12 rounded-full border border-[#cfe2eb]" style={{ backgroundColor: swatch ?? '#e8f6fb' }} /></span>}
@@ -343,15 +340,14 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
         </div>
       </section>
 
-      <section id="types" aria-labelledby="types-heading" className="isk-home-section min-h-full snap-start snap-always bg-[#fae9ef] py-8 sm:py-10 lg:flex lg:items-center">
+      <section id="types" aria-labelledby="types-heading" className="isk-home-section min-h-full snap-start snap-always bg-[#e8f6fb] py-8 sm:py-10 lg:flex lg:items-center">
         <div className="mx-auto grid w-full max-w-[1440px] gap-10 px-4 sm:px-8 lg:grid-cols-[.8fr_1.3fr] lg:items-center lg:gap-16 lg:px-12">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#b83f6b]">Wear it your way</p>
             <h2 id="types-heading" className="mt-5 text-5xl font-extrabold leading-[0.96] tracking-[-0.06em] sm:text-6xl">
-              Shop by<br /><em className="font-serif font-normal text-[#e84f88]">lens type.</em>
+              Shop by<br /><em className="font-serif font-normal text-[#087ba5]">lens type.</em>
             </h2>
-            <p className="mt-5 max-w-md text-lg leading-8 text-[#686371]">Browse the catalog by the kind of lens you are looking for, then review each listing for its available details.</p>
-            <Link href="/faq" className="mt-7 inline-flex items-center gap-2 text-sm font-semibold text-[#201b35] hover:text-[#b83f6b]">
+            <p className="mt-5 max-w-md text-lg leading-8 text-[#526b7b]">Browse the catalog by the kind of lens you are looking for, then review each listing for its available details.</p>
+            <Link href="/faq" className="mt-7 inline-flex items-center gap-2 text-sm font-semibold text-[#15384d] hover:text-[#087ba5]">
               Need help choosing? <ArrowRight size={17} aria-hidden="true" />
             </Link>
           </div>
@@ -384,25 +380,24 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
         </div>
       </section>
 
-      <section id="why-us" aria-labelledby="why-us-heading" className="isk-home-section min-h-full snap-start snap-always bg-[#201b35] py-8 text-white sm:py-10 lg:flex lg:items-center">
+      <section id="why-us" aria-labelledby="why-us-heading" className="isk-home-section min-h-full snap-start snap-always bg-[#15384d] py-8 text-white sm:py-10 lg:flex lg:items-center">
         <div className="mx-auto grid w-full max-w-[1440px] gap-10 px-4 sm:px-8 lg:grid-cols-[.8fr_1.3fr] lg:gap-16 lg:px-12">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#f3b4c9]">ISK Lenses</p>
             <h2 id="why-us-heading" className="mt-5 max-w-xl text-5xl font-extrabold leading-[0.96] tracking-[-0.06em] sm:text-6xl">
-              Browse with<br /><em className="font-serif font-normal text-[#f3b4c9]">confidence.</em>
+              Browse with<br /><em className="font-serif font-normal text-[#b8e8f5]">confidence.</em>
             </h2>
             <p className="mt-5 max-w-lg text-lg leading-8 text-white/75">
               Compare catalog listings and review their product details. Contact lenses are medical devices; follow the guidance of your eye-care professional.
             </p>
-            <Link href="/faq" className="mt-7 inline-flex min-h-12 items-center gap-2 rounded-full bg-[#e84f88] px-6 text-sm font-semibold text-white transition hover:bg-white hover:text-[#201b35]">
+            <Link href="/faq" className="mt-7 inline-flex min-h-12 items-center gap-2 rounded-full bg-[#087ba5] px-6 text-sm font-semibold text-white transition hover:bg-white hover:text-[#15384d]">
               Read lens guidance <ArrowRight size={17} aria-hidden="true" />
             </Link>
           </div>
           <ul className="grid gap-px overflow-hidden rounded-3xl bg-white/10 sm:grid-cols-2">
             {storeFeatures.map(({ title, body, icon: FeatureIcon }) => {
               return (
-                <li key={title} className="flex gap-4 bg-[#201b35] p-4 transition-colors hover:bg-white/5 sm:p-5">
-                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-white/10 text-[#f3b4c9]"><FeatureIcon size={19} aria-hidden="true" /></span>
+                <li key={title} className="flex gap-4 bg-[#15384d] p-4 transition-colors hover:bg-white/5 sm:p-5">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-white/10 text-[#b8e8f5]"><FeatureIcon size={19} aria-hidden="true" /></span>
                   <div>
                     <h3 className="font-semibold text-white">{title}</h3>
                     <p className="mt-1 text-sm leading-6 text-white/70">{body}</p>
@@ -414,7 +409,7 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
         </div>
       </section>
 
-      <section id="reviews" aria-labelledby="reviews-heading" className="isk-home-section min-h-full snap-start snap-always overflow-hidden bg-[#fae9ef] py-8 sm:py-10 lg:flex lg:items-center">
+      <section id="reviews" aria-labelledby="reviews-heading" className="isk-home-section min-h-full snap-start snap-always overflow-hidden bg-[#e8f6fb] py-8 sm:py-10 lg:flex lg:items-center">
         <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-8 lg:px-12">
           <Heading
             id="reviews-heading"
@@ -442,11 +437,10 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
         </div>
       </section>
 
-      <section id="contact" aria-labelledby="contact-heading" className="isk-home-contact-section isk-home-section min-h-full snap-start snap-always bg-[#fffaf8] pt-8 sm:pt-10 lg:flex lg:flex-col lg:justify-center">
+      <section id="contact" aria-labelledby="contact-heading" className="isk-home-contact-section isk-home-section min-h-full snap-start snap-always bg-[#f7fcff] pt-8 sm:pt-10 lg:flex lg:flex-col lg:justify-center">
         <div className="mx-auto flex w-full max-w-[1440px] flex-col px-4 sm:px-8 lg:px-12">
-          <div className="isk-home-contact-card relative grid min-h-[390px] flex-1 items-center gap-2 overflow-hidden rounded-[2rem] bg-[#d45782] md:grid-cols-[1.3fr_1fr]">
+          <div className="isk-home-contact-card relative grid min-h-[390px] flex-1 items-center gap-2 overflow-hidden rounded-[2rem] bg-[#087ba5] md:grid-cols-[1.3fr_1fr]">
             <div className="isk-home-contact-copy relative z-10 p-6 sm:p-9 lg:p-12">
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/80">ISK Lenses · Contact</p>
               <h2 id="contact-heading" className="isk-home-contact-heading mt-4 max-w-2xl text-4xl font-extrabold leading-[0.96] tracking-[-0.055em] text-white sm:text-5xl">
                 {h.serviceTitle ?? 'Not sure which shade suits you?'}{!h.serviceTitle && <><br /><em className="font-serif font-normal text-white">Ask our team.</em></>}
               </h2>
@@ -454,7 +448,7 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
                 {h.serviceBody ?? 'Contact the ISK Lenses team with questions about the catalog or an order. For lens suitability and fit, consult your eye-care professional.'}
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <Link href="/contact-us" className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#201b35] px-6 text-sm font-bold text-white transition hover:bg-white hover:text-[#201b35]">
+                <Link href="/contact-us" className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#15384d] px-6 text-sm font-bold text-white transition hover:bg-white hover:text-[#15384d]">
                   Contact the store <ArrowRight size={17} aria-hidden="true" />
                 </Link>
               </div>

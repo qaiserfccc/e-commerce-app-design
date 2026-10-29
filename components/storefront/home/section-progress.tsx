@@ -33,7 +33,7 @@ export function SectionProgress() {
 
   return (
     <nav aria-label="Homepage sections" className="fixed right-4 top-1/2 z-30 hidden -translate-y-1/2 flex-col items-end gap-4 md:flex">
-      <span className="mb-1 font-mono text-xs tracking-[0.18em] text-[#686371]" aria-live="polite">
+      <span className="mb-1 font-mono text-xs tracking-[0.18em] text-[#526b7b]" aria-live="polite">
         {String(active + 1).padStart(2, '0')} / {String(sections.length).padStart(2, '0')}
       </span>
       {sections.map(([id, label], index) => (
@@ -49,11 +49,11 @@ export function SectionProgress() {
             if (root && target) {
               root.scrollTo({
                 top: target.getBoundingClientRect().top - root.getBoundingClientRect().top + root.scrollTop,
-                behavior: 'smooth',
+                behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
               })
             }
           }}
-          className={`h-2 rounded-full transition-all duration-300 ${active === index ? 'w-6 bg-[#d45782]' : 'w-2 bg-[#201b35]/30 hover:bg-[#b83f6b]'}`}
+          className={`h-2 rounded-full transition-all duration-300 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#087ba5] ${active === index ? 'w-6 bg-[#087ba5]' : 'w-2 bg-[#15384d]/30 hover:bg-[#087ba5]'}`}
         />
       ))}
     </nav>
