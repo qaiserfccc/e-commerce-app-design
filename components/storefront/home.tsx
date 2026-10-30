@@ -131,8 +131,8 @@ function Hero({ slides }: { slides: BannerContent[] }) {
         <Slider label="Featured lens collections" autoPlayMs={5500} dots arrows editorialControls fullHeight>
           {slides.map((slide, index) => (
             <div key={slide.id} className="relative h-full min-h-full overflow-hidden bg-[#15384d]">
-              <Img src={slide.imageUrl} alt={slide.title || 'ISK Lenses collection'} priority={index === 0} className={`absolute inset-0 size-full object-cover object-[68%_center] ${index === 0 ? 'isk-home-hero-image' : ''}`} />
-              <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(90deg,rgba(21,56,77,.94)_0%,rgba(21,56,77,.72)_42%,rgba(21,56,77,.08)_100%)]" />
+              <Img src={slide.imageUrl} alt={slide.title || 'ISK Lenses collection'} priority={index === 0} className="isk-home-hero-image absolute inset-0 size-full object-cover object-[68%_center]" />
+              <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(90deg,rgba(21,56,77,.92)_0%,rgba(21,56,77,.73)_38%,rgba(21,56,77,.16)_76%,rgba(21,56,77,.08)_100%)]" />
               <div className="relative mx-auto flex h-full min-h-full w-full min-w-0 max-w-[1440px] items-center px-5 pb-28 pt-12 sm:px-10 lg:px-12">
                 <div className={`w-full min-w-0 max-w-[650px] text-white ${index === 0 ? 'isk-home-hero-copy' : ''}`}>
                   <h1 className="text-balance text-[clamp(2.6rem,7.6vw,6rem)] font-extrabold leading-[0.94] tracking-[-0.055em]">
@@ -165,6 +165,40 @@ function productImage(product: Product | undefined) {
   return product?.heroImageUrl ?? product?.assets?.find((asset) => asset.mediaType === 'image')?.blobUrl ?? null
 }
 
+// Downloaded from Unsplash; saved, editable hero banners take precedence over these local defaults.
+const defaultHeroSlides: BannerContent[] = [
+  {
+    id: 'editorial-color-lenses',
+    placement: 'hero',
+    title: 'See color differently.',
+    body: 'Explore the color lens catalog and compare product photos, prices, and details.',
+    imageUrl: '/isk-home/hero-editorial-1.jpg',
+    href: '/shop',
+    sortOrder: 0,
+    isActive: true,
+  },
+  {
+    id: 'editorial-find-your-shade',
+    placement: 'hero',
+    title: 'A shade for your point of view.',
+    body: 'Browse the collection and find the colors that speak to your style.',
+    imageUrl: '/isk-home/hero-editorial-2.jpg',
+    href: '/shop',
+    sortOrder: 1,
+    isActive: true,
+  },
+  {
+    id: 'editorial-make-it-yours',
+    placement: 'hero',
+    title: 'Let your look take the lead.',
+    body: 'Discover the range of lens colors and compare each listing before you choose.',
+    imageUrl: '/isk-home/hero-editorial-3.jpg',
+    href: '/shop',
+    sortOrder: 2,
+    isActive: true,
+  },
+]
+
 export async function Home({ chrome }: { chrome: SiteChrome }) {
   const { content, products, categories, brands, shades, lensTypes, reviews, loadError } = await loadHome()
   const banners = (placement: BannerContent['placement']) => content?.banners.filter((banner) => banner.placement === placement) ?? []
@@ -174,21 +208,8 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
     .sort((left, right) => right.productCount - left.productCount || left.name.localeCompare(right.name))
     .slice(0, 12)
   const heroBanners = banners('hero')
-  const heroSlides: BannerContent[] = heroBanners.length > 0
-    ? heroBanners
-    : products
-      .filter((product) => productImage(product))
-      .slice(0, 4)
-      .map((product, index) => ({
-        id: `catalog-${product.id}`,
-        placement: 'hero',
-        title: product.name,
-        body: product.shortDescription || product.description,
-        imageUrl: productImage(product)!,
-        href: `/product/${product.slug}`,
-        sortOrder: index,
-        isActive: true,
-      }))
+  const configuredHeroSlides = heroBanners.filter((slide) => slide.title.trim() || slide.body?.trim())
+  const heroSlides: BannerContent[] = configuredHeroSlides.length > 0 ? configuredHeroSlides : defaultHeroSlides
   const categoryCards = categories
     .filter((category) => category.productCount > 0)
     .slice(0, 5)

@@ -262,11 +262,11 @@
   animation-play-state: paused;
 }
 
-.isk-home-hero-image {
-  animation: isk-home-hero-settle 8s cubic-bezier(.16, 1, .3, 1) both;
+.isk-home [data-active='true'] .isk-home-hero-image {
+  animation: isk-home-hero-settle 11s cubic-bezier(.16, 1, .3, 1) both;
 }
 
-.isk-home-hero-copy {
+.isk-home [data-active='true'] .isk-home-hero-copy {
   animation: isk-home-iris-reveal 850ms cubic-bezier(.16, 1, .3, 1) both;
 }
 
@@ -288,7 +288,7 @@
   .isk-marquee { animation: none; }
   .isk-review-track { animation: none; }
   .isk-home-hero-image,
-  .isk-home-hero-copy { animation: none; }
+  .isk-home-hero-copy { animation: none !important; }
   .isk-home-aperture-reveal { clip-path: none !important; transition: none; }
 }
 
