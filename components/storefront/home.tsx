@@ -3,6 +3,8 @@ import { ArrowRight, BookOpen, Compass, Eye, Headphones, ShoppingBag, Star, type
 import { Slider } from '@/components/storefront/home/slider'
 import { SectionProgress } from '@/components/storefront/home/section-progress'
 import { HomeScrollMotion } from '@/components/storefront/home/scroll-motion'
+import { CollectionGrid } from '@/components/storefront/home/collection-grid'
+import { GalleryCard } from '@/components/storefront/home/gallery-card'
 import { TrendingProducts } from '@/components/storefront/home/trending-products'
 import { StoreFooter } from '@/components/storefront/shell/store-footer'
 import { RuntimeErrorNotice } from '@/components/ui/app-notifications'
@@ -165,6 +167,10 @@ function productImage(product: Product | undefined) {
   return product?.heroImageUrl ?? product?.assets?.find((asset) => asset.mediaType === 'image')?.blobUrl ?? null
 }
 
+function productVideo(product: Product | undefined) {
+  return product?.assets?.find((asset) => asset.mediaType === 'video')?.blobUrl ?? null
+}
+
 // Downloaded from Unsplash; saved, editable hero banners take precedence over these local defaults.
 const defaultHeroSlides: BannerContent[] = [
   {
@@ -246,16 +252,14 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
   const linkedBrands = brands.filter((brand) => brand.productCount > 0)
   const featuredBrands = [...brands]
     .sort((left, right) => right.productCount - left.productCount || left.name.localeCompare(right.name))
-    .slice(0, 12)
   const heroBanners = banners('hero')
   const configuredHeroSlides = heroBanners.filter((slide) => slide.title.trim() || slide.body?.trim())
   const heroSlides: BannerContent[] = [...configuredHeroSlides, ...defaultHeroSlides].slice(0, 7)
   const categoryCards = categories
-    .filter((category) => category.productCount > 0)
-    .slice(0, 5)
+    .filter((category) => category.isActive)
     .map((category) => {
       const product = products.find((item) => item.categoryPath === category.path || item.categoryPath?.startsWith(`${category.path}/`))
-      return { category, image: category.imageUrl ?? productImage(product) }
+      return { category, product, image: category.imageUrl ?? productImage(product) }
     })
   const shadeCards = shades.map((shade) => ({
     shade,
@@ -284,27 +288,30 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
               <span className="text-sm font-semibold text-[#526b7b]">{categoryCards.length} available {categoryCards.length === 1 ? 'category' : 'categories'}</span>
             </div>
           </div>
-          {categoryCards.length > 0 ? (
-            <ul className="grid grid-cols-2 items-center gap-x-3 gap-y-5 sm:grid-cols-3 lg:grid-cols-3 lg:gap-5">
-              {categoryCards.map(({ category, image }, index) => (
-                <li key={category.id} data-scroll-reveal style={{ transitionDelay: `${(index % 6) * 70}ms` }} className={`snap-start snap-always ${index % 2 ? 'lg:translate-y-12' : ''}`}>
-                  <Link href={categoryHref(category)} className="group block text-center">
-                    <span className="relative block overflow-hidden rounded-[50%] bg-[#cfe2eb]">
-                      {image ? (
-                        <Img src={image} alt={category.name} className="aspect-[.68/1] w-full object-cover transition duration-500 group-hover:scale-[1.04]" />
-                      ) : (
-                        <span className="grid aspect-[.68/1] w-full place-items-center text-[#087ba5]"><Eye size={32} aria-hidden="true" /></span>
-                      )}
-                    </span>
-                    <span className="mt-3 block text-base font-bold text-[#15384d]">{category.name}</span>
-                    <span className="mt-1 block text-xs text-[#526b7b]">{category.productCount} active {category.productCount === 1 ? 'listing' : 'listings'}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="rounded-2xl border border-[#cfe2eb] bg-white/70 p-6 text-sm text-[#526b7b]">No product categories with active listings are available yet.</p>
-          )}
+          <CollectionGrid
+            label="categories"
+            nextSectionId="brands"
+            nextLabel="brands"
+            className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-2"
+          >
+            {categoryCards.length > 0 ? categoryCards.map(({ category, image, product }, index) => (
+              <li key={category.id} data-scroll-reveal style={{ transitionDelay: `${(index % 4) * 65}ms` }}>
+                <GalleryCard
+                  href={categoryHref(category)}
+                  title={category.name}
+                  detail={`${category.productCount} active ${category.productCount === 1 ? 'listing' : 'listings'}`}
+                  image={image}
+                  imageAlt={category.name}
+                  video={productVideo(product)}
+                  fallback={<Eye size={32} strokeWidth={1.3} />}
+                />
+              </li>
+            )) : (
+              <li className="col-span-full rounded-2xl border border-[#cfe2eb] bg-white/70 p-6 text-sm text-[#526b7b]">
+                No active categories are available right now. Browse the catalog or return after categories have been enabled.
+              </li>
+            )}
+          </CollectionGrid>
         </div>
       </section>
 
@@ -318,30 +325,32 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
             href="/brands"
             hrefLabel="View all brands"
           />
-          {featuredBrands.length > 0 ? (
-            <ul className="mt-8 grid grid-cols-2 gap-x-3 gap-y-8 sm:grid-cols-3 lg:grid-cols-3 lg:gap-x-4 lg:gap-y-8">
-              {featuredBrands.map((brand, index) => {
-                const card = (
-                  <>
-                    {brand.logoUrl
-                      ? <Img src={brand.logoUrl} alt={`${brand.name} logo`} className="h-12 w-full object-contain" />
-                      : <span className={`text-lg text-[#15384d] ${brandWordmarkClass(brand.name)}`}>{brand.name}</span>}
-                    <span className="mt-2 text-xs text-[#526b7b]">{brand.productCount > 0 ? `${brand.productCount} active ${brand.productCount === 1 ? 'listing' : 'listings'}` : 'No active listings'}</span>
-                  </>
-                )
-                const cardClass = 'flex min-h-28 flex-col justify-center rounded-3xl border border-[#cfe2eb] bg-white px-4 py-3 transition-all duration-300 hover:-translate-y-1 hover:border-[#087ba5] hover:shadow-[0_12px_30px_rgba(21,56,77,.10)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#087ba5] sm:min-h-32 lg:min-h-36'
-                return (
-                  <li key={brand.id} data-scroll-reveal style={{ transitionDelay: `${(index % 6) * 70}ms` }} className="snap-start snap-always">
-                    {brand.productCount > 0
-                      ? <Link href={`/shop?brand=${encodeURIComponent(brand.slug)}`} className={`group ${cardClass}`}>{card}</Link>
-                      : <div className={`${cardClass} cursor-default`}>{card}</div>}
-                  </li>
-                )
-              })}
-            </ul>
-          ) : (
-            <p className="mt-8 rounded-2xl border border-[#cfe2eb] bg-white p-6 text-sm text-[#526b7b]">No active catalog products are linked to a brand yet.</p>
-          )}
+          <CollectionGrid
+            label="brands"
+            nextSectionId="shades"
+            nextLabel="shades"
+            className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
+          >
+            {featuredBrands.length > 0 ? featuredBrands.map((brand, index) => {
+              const product = products.find((item) => item.brandId === brand.id)
+              return (
+                <li key={brand.id} data-scroll-reveal style={{ transitionDelay: `${(index % 4) * 65}ms` }}>
+                  <GalleryCard
+                    href={`/shop?brand=${encodeURIComponent(brand.slug)}`}
+                    title={brand.name}
+                    detail={`${brand.productCount} active ${brand.productCount === 1 ? 'listing' : 'listings'}`}
+                    image={productImage(product) ?? brand.logoUrl}
+                    imageAlt={product ? product.name : brand.logoUrl ? `${brand.name} logo` : ''}
+                    imageFit={product ? 'cover' : 'contain'}
+                    video={productVideo(product)}
+                    fallback={<span className={`grid size-24 place-items-center rounded-full border border-[#15384d]/20 bg-white/45 text-3xl text-[#15384d] ${brandWordmarkClass(brand.name)}`}>{brand.name.slice(0, 1)}</span>}
+                  />
+                </li>
+              )
+              }) : (
+                <li className="col-span-full rounded-2xl border border-[#cfe2eb] bg-white p-6 text-sm text-[#526b7b]">No active brands are available right now.</li>
+              )}
+          </CollectionGrid>
         </div>
       </section>
 
@@ -351,36 +360,36 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
             id="shades-heading"
             first="Shop by"
             accent="shade"
-            description={shadeCards.length > 0 ? 'Each shade is linked to an active product listing.' : undefined}
+            description={shadeCards.length > 0 ? 'Browse available lens colors and see which shades have active listings.' : undefined}
             href="/shop"
             hrefLabel="Browse all shades"
           />
-          {shadeCards.length > 0 ? (
-            <ul className="mt-8 grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 lg:grid-cols-3 lg:gap-5">
-              {shadeCards.slice(0, 12).map(({ shade, product }, index) => {
+          <CollectionGrid
+            label="shades"
+            nextSectionId="trending"
+            nextLabel="catalog"
+            className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
+          >
+            {shadeCards.length > 0 ? shadeCards.map(({ shade, product }, index) => {
                 const image = shade.imageUrl ?? productImage(product)
                 const swatch = shade.hex && /^#[\da-f]{6}$/i.test(shade.hex) ? shade.hex : null
                 return (
-                  <li key={shade.id} data-scroll-reveal style={{ transitionDelay: `${(index % 6) * 70}ms` }} className="snap-start snap-always">
-                    <Link href={`/shop?q=${encodeURIComponent(shade.name)}`} className="group block text-center">
-                      <span className="block overflow-hidden rounded-full border-[5px] border-white bg-[#e8f6fb]">
-                        {image
-                          ? <Img src={image} alt={`${shade.name} lens listing`} className="aspect-square w-full object-cover transition duration-500 group-hover:scale-105" />
-                          : <span className="grid aspect-square w-full place-items-center"><span aria-hidden="true" className="size-12 rounded-full border border-[#cfe2eb]" style={{ backgroundColor: swatch ?? '#e8f6fb' }} /></span>}
-                      </span>
-                      <span className="mt-4 flex items-center justify-center gap-2 text-base font-bold text-[#15384d] sm:text-lg">
-                        {swatch && <span aria-hidden="true" className="size-3 rounded-full ring-2 ring-white" style={{ backgroundColor: swatch }} />}
-                        {shade.name}
-                      </span>
-                      <span className="mt-1 block text-sm text-[#526b7b]">{shade.productCount} active {shade.productCount === 1 ? 'listing' : 'listings'}</span>
-                    </Link>
+                  <li key={shade.id} data-scroll-reveal style={{ transitionDelay: `${(index % 4) * 65}ms` }}>
+                    <GalleryCard
+                      href={`/shop?q=${encodeURIComponent(shade.name)}`}
+                      title={shade.name}
+                      detail={`${shade.productCount} active ${shade.productCount === 1 ? 'listing' : 'listings'}`}
+                      image={image}
+                      imageAlt={`${shade.name} lens listing`}
+                      video={productVideo(product)}
+                      fallback={<span aria-hidden="true" className="size-16 rounded-full border border-[#cfe2eb]" style={{ backgroundColor: swatch ?? '#e8f6fb' }} />}
+                    />
                   </li>
                 )
-              })}
-            </ul>
-          ) : (
-            <p className="mt-8 rounded-2xl border border-[#cfe2eb] bg-white p-6 text-sm text-[#526b7b]">No active products are linked to lens shades yet.</p>
-          )}
+              }) : (
+                <li className="col-span-full rounded-2xl border border-[#cfe2eb] bg-white p-6 text-sm text-[#526b7b]">No active lens shades are available right now.</li>
+              )}
+          </CollectionGrid>
         </div>
       </section>
 

@@ -278,13 +278,11 @@
 }
 
 .isk-home-motion-ready [data-scroll-reveal]:not([data-open='true']) {
-  clip-path: inset(0 0 100% 0 round 2rem);
-  opacity: .35;
-  transform: translateY(28px) scale(.985);
+  opacity: .78;
+  transform: translateX(24px);
 }
 
 .isk-home-motion-ready [data-scroll-reveal]:focus-within {
-  clip-path: inset(0 round 2rem);
   opacity: 1;
   transform: none;
 }
@@ -297,7 +295,6 @@
   .isk-home-hero-image,
   .isk-home-hero-copy { animation: none !important; }
   .isk-home [data-scroll-reveal] {
-    clip-path: none !important;
     opacity: 1 !important;
     transform: none !important;
     transition: none;

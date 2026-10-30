@@ -33,6 +33,7 @@ type DataTableProps<Row> = {
   getRowId: (row: Row) => string
   getSearchValue?: (row: Row) => string
   canSelectRow?: (row: Row) => boolean
+  isRowVisible?: (row: Row, search: string) => boolean
   toolbarContent?: ReactNode
   filters?: DataTableFilter<Row>[]
   bulkActions?: DataTableBulkAction<Row>[]
@@ -50,6 +51,7 @@ export function DataTable<Row>({
   getRowId,
   getSearchValue,
   canSelectRow,
+  isRowVisible,
   toolbarContent,
   filters = [],
   bulkActions = [],
@@ -73,6 +75,7 @@ export function DataTable<Row>({
   const filteredRows = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase()
     const result = rows.filter((row) => {
+      if (isRowVisible?.(row, needle) === false) return false
       if (needle) {
         const searchable = (getSearchValue?.(row) ?? columns.map((column) => column.searchValue?.(row) ?? '').join(' ')).toLocaleLowerCase()
         if (!searchable.includes(needle)) return false
@@ -96,7 +99,7 @@ export function DataTable<Row>({
       }
     }
     return result
-  }, [columns, filterValues, filters, getSearchValue, query, rows, sort])
+  }, [columns, filterValues, filters, getSearchValue, isRowVisible, query, rows, sort])
 
   const activePageSize = serverPagination?.pageSize ?? pageSize
   const activePage = serverPagination ? Math.floor(serverPagination.offset / serverPagination.pageSize) + 1 : page

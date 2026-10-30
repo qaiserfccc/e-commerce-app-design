@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, type FormEvent } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
 import useSWR from 'swr'
-import { ArrowDown, ArrowUp, LoaderCircle, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, LoaderCircle, Pencil, Plus, Trash2 } from 'lucide-react'
 import { DataTable, type DataTableBulkAction, type DataTableColumn } from '@/components/admin/data-table'
-import { createCategory, deleteCategory, getAdminCategories, moveCategory, updateCategory } from '@/app/actions/catalog-admin'
+import { bulkUpdateCategoryVisibility, createCategory, deleteCategory, getAdminCategories, moveCategory, updateCategory } from '@/app/actions/catalog-admin'
 import { Alert, errorText, Field, flattenCategories, inputClass, primaryButton, secondaryButton, type AdminCategory } from '@/components/admin/admin-ui'
 import { reportError } from '@/lib/ui/notifications'
 
@@ -102,8 +102,22 @@ export function CategoryManager({ canEdit }: { canEdit: boolean }) {
   const { data, error, isLoading, mutate } = useSWR('admin-categories', () => getAdminCategories())
   const [editing, setEditing] = useState<AdminCategory | 'new' | { parentId: string } | null>(null)
   const [message, setMessage] = useState('')
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() => new Set())
   const rows = (data ?? []) as AdminCategory[]
   const flat = flattenCategories(rows)
+  const rowById = useMemo(() => new Map(flat.map((row) => [row.id, row])), [flat])
+  const parentIds = useMemo(() => new Set(flat.flatMap((row) => row.parentId ? [row.parentId] : [])), [flat])
+  const allParentsCollapsed = parentIds.size > 0 && [...parentIds].every((id) => collapsedIds.has(id))
+
+  function isCategoryVisible(category: AdminCategory, search: string) {
+    if (search) return true
+    let parentId = category.parentId
+    while (parentId) {
+      if (collapsedIds.has(parentId)) return false
+      parentId = rowById.get(parentId)?.parentId ?? null
+    }
+    return true
+  }
 
   async function run(action: () => Promise<unknown>) {
     setMessage('')
@@ -130,7 +144,17 @@ export function CategoryManager({ canEdit }: { canEdit: boolean }) {
         <p className="rounded-2xl border border-dashed border-[#1c1c1a]/20 bg-white/60 px-5 py-10 text-center text-sm text-[#68675f]">No categories yet. Add one to start building the catalog.</p>
       ) : (
         <DataTable
+          toolbarContent={parentIds.size > 0 ? (
+            <button
+              type="button"
+              onClick={() => setCollapsedIds(allParentsCollapsed ? new Set() : new Set(parentIds))}
+              className="min-h-10 rounded-xl border border-[#b8d4e0] bg-white px-3 text-sm text-[#15384d] hover:bg-[#e8f6fb] focus-visible:outline-2 focus-visible:outline-[#087ba5]"
+            >
+              {allParentsCollapsed ? 'Expand all categories' : 'Collapse all categories'}
+            </button>
+          ) : undefined}
           rows={flat}
+          isRowVisible={isCategoryVisible}
           getRowId={(category) => category.id}
           getSearchValue={(category) => `${category.name} ${category.path}`}
           itemLabel="categories"
@@ -140,9 +164,27 @@ export function CategoryManager({ canEdit }: { canEdit: boolean }) {
             { id: 'menu', label: 'Navigation', options: [{ label: 'In menu', value: 'menu' }, { label: 'Not in menu', value: 'not-menu' }], value: (category) => category.showInMenu ? 'menu' : 'not-menu' },
           ]}
           columns={[
-            { id: 'category', header: 'Category', sortValue: (category) => category.name, searchValue: (category) => `${category.name} ${category.path}`, className: 'min-w-[280px]', cell: (category) => <div style={{ paddingInlineStart: category.depth * 20 }}>
+            { id: 'category', header: 'Category', sortValue: (category) => category.name, searchValue: (category) => `${category.name} ${category.path}`, className: 'min-w-[280px]', cell: (category) => <div className="flex items-start gap-1" style={{ paddingInlineStart: category.depth * 20 }}>
+              {parentIds.has(category.id) ? (
+                <button
+                  type="button"
+                  aria-label={`${collapsedIds.has(category.id) ? 'Expand' : 'Collapse'} sub-categories of ${category.name}`}
+                  aria-expanded={!collapsedIds.has(category.id)}
+                  onClick={() => setCollapsedIds((current) => {
+                    const next = new Set(current)
+                    if (next.has(category.id)) next.delete(category.id)
+                    else next.add(category.id)
+                    return next
+                  })}
+                  className="mt-0.5 grid size-6 shrink-0 place-items-center rounded hover:bg-[#e8f6fb] focus-visible:outline-2 focus-visible:outline-[#087ba5]"
+                >
+                  {collapsedIds.has(category.id) ? <ChevronRight size={15} aria-hidden="true" /> : <ChevronDown size={15} aria-hidden="true" />}
+                </button>
+              ) : <span aria-hidden="true" className="size-6 shrink-0" />}
+              <div>
               <p className="font-medium">{category.name} {!category.isActive && <span className="ml-1 rounded-full bg-[#f3f5f6] px-2 py-0.5 text-xs text-[#526b7b]">Hidden</span>}{!category.showInMenu && <span className="ml-1 rounded-full bg-[#f3f5f6] px-2 py-0.5 text-xs text-[#526b7b]">Not in menu</span>}</p>
               <p className="mt-1 text-xs text-[#526b7b]">/product-category/{category.path}</p>
+              </div>
             </div> },
             { id: 'products', header: 'Products', sortValue: (category) => category.productCount, cell: (category) => `${category.productCount} direct` },
             { id: 'actions', header: 'Actions', className: 'w-48 text-right', cell: (category) => canEdit ? <div className="flex justify-end gap-0.5">
@@ -154,7 +196,36 @@ export function CategoryManager({ canEdit }: { canEdit: boolean }) {
             </div> : null },
           ] as DataTableColumn<AdminCategory>[]}
           exportRow={(category) => ({ Name: category.name, Path: category.path, Active: category.isActive, 'Shown in menu': category.showInMenu, 'Direct products': category.productCount })}
-          bulkActions={canEdit ? [{
+          bulkActions={canEdit ? [
+            {
+              label: 'Mark active',
+              run: async (selected) => {
+                await bulkUpdateCategoryVisibility(selected.map((category) => category.id), { isActive: true })
+                await mutate()
+              },
+            },
+            {
+              label: 'Hide selected',
+              run: async (selected) => {
+                await bulkUpdateCategoryVisibility(selected.map((category) => category.id), { isActive: false })
+                await mutate()
+              },
+            },
+            {
+              label: 'Show in menu',
+              run: async (selected) => {
+                await bulkUpdateCategoryVisibility(selected.map((category) => category.id), { showInMenu: true })
+                await mutate()
+              },
+            },
+            {
+              label: 'Hide from menu',
+              run: async (selected) => {
+                await bulkUpdateCategoryVisibility(selected.map((category) => category.id), { showInMenu: false })
+                await mutate()
+              },
+            },
+            {
             label: 'Delete selected',
             disabled: (selected) => selected.some((category) => category.productCount > 0 || flat.some((other) => other.parentId === category.id && !selected.some((picked) => picked.id === other.id))),
             confirm: (selected) => `Delete ${selected.length} selected categor${selected.length === 1 ? 'y' : 'ies'}? Categories with products or unselected sub-categories cannot be removed.`,
@@ -163,7 +234,8 @@ export function CategoryManager({ canEdit }: { canEdit: boolean }) {
               try { for (const category of ordered) await deleteCategory(category.id) }
               finally { await mutate() }
             },
-          } satisfies DataTableBulkAction<AdminCategory>] : []}
+            } satisfies DataTableBulkAction<AdminCategory>,
+          ] : []}
         />
       )}
     </section>

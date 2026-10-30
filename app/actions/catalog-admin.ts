@@ -144,6 +144,48 @@ export async function updateCategory(id: string, input: CategoryInput) {
   }
 }
 
+export async function bulkUpdateCategoryVisibility(
+  ids: unknown,
+  changes: { isActive?: unknown; showInMenu?: unknown },
+) {
+  await requireAdminSession('admin')
+  if (!Array.isArray(ids) || ids.length === 0 || ids.length > 1000) throw new Error('Select between 1 and 1000 categories.')
+  const categoryIds = [...new Set(ids.map((id) => uuid(id, 'Category')))]
+  if (!changes || typeof changes !== 'object') throw new Error('Choose category visibility changes.')
+
+  const updates: { isActive?: boolean; showInMenu?: boolean } = {}
+  if ('isActive' in changes) {
+    if (typeof changes.isActive !== 'boolean') throw new Error('Active status must be enabled or disabled.')
+    updates.isActive = changes.isActive
+  }
+  if ('showInMenu' in changes) {
+    if (typeof changes.showInMenu !== 'boolean') throw new Error('Menu visibility must be enabled or disabled.')
+    updates.showInMenu = changes.showInMenu
+  }
+  if (Object.keys(updates).length === 0) throw new Error('Choose at least one category visibility change.')
+
+  const existing = await db.select({ id: storeCategories.id }).from(storeCategories).where(inArray(storeCategories.id, categoryIds))
+  if (existing.length !== categoryIds.length) throw new Error('One or more selected categories no longer exist. Refresh the list and try again.')
+
+  await db.transaction(async (tx) => {
+    const updated = await tx.update(storeCategories)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(inArray(storeCategories.id, categoryIds))
+      .returning({ id: storeCategories.id })
+    if (updated.length !== categoryIds.length) throw new Error('One or more selected categories could not be updated.')
+
+    for (const category of updated) {
+      await tx.insert(storeActivityEvents).values({
+        entityType: 'category',
+        entityId: category.id,
+        eventType: 'updated',
+        payload: { ...updates, bulk: true },
+      })
+    }
+  })
+  bust()
+}
+
 export async function deleteCategory(id: string) {
   await requireAdminSession('admin')
   uuid(id, 'Category')
