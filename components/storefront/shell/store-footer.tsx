@@ -39,7 +39,9 @@ export function StoreFooter({ chrome, homepage = false, brands = [], categories 
       <footer className="isk-home-footer mt-6 border-t border-[#e6dce1] bg-[#fffaf8] text-[#201b35]">
         <div className="grid gap-7 py-6 sm:grid-cols-2 md:grid-cols-4">
           <div className="sm:col-span-2 md:col-span-1">
-            <span className="isk-reference-brand text-xl font-extrabold">ISK <em>Lenses</em></span>
+            <Link href="/" aria-label={`${STORE_NAME} home`} className="inline-flex">
+              <img src="/isk-lenses-portrait.svg" alt={`${STORE_NAME} logo`} width="160" height="220" className="w-28 rounded-xl" />
+            </Link>
             {footer.about && <p className="mt-3 max-w-xs text-sm leading-6 text-[#686371]">{footer.about}</p>}
             <ul className="mt-3 space-y-1.5 text-xs text-[#686371]">
               {email && <li><a href={`mailto:${email}`} className="hover:underline">{email}</a></li>}
@@ -70,10 +72,9 @@ export function StoreFooter({ chrome, homepage = false, brands = [], categories 
         </div>
         {footer.information?.length ? <LinkColumn title="Information" links={footer.information} /> : null}
         <div>
-          {footer.logo && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={footer.logo} alt={STORE_NAME} loading="lazy" className="h-14 w-auto rounded bg-white p-1.5" />
-          )}
+          <Link href="/" aria-label={`${STORE_NAME} home`} className="inline-flex">
+            <img src="/isk-lenses-portrait.svg" alt={`${STORE_NAME} logo`} width="160" height="220" className="w-32 rounded-xl" />
+          </Link>
           {footer.about && <p className="mt-4 max-w-sm text-sm leading-6 text-white/75">{footer.about}</p>}
           <ul className="mt-5 space-y-2 text-sm text-white/90">
             {facebook && <li><a href={facebook} target="_blank" rel="noopener noreferrer" className="hover:underline">Follow us on Facebook</a></li>}

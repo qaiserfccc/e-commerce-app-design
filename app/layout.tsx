@@ -10,22 +10,8 @@ const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit', display: 
 export const metadata: Metadata = {
   title: { default: 'ISK Lenses — Contact lenses in Pakistan', template: '%s — ISK Lenses' },
   description: 'Shop contact lenses online in Pakistan. Browse brands, colors and collections and order with cash on delivery.',
-  generator: 'v0.app',
   icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
+    icon: '/icon.svg',
     apple: '/apple-icon.png',
   },
 }
