@@ -7,7 +7,7 @@ export function HomeScrollMotion() {
     const root = document.getElementById('isk-home-scroll')
     if (!root || window.matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) return
 
-    const targets = root.querySelectorAll<HTMLElement>('.isk-home-aperture-reveal')
+    const targets = root.querySelectorAll<HTMLElement>('[data-scroll-reveal]')
     if (targets.length === 0) return
 
     root.classList.add('isk-home-motion-ready')
@@ -18,7 +18,7 @@ export function HomeScrollMotion() {
         target.dataset.open = 'true'
         observer.unobserve(target)
       })
-    }, { root, threshold: 0.3 })
+    }, { root, threshold: 0.18, rootMargin: '0px 0px -6% 0px' })
 
     targets.forEach((target) => observer.observe(target))
     return () => {

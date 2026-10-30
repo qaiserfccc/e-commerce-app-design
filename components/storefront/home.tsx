@@ -197,6 +197,46 @@ const defaultHeroSlides: BannerContent[] = [
     sortOrder: 2,
     isActive: true,
   },
+  {
+    id: 'editorial-find-your-color',
+    placement: 'hero',
+    title: 'Find your color.',
+    body: 'Explore the shades available across the lens catalog.',
+    imageUrl: '/isk-home/hero-editorial-4.jpg',
+    href: '/shop',
+    sortOrder: 3,
+    isActive: true,
+  },
+  {
+    id: 'editorial-personal-style',
+    placement: 'hero',
+    title: 'A look that feels like you.',
+    body: 'Browse lens colors and compare available listings.',
+    imageUrl: '/isk-home/hero-editorial-5.jpg',
+    href: '/shop',
+    sortOrder: 4,
+    isActive: true,
+  },
+  {
+    id: 'editorial-new-perspective',
+    placement: 'hero',
+    title: 'A new shade, a new perspective.',
+    body: 'See the colors and product details in our catalog.',
+    imageUrl: '/isk-home/hero-editorial-6.jpg',
+    href: '/shop',
+    sortOrder: 5,
+    isActive: true,
+  },
+  {
+    id: 'editorial-make-color-yours',
+    placement: 'hero',
+    title: 'Make the color yours.',
+    body: 'Explore the lens range by shade and brand.',
+    imageUrl: '/isk-home/hero-editorial-7.jpg',
+    href: '/shop',
+    sortOrder: 6,
+    isActive: true,
+  },
 ]
 
 export async function Home({ chrome }: { chrome: SiteChrome }) {
@@ -209,7 +249,7 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
     .slice(0, 12)
   const heroBanners = banners('hero')
   const configuredHeroSlides = heroBanners.filter((slide) => slide.title.trim() || slide.body?.trim())
-  const heroSlides: BannerContent[] = configuredHeroSlides.length > 0 ? configuredHeroSlides : defaultHeroSlides
+  const heroSlides: BannerContent[] = [...configuredHeroSlides, ...defaultHeroSlides].slice(0, 7)
   const categoryCards = categories
     .filter((category) => category.productCount > 0)
     .slice(0, 5)
@@ -245,11 +285,11 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
             </div>
           </div>
           {categoryCards.length > 0 ? (
-            <ul className="grid grid-cols-2 items-center gap-x-3 gap-y-5 sm:grid-cols-3 lg:grid-cols-5 lg:gap-4">
+            <ul className="grid grid-cols-2 items-center gap-x-3 gap-y-5 sm:grid-cols-3 lg:grid-cols-3 lg:gap-5">
               {categoryCards.map(({ category, image }, index) => (
-                <li key={category.id} className={index % 2 ? 'lg:translate-y-12' : ''}>
+                <li key={category.id} data-scroll-reveal style={{ transitionDelay: `${(index % 6) * 70}ms` }} className={`snap-start snap-always ${index % 2 ? 'lg:translate-y-12' : ''}`}>
                   <Link href={categoryHref(category)} className="group block text-center">
-                    <span className="isk-home-aperture-reveal relative block overflow-hidden rounded-[50%] bg-[#cfe2eb]">
+                    <span className="relative block overflow-hidden rounded-[50%] bg-[#cfe2eb]">
                       {image ? (
                         <Img src={image} alt={category.name} className="aspect-[.68/1] w-full object-cover transition duration-500 group-hover:scale-[1.04]" />
                       ) : (
@@ -279,9 +319,8 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
             hrefLabel="View all brands"
           />
           {featuredBrands.length > 0 ? (
-            <ul className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 lg:gap-4">
+            <ul className="mt-8 grid grid-cols-2 gap-x-3 gap-y-8 sm:grid-cols-3 lg:grid-cols-3 lg:gap-x-4 lg:gap-y-8">
               {featuredBrands.map((brand, index) => {
-                const visibility = index < 4 ? '' : index < 6 ? 'hidden sm:block' : 'hidden lg:block'
                 const card = (
                   <>
                     {brand.logoUrl
@@ -290,9 +329,9 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
                     <span className="mt-2 text-xs text-[#526b7b]">{brand.productCount > 0 ? `${brand.productCount} active ${brand.productCount === 1 ? 'listing' : 'listings'}` : 'No active listings'}</span>
                   </>
                 )
-                const cardClass = 'flex min-h-28 flex-col justify-center rounded-3xl border border-[#cfe2eb] bg-white px-4 py-3 transition-all duration-300 hover:-translate-y-1 hover:border-[#087ba5] hover:shadow-[0_12px_30px_rgba(21,56,77,.10)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#087ba5] sm:min-h-32'
+                const cardClass = 'flex min-h-28 flex-col justify-center rounded-3xl border border-[#cfe2eb] bg-white px-4 py-3 transition-all duration-300 hover:-translate-y-1 hover:border-[#087ba5] hover:shadow-[0_12px_30px_rgba(21,56,77,.10)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#087ba5] sm:min-h-32 lg:min-h-36'
                 return (
-                  <li key={brand.id} className={visibility}>
+                  <li key={brand.id} data-scroll-reveal style={{ transitionDelay: `${(index % 6) * 70}ms` }} className="snap-start snap-always">
                     {brand.productCount > 0
                       ? <Link href={`/shop?brand=${encodeURIComponent(brand.slug)}`} className={`group ${cardClass}`}>{card}</Link>
                       : <div className={`${cardClass} cursor-default`}>{card}</div>}
@@ -317,14 +356,14 @@ export async function Home({ chrome }: { chrome: SiteChrome }) {
             hrefLabel="Browse all shades"
           />
           {shadeCards.length > 0 ? (
-            <ul className="mt-8 grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 lg:grid-cols-6 lg:gap-5">
-              {shadeCards.slice(0, 12).map(({ shade, product }) => {
+            <ul className="mt-8 grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 lg:grid-cols-3 lg:gap-5">
+              {shadeCards.slice(0, 12).map(({ shade, product }, index) => {
                 const image = shade.imageUrl ?? productImage(product)
                 const swatch = shade.hex && /^#[\da-f]{6}$/i.test(shade.hex) ? shade.hex : null
                 return (
-                  <li key={shade.id}>
+                  <li key={shade.id} data-scroll-reveal style={{ transitionDelay: `${(index % 6) * 70}ms` }} className="snap-start snap-always">
                     <Link href={`/shop?q=${encodeURIComponent(shade.name)}`} className="group block text-center">
-                      <span className="isk-home-aperture-reveal block overflow-hidden rounded-full border-[5px] border-white bg-[#e8f6fb]">
+                      <span className="block overflow-hidden rounded-full border-[5px] border-white bg-[#e8f6fb]">
                         {image
                           ? <Img src={image} alt={`${shade.name} lens listing`} className="aspect-square w-full object-cover transition duration-500 group-hover:scale-105" />
                           : <span className="grid aspect-square w-full place-items-center"><span aria-hidden="true" className="size-12 rounded-full border border-[#cfe2eb]" style={{ backgroundColor: swatch ?? '#e8f6fb' }} /></span>}
