@@ -90,13 +90,15 @@ const productColumns = {
   specs: storeProducts.specs,
   usageInstructions: storeProducts.usageInstructions,
   isFeatured: storeProducts.isFeatured,
+  isNewArrival: storeProducts.isNewArrival,
+  isOnSale: storeProducts.isOnSale,
   seoTitle: storeProducts.seoTitle,
   seoDescription: storeProducts.seoDescription,
   createdAt: storeProducts.createdAt,
   updatedAt: storeProducts.updatedAt,
 }
 
-async function enrich<T extends { id: string; categoryId: string; lensShadeId: string | null; lensTypeId: string | null }>(products: T[]) {
+async function enrich<T extends { id: string; categoryId: string | null; lensShadeId: string | null; lensTypeId: string | null }>(products: T[]) {
   const ids = products.map((product) => product.id)
   if (!ids.length) return []
   const [assets, variants, ratings, categories, assignments, shades, types] = await Promise.all([
@@ -130,8 +132,8 @@ async function enrich<T extends { id: string; categoryId: string; lensShadeId: s
   const typesById = new Map(types.map((type) => [type.id, type]))
   return products.map((product) => ({
     ...product,
-    categoryPath: pathMap.get(product.categoryId) ?? '',
-    categoryIds: assigned.get(product.id)?.map((category) => category.id) ?? [product.categoryId],
+    categoryPath: product.categoryId ? pathMap.get(product.categoryId) ?? '' : '',
+    categoryIds: assigned.get(product.id)?.map((category) => category.id) ?? (product.categoryId ? [product.categoryId] : []),
     categories: assigned.get(product.id) ?? [],
     lensShade: product.lensShadeId ? shadesById.get(product.lensShadeId) ?? null : null,
     lensType: product.lensTypeId ? typesById.get(product.lensTypeId) ?? null : null,
@@ -143,7 +145,7 @@ async function enrich<T extends { id: string; categoryId: string; lensShadeId: s
 }
 
 async function loadCatalog(categorySlug: string | null, query: string | null, brandSlug: string | null) {
-  const conditions = [eq(storeProducts.status, 'active'), eq(storeCategories.isActive, true)]
+  const conditions = [eq(storeProducts.status, 'active')]
   if (categorySlug) {
     const all = await getCategories()
     const target = all.find((category) => category.slug === categorySlug)
@@ -166,7 +168,7 @@ async function loadCatalog(categorySlug: string | null, query: string | null, br
   const rows = await db
     .select(productColumns)
     .from(storeProducts)
-    .innerJoin(storeCategories, eq(storeCategories.id, storeProducts.categoryId))
+    .leftJoin(storeCategories, eq(storeCategories.id, storeProducts.categoryId))
     .leftJoin(storeBrands, eq(storeBrands.id, storeProducts.brandId))
     .leftJoin(storeLensShades, eq(storeLensShades.id, storeProducts.lensShadeId))
     .leftJoin(storeLensTypes, eq(storeLensTypes.id, storeProducts.lensTypeId))
@@ -183,13 +185,25 @@ export type CatalogProduct = Awaited<ReturnType<typeof loadCatalog>>[number]
 export type StorefrontBrand = Awaited<ReturnType<typeof getStorefrontBrands>>[number]
 
 async function loadHomeCatalog() {
-  const rows = await db
-    .select(productColumns)
-    .from(storeProducts)
-    .innerJoin(storeCategories, eq(storeCategories.id, storeProducts.categoryId))
-    .where(and(eq(storeProducts.status, 'active'), eq(storeCategories.isActive, true)))
-    .orderBy(desc(storeProducts.isFeatured), desc(storeProducts.createdAt))
-    .limit(12)
+  const loadProducts = (selection?: typeof storeProducts.isFeatured | typeof storeProducts.isNewArrival | typeof storeProducts.isOnSale) => {
+    const conditions = [eq(storeProducts.status, 'active')]
+    if (selection) conditions.push(eq(selection, true))
+    return db
+      .select(productColumns)
+      .from(storeProducts)
+      .leftJoin(storeCategories, eq(storeCategories.id, storeProducts.categoryId))
+      .where(and(...conditions))
+      .orderBy(desc(storeProducts.isFeatured), desc(storeProducts.isNewArrival), desc(storeProducts.isOnSale), desc(storeProducts.createdAt))
+      .limit(selection ? 4 : 12)
+  }
+  const [catalog, featured, arrivals, onSale] = await Promise.all([
+    loadProducts(),
+    loadProducts(storeProducts.isFeatured),
+    loadProducts(storeProducts.isNewArrival),
+    loadProducts(storeProducts.isOnSale),
+  ])
+  const uniqueProducts = new Map([...catalog, ...featured, ...arrivals, ...onSale].map((product) => [product.id, product]))
+  const rows = [...uniqueProducts.values()]
   const products = await enrich(rows)
   return products.map((product) => ({
     ...product,
@@ -209,11 +223,10 @@ async function loadStorefrontBrands() {
       name: storeBrands.name,
       slug: storeBrands.slug,
       logoUrl: storeBrands.logoUrl,
-      productCount: sql<number>`count(distinct case when ${storeProducts.status} = 'active' and ${storeCategories.isActive} then ${storeProducts.id} end)::int`,
+      productCount: sql<number>`count(distinct case when ${storeProducts.status} = 'active' then ${storeProducts.id} end)::int`,
     })
     .from(storeBrands)
     .leftJoin(storeProducts, eq(storeProducts.brandId, storeBrands.id))
-    .leftJoin(storeCategories, eq(storeCategories.id, storeProducts.categoryId))
     .where(eq(storeBrands.isActive, true))
     .groupBy(storeBrands.id, storeBrands.name, storeBrands.slug, storeBrands.logoUrl)
     .orderBy(asc(storeBrands.name))
@@ -234,8 +247,7 @@ async function loadStorefrontShades() {
     })
     .from(storeLensShades)
     .innerJoin(storeProducts, and(eq(storeProducts.lensShadeId, storeLensShades.id), eq(storeProducts.status, 'active')))
-    .innerJoin(storeCategories, eq(storeCategories.id, storeProducts.categoryId))
-    .where(and(eq(storeLensShades.isActive, true), eq(storeCategories.isActive, true)))
+    .where(eq(storeLensShades.isActive, true))
     .groupBy(storeLensShades.id, storeLensShades.name, storeLensShades.hex, storeLensShades.imageUrl)
     .orderBy(asc(storeLensShades.name))
 }
@@ -249,11 +261,10 @@ async function loadStorefrontLensTypes() {
     .select({
       id: storeLensTypes.id,
       name: storeLensTypes.name,
-      productCount: sql<number>`count(case when ${storeCategories.isActive} then ${storeProducts.id} end)::int`,
+      productCount: sql<number>`count(${storeProducts.id})::int`,
     })
     .from(storeLensTypes)
     .leftJoin(storeProducts, and(eq(storeProducts.lensTypeId, storeLensTypes.id), eq(storeProducts.status, 'active')))
-    .leftJoin(storeCategories, eq(storeCategories.id, storeProducts.categoryId))
     .where(eq(storeLensTypes.isActive, true))
     .groupBy(storeLensTypes.id, storeLensTypes.name)
     .orderBy(asc(storeLensTypes.name))
@@ -275,8 +286,7 @@ async function loadStorefrontReviews() {
     })
     .from(storeProductReviews)
     .innerJoin(storeProducts, eq(storeProducts.id, storeProductReviews.productId))
-    .innerJoin(storeCategories, eq(storeCategories.id, storeProducts.categoryId))
-    .where(and(eq(storeProductReviews.isApproved, true), eq(storeProducts.status, 'active'), eq(storeCategories.isActive, true)))
+    .where(and(eq(storeProductReviews.isApproved, true), eq(storeProducts.status, 'active')))
     .orderBy(desc(storeProductReviews.createdAt))
     .limit(8)
 }
@@ -289,7 +299,7 @@ async function loadProduct(slug: string) {
   const [row] = await db
     .select(productColumns)
     .from(storeProducts)
-    .innerJoin(storeCategories, eq(storeCategories.id, storeProducts.categoryId))
+    .leftJoin(storeCategories, eq(storeCategories.id, storeProducts.categoryId))
     .where(and(eq(storeProducts.slug, slug), eq(storeProducts.status, 'active')))
     .limit(1)
   if (!row) return null
@@ -323,7 +333,7 @@ async function activeByIds(ids: string[]) {
   const rows = await db
     .select(productColumns)
     .from(storeProducts)
-    .innerJoin(storeCategories, eq(storeCategories.id, storeProducts.categoryId))
+    .leftJoin(storeCategories, eq(storeCategories.id, storeProducts.categoryId))
     .where(and(inArray(storeProducts.id, ids), eq(storeProducts.status, 'active')))
   const order = new Map(ids.map((id, index) => [id, index]))
   rows.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))
@@ -332,7 +342,7 @@ async function activeByIds(ids: string[]) {
 
 const activeOrders = ne(storeOrders.status, 'cancelled')
 
-async function idsFor(source: (typeof SECTION_SOURCES)[number], product: { id: string; categoryId: string }, limit: number) {
+async function idsFor(source: (typeof SECTION_SOURCES)[number], product: { id: string; categoryId: string | null }, limit: number) {
   const overfetch = limit + 8
   switch (source) {
     case 'manual': {
@@ -340,6 +350,7 @@ async function idsFor(source: (typeof SECTION_SOURCES)[number], product: { id: s
       return rows.map((row) => row.id)
     }
     case 'same_category': {
+      if (!product.categoryId) return []
       const rows = await db.select({ id: storeProducts.id }).from(storeProducts).where(and(eq(storeProducts.categoryId, product.categoryId), eq(storeProducts.status, 'active'), ne(storeProducts.id, product.id))).orderBy(desc(storeProducts.createdAt)).limit(overfetch)
       return rows.map((row) => row.id)
     }
@@ -389,7 +400,7 @@ async function idsFor(source: (typeof SECTION_SOURCES)[number], product: { id: s
 }
 
 /** Resolves every enabled product-page section (configured in admin) into product lists. */
-export function getProductSections(product: { id: string; categoryId: string }) {
+export function getProductSections(product: { id: string; categoryId: string | null }) {
   return cached(CATALOG_NAMESPACE, `sections:${product.id}`, 300, async () => {
     const settings = await getProductPageSettings()
     const sections = []

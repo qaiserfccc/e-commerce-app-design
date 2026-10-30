@@ -123,7 +123,7 @@ export async function createCategory(input: CategoryInput) {
     bust()
     return { id: row.id }
   } catch (error) {
-    if (String((error as { code?: string }).code) === '23505') throw new Error('That slug is already used by another category.')
+    if (String((error as { code?: string }).code) === '23505') throw new Error('That category name or slug is already in use.')
     throw error
   }
 }
@@ -237,8 +237,8 @@ function parseProduct(input: AdminProductInput) {
   if (!slugPattern.test(slug) || slug.length > 120) throw new Error('Slug may use lowercase letters, numbers and hyphens only.')
   const status = typeof input.status === 'string' ? input.status : 'active'
   if (!(productStatuses as readonly string[]).includes(status)) throw new Error('Invalid status.')
-  if (!Array.isArray(input.categoryIds) || input.categoryIds.length === 0 || input.categoryIds.length > 30) {
-    throw new Error('Select at least one category.')
+  if (!Array.isArray(input.categoryIds) || input.categoryIds.length > 30) {
+    throw new Error('Choose no more than 30 categories.')
   }
   const categoryIds = [...new Set(input.categoryIds.map((value) => uuid(value, 'Category')))]
   const brandId = input.brandId ? uuid(input.brandId, 'Brand') : null
@@ -256,7 +256,7 @@ function parseProduct(input: AdminProductInput) {
     name,
     slug,
     categoryIds,
-    categoryId: categoryIds[0],
+    categoryId: categoryIds[0] ?? null,
     brandId,
     lensShadeId,
     lensTypeId,
@@ -280,7 +280,7 @@ function parseProduct(input: AdminProductInput) {
     features,
     specs,
     usageInstructions: text(input.usageInstructions, 4000, 'Usage instructions'),
-    isFeatured: input.isFeatured === true,
+    ...(input.isFeatured === undefined ? {} : { isFeatured: input.isFeatured === true }),
     seoTitle: text(input.seoTitle, 160, 'SEO title'),
     seoDescription: text(input.seoDescription, 320, 'SEO description'),
   }
@@ -311,7 +311,7 @@ export async function getAdminProducts() {
   const rows = await db
     .select({ product: storeProducts, categoryName: storeCategories.name })
     .from(storeProducts)
-    .innerJoin(storeCategories, eq(storeCategories.id, storeProducts.categoryId))
+    .leftJoin(storeCategories, eq(storeCategories.id, storeProducts.categoryId))
     .orderBy(desc(storeProducts.createdAt))
   const relations = await db.select().from(storeProductRelations).orderBy(asc(storeProductRelations.sortOrder))
   const categories = await db.select().from(storeProductCategories)
@@ -321,12 +321,91 @@ export async function getAdminProducts() {
   for (const relation of categories) categoriesBy.set(relation.productId, [...(categoriesBy.get(relation.productId) ?? []), relation.categoryId])
   return rows.map(({ product, categoryName }) => ({
     ...product,
-    category: categoryName,
-    categoryIds: categoriesBy.get(product.id) ?? [product.categoryId],
+    category: categoryName ?? '',
+    categoryIds: categoriesBy.get(product.id) ?? (product.categoryId ? [product.categoryId] : []),
     relatedProductIds: relatedBy.get(product.id) ?? [],
     createdAt: product.createdAt.toISOString(),
     updatedAt: product.updatedAt.toISOString(),
   }))
+}
+
+export type MerchandisingKind = 'featured' | 'new_arrival' | 'on_sale'
+
+export async function getMerchandisingProducts() {
+  await requireAdminSession('staff')
+  const products = await db.select({
+    id: storeProducts.id,
+    name: storeProducts.name,
+    slug: storeProducts.slug,
+    sku: storeProducts.sku,
+    price: storeProducts.price,
+    compareAtPrice: storeProducts.compareAtPrice,
+    currency: storeProducts.currency,
+    status: storeProducts.status,
+    isFeatured: storeProducts.isFeatured,
+    isNewArrival: storeProducts.isNewArrival,
+    isOnSale: storeProducts.isOnSale,
+  }).from(storeProducts).orderBy(asc(storeProducts.name))
+  const variants = products.length
+    ? await db.select({
+      productId: storeProductVariants.productId,
+      effectivePrice: sql<string>`min(${storeProductVariants.price})::text`,
+    }).from(storeProductVariants)
+      .where(and(inArray(storeProductVariants.productId, products.map((product) => product.id)), eq(storeProductVariants.isActive, true)))
+      .groupBy(storeProductVariants.productId)
+    : []
+  const variantPrices = new Map(variants.map((variant) => [variant.productId, variant.effectivePrice]))
+  return products.map((product) => ({
+    ...product,
+    effectivePrice: variantPrices.get(product.id) ?? product.price,
+  }))
+}
+
+export async function setProductMerchandising(ids: string[], kind: MerchandisingKind, selected: boolean) {
+  await requireAdminSession('admin')
+  if (typeof selected !== 'boolean') throw new Error('Choose whether the products should be included.')
+  const flagByKind = {
+    featured: 'isFeatured',
+    new_arrival: 'isNewArrival',
+    on_sale: 'isOnSale',
+  } as const
+  if (!Object.hasOwn(flagByKind, kind)) throw new Error('Merchandising section is invalid.')
+  const field = flagByKind[kind]
+  if (!Array.isArray(ids) || ids.length === 0 || ids.length > 100) {
+    throw new Error('Select between 1 and 100 products.')
+  }
+  const productIds = [...new Set(ids.map((id) => uuid(id, 'Product')))]
+  if (kind === 'on_sale' && selected) {
+    const products = await db.select({
+      id: storeProducts.id,
+      name: storeProducts.name,
+      price: storeProducts.price,
+      compareAtPrice: storeProducts.compareAtPrice,
+    }).from(storeProducts).where(inArray(storeProducts.id, productIds))
+    if (products.length !== productIds.length) throw new Error('One or more selected products no longer exist.')
+    const variants = await db.select({
+      productId: storeProductVariants.productId,
+      effectivePrice: sql<string>`min(${storeProductVariants.price})::text`,
+    }).from(storeProductVariants)
+      .where(and(inArray(storeProductVariants.productId, productIds), eq(storeProductVariants.isActive, true)))
+      .groupBy(storeProductVariants.productId)
+    const variantPrices = new Map(variants.map((variant) => [variant.productId, variant.effectivePrice]))
+    const invalidProduct = products.find((product) => !product.compareAtPrice || Number(product.compareAtPrice) <= Number(variantPrices.get(product.id) ?? product.price))
+    if (invalidProduct) throw new Error(`${invalidProduct.name} needs a compare-at price higher than its current price before it can be marked on sale.`)
+  }
+
+  await db.transaction(async (tx) => {
+    const values = { [field]: selected, updatedAt: new Date() }
+    const updated = await tx.update(storeProducts).set(values).where(inArray(storeProducts.id, productIds)).returning({ id: storeProducts.id })
+    if (updated.length !== productIds.length) throw new Error('One or more selected products no longer exist.')
+    await tx.insert(storeActivityEvents).values(productIds.map((id) => ({
+      entityType: 'product',
+      entityId: id,
+      eventType: 'merchandising_updated',
+      payload: { section: kind, selected },
+    })))
+  })
+  bust()
 }
 
 export async function getAdminProduct(id: string) {
@@ -349,7 +428,9 @@ export async function createProduct(input: AdminProductInput) {
         brand: brand?.name ?? null,
         stockQuantity: 0,
       }).returning({ id: storeProducts.id })
-      await tx.insert(storeProductCategories).values(categoryIds.map((categoryId) => ({ productId: created.id, categoryId })))
+      if (categoryIds.length) {
+        await tx.insert(storeProductCategories).values(categoryIds.map((categoryId) => ({ productId: created.id, categoryId })))
+      }
       return [created]
     })
     await log('product', row.id, 'created', { name: values.name })
@@ -368,7 +449,23 @@ export async function updateProduct(id: string, input: AdminProductInput) {
   const values = parseProduct(input)
   try {
     await validateProductReferences(values.categoryIds, values.brandId, values.lensShadeId, values.lensTypeId)
+    const [currentProduct] = await db.select({
+      isOnSale: storeProducts.isOnSale,
+      price: storeProducts.price,
+    }).from(storeProducts).where(eq(storeProducts.id, id)).limit(1)
+    if (!currentProduct) throw new Error('Product not found.')
     const [hasVariants] = await db.select({ id: storeProductVariants.id }).from(storeProductVariants).where(eq(storeProductVariants.productId, id)).limit(1)
+    if (currentProduct.isOnSale) {
+      const [variantPrice] = hasVariants ? await db.select({
+        price: sql<string>`min(${storeProductVariants.price})::text`,
+      }).from(storeProductVariants)
+        .where(and(eq(storeProductVariants.productId, id), eq(storeProductVariants.isActive, true)))
+        .groupBy(storeProductVariants.productId) : []
+      const currentPrice = hasVariants ? variantPrice?.price ?? currentProduct.price : values.price
+      if (!values.compareAtPrice || Number(values.compareAtPrice) <= Number(currentPrice)) {
+        throw new Error('This product is featured in On sale. Keep its compare-at price above its current price, or remove it from On sale before changing the price.')
+      }
+    }
     const [brand] = values.brandId ? await db.select({ name: storeBrands.name }).from(storeBrands).where(eq(storeBrands.id, values.brandId)) : []
     const { categoryIds, ...productValues } = values
     const [row] = await db.transaction(async (tx) => {
@@ -381,7 +478,9 @@ export async function updateProduct(id: string, input: AdminProductInput) {
         .returning({ id: storeProducts.id })
       if (!updated) throw new Error('Product not found.')
       await tx.delete(storeProductCategories).where(eq(storeProductCategories.productId, id))
-      await tx.insert(storeProductCategories).values(categoryIds.map((categoryId) => ({ productId: id, categoryId })))
+      if (categoryIds.length) {
+        await tx.insert(storeProductCategories).values(categoryIds.map((categoryId) => ({ productId: id, categoryId })))
+      }
       return [updated]
     })
     await log('product', id, 'updated', { name: values.name })

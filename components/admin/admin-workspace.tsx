@@ -3,7 +3,7 @@
 import { useDeferredValue, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import {
   Activity, ArrowDown, ArrowUp, BarChart3, ClipboardList, LayoutDashboard, LoaderCircle,
-  AlertTriangle, LogOut, Package, Plus, RefreshCw, Search, ShoppingBag, ShieldCheck, Tags, Truck, Users, X,
+  AlertTriangle, BadgePercent, Images, LogOut, Package, Plus, RefreshCw, Search, ShoppingBag, ShieldCheck, Sparkles, Star, Tags, Truck, Users, X,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -41,6 +41,7 @@ import { CatalogSyncManager } from '@/components/admin/catalog-sync-manager'
 import { ProjectKanban } from '@/components/admin/project-kanban'
 import { DeliveryManager } from '@/components/admin/delivery-manager'
 import { ProductVariantManager } from '@/components/admin/product-variant-manager'
+import { MerchandisingManager } from '@/components/admin/merchandising-manager'
 import { CrmWorkspace } from '@/components/admin/crm-workspace'
 import { DataTable, type DataTableBulkAction, type DataTableColumn } from '@/components/admin/data-table'
 import { Pagination } from '@/components/ui/pagination'
@@ -59,12 +60,16 @@ const sections: Array<{ id: Section; label: string; icon: typeof LayoutDashboard
   { id: 'catalog-sync', label: 'Catalog sync', icon: RefreshCw },
   { id: 'error-logs', label: 'Error logs', icon: AlertTriangle },
   { id: 'products', label: 'Products', icon: Package },
+  { id: 'featured', label: 'Featured', icon: Star },
+  { id: 'new-arrivals', label: 'New arrivals', icon: Sparkles },
+  { id: 'on-sale', label: 'On sale', icon: BadgePercent },
   { id: 'catalog-settings', label: 'Reviews & product page', icon: ClipboardList },
   { id: 'orders', label: 'Orders', icon: ShoppingBag },
   { id: 'customers', label: 'Customers', icon: Users },
   { id: 'crm', label: 'CRM', icon: Users },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   { id: 'content', label: 'Storefront content', icon: Tags },
+  { id: 'hero-slider', label: 'Hero slider', icon: Images },
   { id: 'delivery', label: 'Delivery', icon: Truck },
   { id: 'system-users', label: 'System users', icon: Users },
   { id: 'project-plan', label: 'Project Kanban', icon: ClipboardList },
@@ -1114,11 +1119,15 @@ export function AdminWorkspace({ section = 'overview' }: { section?: AdminSectio
     'error-logs': <ErrorLogManager />,
     'catalog-settings': <CatalogSettings canEdit={session.role === 'owner' || session.role === 'admin'} />,
     products: <ProductWorkspace canEdit={session.role === 'owner' || session.role === 'admin'} />,
+    featured: <MerchandisingManager kind="featured" canEdit={session.role === 'owner' || session.role === 'admin'} />,
+    'new-arrivals': <MerchandisingManager kind="new_arrival" canEdit={session.role === 'owner' || session.role === 'admin'} />,
+    'on-sale': <MerchandisingManager kind="on_sale" canEdit={session.role === 'owner' || session.role === 'admin'} />,
     orders: <OrdersWorkspace canEdit={session.role === 'owner' || session.role === 'admin'} />,
     customers: <CustomersWorkspace />,
     crm: <CrmWorkspace canEdit={session.role === 'owner' || session.role === 'admin'} />,
     analytics: <AnalyticsWorkspace />,
     content: <ContentManager canEdit={session.role === 'owner' || session.role === 'admin'} />,
+    'hero-slider': <ContentManager heroOnly canEdit={session.role === 'owner' || session.role === 'admin'} />,
     delivery: <DeliveryManager canEdit={session.role === 'owner' || session.role === 'admin'} />,
     'system-users': session.role === 'owner' && session.userId
       ? <SystemUsersWorkspace signedInUserId={session.userId} signedInEmail={session.email ?? ''} />

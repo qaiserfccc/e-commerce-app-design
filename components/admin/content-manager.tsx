@@ -14,7 +14,7 @@ const placementLabels: Record<string, string> = {
   service: 'Service images', new_arrival: 'New arrivals banner', feature: 'Store promises', why_choose: 'Why choose us',
 }
 const inputClass = 'w-full rounded-lg border border-[#d8d6cc] bg-white px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-[#1c1c1a]'
-function BannerEditor({ banner, canEdit, onChanged, onError }: { banner?: BannerRow; canEdit: boolean; onChanged: () => Promise<void>; onError: (message: string) => void }) {
+function BannerEditor({ banner, canEdit, onChanged, onError, lockToHero = false }: { banner?: BannerRow; canEdit: boolean; onChanged: () => Promise<void>; onError: (message: string) => void; lockToHero?: boolean }) {
   const [placement, setPlacement] = useState(banner?.placement ?? 'hero')
   const [title, setTitle] = useState(banner?.title ?? '')
   const [body, setBody] = useState(banner?.body ?? '')
@@ -49,7 +49,7 @@ function BannerEditor({ banner, canEdit, onChanged, onError }: { banner?: Banner
     setBusy(true)
     onError('')
     try {
-      await saveBanner({ id: banner?.id, placement, title, body, href, imageUrl, blobPathname, sortOrder: Number(sortOrder), isActive })
+      await saveBanner({ id: banner?.id, placement: lockToHero ? 'hero' : placement, title, body, href, imageUrl, blobPathname, sortOrder: Number(sortOrder), isActive })
       if (!banner) { setTitle(''); setBody(''); setHref(''); setImageUrl(''); setBlobPathname('') }
       await onChanged()
     } catch (error) {
@@ -78,7 +78,9 @@ function BannerEditor({ banner, canEdit, onChanged, onError }: { banner?: Banner
         {imageUrl ? <img src={imageUrl} alt="" className="size-full object-contain" /> : 'No image'}
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
-        <label className="text-xs">Placement<select disabled={!canEdit} value={placement} onChange={(e) => setPlacement(e.target.value as typeof placement)} className={inputClass}>{BANNER_PLACEMENTS.map((value) => <option key={value} value={value}>{placementLabels[value]}</option>)}</select></label>
+        {lockToHero
+          ? <p className="self-center text-xs font-medium text-[#15384d]">Hero slider</p>
+          : <label className="text-xs">Placement<select disabled={!canEdit} value={placement} onChange={(e) => setPlacement(e.target.value as typeof placement)} className={inputClass}>{BANNER_PLACEMENTS.map((value) => <option key={value} value={value}>{placementLabels[value]}</option>)}</select></label>}
         <label className="text-xs">Title / alt text<input disabled={!canEdit} value={title} maxLength={200} onChange={(e) => setTitle(e.target.value)} className={inputClass} /></label>
         <label className="text-xs">Body<input disabled={!canEdit} value={body} maxLength={500} onChange={(e) => setBody(e.target.value)} className={inputClass} /></label>
         <label className="text-xs">Link (/path or https)<input disabled={!canEdit} value={href} maxLength={500} onChange={(e) => setHref(e.target.value)} className={inputClass} /></label>
@@ -177,10 +179,11 @@ function SettingEditor({ name, value, canEdit, onChanged, onError }: { name: Set
   )
 }
 
-export function ContentManager({ canEdit }: { canEdit: boolean }) {
+export function ContentManager({ canEdit, heroOnly = false }: { canEdit: boolean; heroOnly?: boolean }) {
   const [content, setContent] = useState<Content | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const banners = content?.banners.filter((banner) => !heroOnly || banner.placement === 'hero') ?? []
 
   const load = useCallback(async () => {
     try {
@@ -197,8 +200,8 @@ export function ContentManager({ canEdit }: { canEdit: boolean }) {
   return (
     <section className="min-w-0 flex-1 space-y-8" aria-labelledby="content-heading">
       <div>
-        <h1 id="content-heading" className="text-2xl font-semibold">Storefront content</h1>
-        <p className="mt-1 text-sm text-[#68675f]">Everything on the homepage, header and footer is read from the database. Uploaded images are stored in the ISK media library; changes appear within minutes after cache refresh.</p>
+        <h1 id="content-heading" className="text-2xl font-semibold">{heroOnly ? 'Hero slider' : 'Storefront content'}</h1>
+        <p className="mt-1 text-sm text-[#68675f]">{heroOnly ? 'Add, reorder, edit, or deactivate the slides shown in the homepage hero.' : 'Everything on the homepage, header and footer is read from the database. Uploaded images are stored in the ISK media library; changes appear within minutes after cache refresh.'}</p>
       </div>
       {!canEdit && <p role="status" className="rounded-lg bg-[#f1efe6] p-3 text-sm">Staff accounts can view content but not change it.</p>}
       {error && <p role="alert" className="rounded-lg bg-[#fdecec] p-3 text-sm text-[#9b2c2c]">{error}</p>}
@@ -206,20 +209,20 @@ export function ContentManager({ canEdit }: { canEdit: boolean }) {
       {content && (
         <>
           <div className="space-y-3">
-            <h2 className="text-lg font-medium">Banners & images</h2>
-            {canEdit && <BannerEditor key={`new-${content.banners.length}`} canEdit onChanged={load} onError={setError} />}
-            {content.banners.length === 0 && <p className="text-sm text-[#68675f]">No banners yet. Homepage sections stay hidden until content exists.</p>}
-            {content.banners.map((banner) => <BannerEditor key={`${banner.id}-${banner.updatedAt}`} banner={banner} canEdit={canEdit} onChanged={load} onError={setError} />)}
+            {!heroOnly && <h2 className="text-lg font-medium">Banners & images</h2>}
+            {canEdit && <BannerEditor key={`new-${banners.length}`} canEdit lockToHero={heroOnly} onChanged={load} onError={setError} />}
+            {banners.length === 0 && <p className="text-sm text-[#68675f]">{heroOnly ? 'No hero slides yet. Add one above to create the homepage slider.' : 'No banners yet. Homepage sections stay hidden until content exists.'}</p>}
+            {banners.map((banner) => <BannerEditor key={`${banner.id}-${banner.updatedAt}`} banner={banner} canEdit lockToHero={heroOnly} onChanged={load} onError={setError} />)}
           </div>
-          <div className="space-y-3">
+          {!heroOnly && <div className="space-y-3">
             <h2 className="text-lg font-medium">Customer reviews</h2>
             {canEdit && <ReviewEditor key={`new-${content.reviews.length}`} canEdit onChanged={load} onError={setError} />}
             {content.reviews.map((review) => <ReviewEditor key={`${review.id}-${review.updatedAt}`} review={review} canEdit={canEdit} onChanged={load} onError={setError} />)}
-          </div>
-          <div className="space-y-3">
+          </div>}
+          {!heroOnly && <div className="space-y-3">
             <h2 className="text-lg font-medium">Text & settings (JSON)</h2>
             {SETTING_KEYS.map((key) => <SettingEditor key={`${key}-${JSON.stringify(content.settings[key])}`} name={key} value={content.settings[key]} canEdit={canEdit} onChanged={load} onError={setError} />)}
-          </div>
+          </div>}
         </>
       )}
     </section>

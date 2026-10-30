@@ -8,13 +8,14 @@ import { useStorefrontCart } from '@/lib/hooks/use-storefront-cart'
 import type { Product } from '@/lib/hooks/use-storefront-data'
 import { formatPrice, isAvailable, lowestPrice } from '@/lib/store-config'
 
-type Filter = 'catalog' | 'new' | 'reduced'
+type Filter = 'catalog' | 'featured' | 'new' | 'reduced'
 
 export function TrendingProducts({ products }: { products: Product[] }) {
   const [filter, setFilter] = useState<Filter>('catalog')
   const filtered = useMemo(() => {
-    if (filter === 'reduced') return products.filter((product) => Number(product.compareAtPrice) > Number(product.price))
-    if (filter === 'new') return [...products].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+    if (filter === 'featured') return products.filter((product) => product.isFeatured)
+    if (filter === 'reduced') return products.filter((product) => product.isOnSale)
+    if (filter === 'new') return products.filter((product) => product.isNewArrival)
     return products
   }, [filter, products])
 
@@ -23,6 +24,7 @@ export function TrendingProducts({ products }: { products: Product[] }) {
       <div className="mb-7 flex flex-wrap gap-2 border-b border-[#cfe2eb]" role="tablist" aria-label="Filter products">
         {([
           ['catalog', 'Catalog'],
+          ['featured', 'Featured'],
           ['new', 'New arrivals'],
           ['reduced', 'On sale'],
         ] as const).map(([value, label]) => (

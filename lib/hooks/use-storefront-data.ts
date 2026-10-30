@@ -15,8 +15,8 @@ export interface Product {
   slug: string
   description: string | null
   shortDescription?: string | null
-  category: string
-  categoryId?: string
+  category: string | null
+  categoryId?: string | null
   categoryIds?: string[]
   categories?: Array<{ id: string; name: string }>
   categoryPath?: string
@@ -48,6 +48,8 @@ export interface Product {
   specs?: { label: string; value: string }[]
   usageInstructions?: string | null
   isFeatured?: boolean
+  isNewArrival?: boolean
+  isOnSale?: boolean
   ratingAvg?: number | null
   ratingCount?: number
   createdAt: string

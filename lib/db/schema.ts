@@ -21,6 +21,7 @@ export const storeCategories = pgTable('store_categories', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   sourceCategoryUnique: uniqueIndex('store_categories_source_category_id_unique').on(table.sourceCategoryId),
+  nameUnique: uniqueIndex('store_categories_lower_name_unique').on(sql`lower(btrim(${table.name}))`),
 }))
 
 export const storeBrands = pgTable('store_brands', {
@@ -67,7 +68,7 @@ export const storeProducts = pgTable('store_products', {
   name: text('name').notNull(),
   slug: text('slug').notNull().unique(),
   description: text('description'),
-  categoryId: uuid('category_id').notNull().references(() => storeCategories.id, { onDelete: 'restrict' }),
+  categoryId: uuid('category_id').references(() => storeCategories.id, { onDelete: 'set null' }),
   brandId: uuid('brand_id').references(() => storeBrands.id, { onDelete: 'set null' }),
   lensShadeId: uuid('lens_shade_id').references(() => storeLensShades.id, { onDelete: 'set null' }),
   lensTypeId: uuid('lens_type_id').references(() => storeLensTypes.id, { onDelete: 'set null' }),
@@ -100,6 +101,8 @@ export const storeProducts = pgTable('store_products', {
   specs: jsonb('specs').$type<{ label: string; value: string }[]>().notNull().default([]),
   usageInstructions: text('usage_instructions'),
   isFeatured: boolean('is_featured').notNull().default(false),
+  isNewArrival: boolean('is_new_arrival').notNull().default(false),
+  isOnSale: boolean('is_on_sale').notNull().default(false),
   seoTitle: text('seo_title'),
   seoDescription: text('seo_description'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

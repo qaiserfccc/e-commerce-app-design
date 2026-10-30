@@ -95,16 +95,17 @@ export function ProductEditor({ product, onSaved, onCancel }: { product?: AdminP
       </div>
       {error && <div className="mb-4"><Alert>{error}</Alert></div>}
       {variantManaged && <div className="mb-4"><Alert tone="info">Price and stock are calculated from active lens options.</Alert></div>}
-      {categories.length === 0 && <div className="mb-4"><Alert>Create a category first — every product must belong to one.</Alert></div>}
+      {categories.length === 0 && <div className="mb-4"><Alert tone="info">Products can be saved without categories. You can attach categories later.</Alert></div>}
 
       <fieldset className="grid gap-4 sm:grid-cols-2">
         <legend className="mb-3 text-sm font-semibold">Basics</legend>
         <Field label="Name" required><input name="name" required maxLength={200} defaultValue={product?.name} className={inputClass} /></Field>
         <Field label="Slug (blank = from name)"><input name="slug" maxLength={120} pattern="[a-z0-9]+(-[a-z0-9]+)*" defaultValue={product?.slug} className={inputClass} /></Field>
-        <Field label="Categories" required>
-          <select name="categoryIds" required multiple defaultValue={product?.categoryIds ?? (product?.categoryId ? [product.categoryId] : [])} className={`${inputClass} min-h-32`}>
+        <Field label="Categories">
+          <select name="categoryIds" multiple aria-describedby="product-category-help" defaultValue={product?.categoryIds ?? (product?.categoryId ? [product.categoryId] : [])} className={`${inputClass} min-h-32`}>
             {categories.map((row) => <option key={row.id} value={row.id}>{'\u2003'.repeat(row.depth)}{row.name}</option>)}
           </select>
+          <span id="product-category-help" className="mt-1 block text-xs text-[#526b7b]">Optional. Select multiple categories, or leave empty until you are ready to assign them.</span>
         </Field>
         <Field label="Brand">
           <select name="brandId" defaultValue={product?.brandId ?? ''} className={inputClass}>
@@ -125,7 +126,6 @@ export function ProductEditor({ product, onSaved, onCancel }: { product?: AdminP
         </div>
         <div className="sm:col-span-2"><Field label="Short description"><input name="shortDescription" maxLength={400} defaultValue={product?.shortDescription ?? ''} className={inputClass} /></Field></div>
         <div className="sm:col-span-2"><Field label="Description"><textarea name="description" rows={5} maxLength={10000} defaultValue={product?.description ?? ''} className={inputClass} /></Field></div>
-        <label className="flex items-center gap-2 text-sm"><input name="isFeatured" type="checkbox" defaultChecked={product?.isFeatured} /> Featured product</label>
         <label className="flex items-start gap-2 text-sm sm:col-span-2">
           <input name="fdaApproved" type="checkbox" defaultChecked={product?.fdaApproved ?? false} className="mt-0.5" />
           <span>

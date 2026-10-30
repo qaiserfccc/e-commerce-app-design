@@ -150,6 +150,26 @@ async function refreshProductVariantSummary(tx: Parameters<Parameters<typeof db.
   }
 }
 
+async function ensureOnSaleDiscount(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  product: { id: string; isOnSale: boolean; compareAtPrice: string | null },
+) {
+  if (!product.isOnSale) return
+  const [variant] = await tx
+    .select({ price: sql<string>`min(${storeProductVariants.price})::text` })
+    .from(storeProductVariants)
+    .where(and(eq(storeProductVariants.productId, product.id), eq(storeProductVariants.isActive, true)))
+    .groupBy(storeProductVariants.productId)
+  const [current] = await tx
+    .select({ price: storeProducts.price })
+    .from(storeProducts)
+    .where(eq(storeProducts.id, product.id))
+  const effectivePrice = variant?.price ?? current?.price
+  if (!effectivePrice || !product.compareAtPrice || Number(product.compareAtPrice) <= Number(effectivePrice)) {
+    throw new Error('This product is in On sale. Keep its compare-at price above its current price, or remove it from On sale first.')
+  }
+}
+
 function boundedLimit(limit: number, fallback: number, maximum: number) {
   if (!Number.isInteger(limit) || limit < 1) return fallback
   return Math.min(limit, maximum)
@@ -198,6 +218,7 @@ async function createProductVariantImpl(productId: string, data: ProductVariantI
     if (values.currency !== product.currency) throw new Error('Variant currency must match the product currency.')
     const [variant] = await tx.insert(storeProductVariants).values({ ...values, productId }).returning()
     await refreshProductVariantSummary(tx, productId)
+    await ensureOnSaleDiscount(tx, product)
     await tx.insert(storeActivityEvents).values({
       entityType: 'product_variant',
       entityId: variant.id,
@@ -225,6 +246,7 @@ async function updateProductVariantImpl(productId: string, variantId: string, da
       .returning()
     if (!variant) throw new Error('Product variant not found.')
     await refreshProductVariantSummary(tx, productId)
+    await ensureOnSaleDiscount(tx, product)
     await tx.insert(storeActivityEvents).values({
       entityType: 'product_variant',
       entityId: variant.id,
@@ -240,7 +262,11 @@ async function archiveProductVariantImpl(productId: string, variantId: string) {
   validateUuid(productId, 'Product ID')
   validateUuid(variantId, 'Variant ID')
   return db.transaction(async (tx) => {
-    const [product] = await tx.select({ id: storeProducts.id }).from(storeProducts).where(eq(storeProducts.id, productId)).limit(1).for('update')
+    const [product] = await tx.select({
+      id: storeProducts.id,
+      isOnSale: storeProducts.isOnSale,
+      compareAtPrice: storeProducts.compareAtPrice,
+    }).from(storeProducts).where(eq(storeProducts.id, productId)).limit(1).for('update')
     if (!product) throw new Error('Product not found.')
     const [variant] = await tx
       .update(storeProductVariants)
@@ -249,6 +275,7 @@ async function archiveProductVariantImpl(productId: string, variantId: string) {
       .returning()
     if (!variant) throw new Error('Product variant not found.')
     await refreshProductVariantSummary(tx, productId)
+    await ensureOnSaleDiscount(tx, product)
     await tx.insert(storeActivityEvents).values({
       entityType: 'product_variant',
       entityId: variant.id,
