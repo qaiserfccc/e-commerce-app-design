@@ -141,10 +141,11 @@ export function StoreHeader({ chrome }: { chrome: SiteChrome }) {
           <Menu size={22} aria-hidden="true" />
         </button>
         <Link href="/" className="flex min-w-0 items-center gap-1.5 sm:shrink-0 sm:gap-2.5" aria-label={`${STORE_NAME} home`}>
-          <span className="relative grid size-7 shrink-0 place-items-center rounded-full border-4 border-[#201b35] bg-[#d45782] shadow-[inset_0_0_0_3px_#fffaf8] sm:size-10 sm:border-[5px] sm:shadow-[inset_0_0_0_4px_#fffaf8]">
-            <span className="size-2 rounded-full bg-[#201b35]" />
+          <img src="/icon.svg" alt="" aria-hidden="true" className="size-8 shrink-0 sm:size-10" />
+          <span className="flex items-baseline gap-1 truncate leading-none">
+            <span className="text-base font-extrabold tracking-[-0.055em] text-[#15384d] sm:text-2xl">ISK</span>
+            <span className="isk-reference-brand truncate text-base font-semibold sm:text-2xl"><em>Lenses</em></span>
           </span>
-          <span className="isk-reference-brand truncate text-base font-extrabold leading-none sm:text-2xl">ISK <em>Lenses</em></span>
         </Link>
         <div className={`mx-8 max-w-xl flex-1 ${isHome ? 'hidden' : 'hidden lg:block'}`}>{searchForm}</div>
         {isHome && (
@@ -188,7 +189,10 @@ export function StoreHeader({ chrome }: { chrome: SiteChrome }) {
           <button type="button" aria-label="Close menu" tabIndex={-1} className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
           <div id="mobile-store-menu" ref={mobileMenuRef} className="absolute inset-y-0 left-0 flex h-[100dvh] w-[min(88vw,24rem)] max-w-[calc(100vw-1rem)] flex-col bg-[#fffaf8] shadow-2xl">
             <div className="flex h-16 items-center justify-between bg-[#201b35] px-4 text-white">
-              <span className="isk-reference-brand isk-reference-brand-on-dark text-lg font-bold text-white">ISK <em>Lenses</em></span>
+              <Link href="/" className="flex items-center gap-2" aria-label={`${STORE_NAME} home`}>
+                <img src="/icon.svg" alt="" aria-hidden="true" className="size-9" />
+                <span className="flex items-baseline gap-1 text-lg font-bold text-white">ISK <span className="isk-reference-brand-on-dark font-serif font-normal italic text-[#b8e8f5]">Lenses</span></span>
+              </Link>
               <button type="button" aria-label="Close menu" onClick={() => setMobileOpen(false)} className="grid size-11 place-items-center"><X size={22} /></button>
             </div>
             <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-2 text-sm font-semibold">
