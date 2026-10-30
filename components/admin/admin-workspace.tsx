@@ -7,7 +7,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useSWRConfig } from 'swr'
+import useSWR, { useSWRConfig } from 'swr'
 import {
   createSystemUser,
   deleteProductAsset,
@@ -31,7 +31,7 @@ import {
   type AdminOrder,
   type AdminProduct,
 } from '@/lib/hooks/use-admin-data'
-import { deleteProduct } from '@/app/actions/catalog-admin'
+import { addProductsToCategory, deleteProduct, getAdminCategories, setProductMerchandising } from '@/app/actions/catalog-admin'
 import { CategoryManager } from '@/components/admin/category-manager'
 import { CatalogSettings } from '@/components/admin/catalog-settings'
 import { ProductEditor } from '@/components/admin/product-editor'
@@ -291,6 +291,7 @@ const secondaryButton = 'rounded-full border border-[#1c1c1a]/15 bg-white px-4 p
 function ProductWorkspace({ canEdit }: { canEdit: boolean }) {
   const { products, isLoading, isError, error, mutate } = useAdminProducts()
   const { mutate: globalMutate } = useSWRConfig()
+  const { data: categories = [] } = useSWR(canEdit ? 'admin-product-categories' : null, () => getAdminCategories())
   const [editing, setEditing] = useState<AdminProduct | undefined>()
   const [creating, setCreating] = useState(false)
   const [query, setQuery] = useState('')
@@ -298,15 +299,23 @@ function ProductWorkspace({ canEdit }: { canEdit: boolean }) {
   const [message, setMessage] = useState('')
   const [messageTone, setMessageTone] = useState<'error' | 'info'>('error')
   const [busyId, setBusyId] = useState('')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
+  const [categoryId, setCategoryId] = useState('')
+  const [bulkBusy, setBulkBusy] = useState(false)
 
   const filtered = useMemo(() => products.filter((product) => `${product.name} ${product.category} ${product.slug}`.toLowerCase().includes(query.toLowerCase())), [products, query])
   const visibleProducts = filtered.slice(offset, offset + 20)
+  const selectedProducts = products.filter((product) => selectedIds.has(product.id))
+  const pageSelected = visibleProducts.length > 0 && visibleProducts.every((product) => selectedIds.has(product.id))
   useEffect(() => { setOffset(0) }, [query])
+  useEffect(() => {
+    setSelectedIds((current) => new Set([...current].filter((id) => products.some((product) => product.id === id))))
+  }, [products])
 
   async function refresh() {
     setCreating(false)
     setEditing(undefined)
-    await Promise.all([mutate(), globalMutate('/api/products'), globalMutate('/api/admin/metrics')])
+    await Promise.all([mutate(), globalMutate('/api/products'), globalMutate('/api/admin/metrics'), globalMutate('admin-product-categories')])
   }
 
   async function changeStock(product: AdminProduct, quantity: number) {
@@ -317,6 +326,7 @@ function ProductWorkspace({ canEdit }: { canEdit: boolean }) {
       await refresh()
     } catch (updateError) {
       setMessage(reportError(updateError))
+      setMessageTone('error')
     } finally {
       setBusyId('')
     }
@@ -331,9 +341,60 @@ function ProductWorkspace({ canEdit }: { canEdit: boolean }) {
       await refresh()
     } catch (deleteError) {
       setMessage(reportError(deleteError))
+      setMessageTone('error')
     } finally {
       setBusyId('')
     }
+  }
+
+  function togglePageSelection() {
+    const next = new Set(selectedIds)
+    if (pageSelected) visibleProducts.forEach((product) => next.delete(product.id))
+    else visibleProducts.forEach((product) => next.add(product.id))
+    if (next.size > 100) {
+      setMessage('Select no more than 100 products for a bulk update.')
+      setMessageTone('error')
+      return
+    }
+    setMessage('')
+    setSelectedIds(next)
+  }
+
+  function toggleProductSelection(productId: string) {
+    const next = new Set(selectedIds)
+    if (next.has(productId)) next.delete(productId)
+    else if (next.size < 100) next.add(productId)
+    else {
+      setMessage('Select no more than 100 products for a bulk update.')
+      setMessageTone('error')
+      return
+    }
+    setMessage('')
+    setSelectedIds(next)
+  }
+
+  async function runBulkAction(action: () => Promise<void>, successMessage: string) {
+    setBulkBusy(true)
+    setMessage('')
+    try {
+      await action()
+      setSelectedIds(new Set())
+      await refresh()
+      setMessage(successMessage)
+      setMessageTone('info')
+    } catch (bulkError) {
+      setMessage(reportError(bulkError))
+      setMessageTone('error')
+    } finally {
+      setBulkBusy(false)
+    }
+  }
+
+  function setMerchandising(kind: 'featured' | 'new_arrival' | 'on_sale', selected: boolean) {
+    return runBulkAction(
+      () => setProductMerchandising([...selectedIds], kind, selected),
+      `${selectedIds.size} products ${selected ? 'added to' : 'removed from'} ${kind === 'new_arrival' ? 'New Arrivals' : kind === 'on_sale' ? 'On Sale' : 'Featured'}.`,
+    )
   }
 
   return (
@@ -351,6 +412,34 @@ function ProductWorkspace({ canEdit }: { canEdit: boolean }) {
         <Search size={16} className="text-[#68675f]" />
         <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Filter catalog" aria-label="Filter products" className="w-full bg-transparent py-3 text-sm outline-none" />
       </div>
+      {canEdit && (
+        <div className="mb-4 rounded-xl border border-[#1c1c1a]/10 bg-[#f7f6f2] p-3 sm:p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-2 pr-2 text-sm text-[#4c4b45]">
+              <input type="checkbox" checked={pageSelected} disabled={bulkBusy} onChange={togglePageSelection} aria-label="Select all products on this page" className="size-4 accent-[#1c1c1a]" />
+              Select page
+            </label>
+            <span className="mr-auto text-sm text-[#68675f]">{selectedIds.size} selected</span>
+            {selectedIds.size > 0 && <>
+              <select aria-label="Category to add to selected products" value={categoryId} onChange={(event) => setCategoryId(event.target.value)} className={`${inputClass} w-full min-w-48 sm:w-auto`}>
+                <option value="">Add to category…</option>
+                {categories.map((category) => <option key={category.id} value={category.id}>{'—'.repeat(category.depth)}{category.name}</option>)}
+              </select>
+              <button type="button" disabled={bulkBusy || !categoryId} onClick={() => void runBulkAction(() => addProductsToCategory([...selectedIds], categoryId), `${selectedIds.size} products added to the selected category.`)} className={secondaryButton}>Add category</button>
+              <button type="button" disabled={bulkBusy} onClick={() => void setMerchandising('featured', !selectedProducts.every((product) => product.isFeatured))} className={secondaryButton}>
+                {selectedProducts.every((product) => product.isFeatured) ? 'Remove Featured' : 'Feature selected'}
+              </button>
+              <button type="button" disabled={bulkBusy} onClick={() => void setMerchandising('new_arrival', !selectedProducts.every((product) => product.isNewArrival))} className={secondaryButton}>
+                {selectedProducts.every((product) => product.isNewArrival) ? 'Remove New Arrivals' : 'Mark New Arrivals'}
+              </button>
+              <button type="button" disabled={bulkBusy} onClick={() => void setMerchandising('on_sale', !selectedProducts.every((product) => product.isOnSale))} className={secondaryButton}>
+                {selectedProducts.every((product) => product.isOnSale) ? 'Remove On Sale' : 'Mark On Sale'}
+              </button>
+              <button type="button" disabled={bulkBusy} onClick={() => { setSelectedIds(new Set()); setMessage('') }} className="rounded-full px-3 py-2 text-sm text-[#68675f] underline underline-offset-4">Clear</button>
+            </>}
+          </div>
+        </div>
+      )}
       {isLoading ? <LoadingRows label="Loading products" /> : isError ? null : filtered.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-[#1c1c1a]/20 bg-white/60 px-5 py-10 text-center text-sm text-[#68675f]">
           {products.length ? 'No products match this filter.' : 'No products are in the catalog yet. Create a category first, then add a product.'}
@@ -362,6 +451,9 @@ function ProductWorkspace({ canEdit }: { canEdit: boolean }) {
               key={`${product.id}-${product.stockQuantity}`}
               product={product}
               canEdit={canEdit}
+              selected={selectedIds.has(product.id)}
+              selectionDisabled={bulkBusy}
+              onSelect={() => toggleProductSelection(product.id)}
               busy={busyId === product.id}
               onEdit={() => { setCreating(false); setEditing(product) }}
               onArchive={() => void archive(product)}
@@ -379,6 +471,9 @@ function ProductWorkspace({ canEdit }: { canEdit: boolean }) {
 function ProductRow({
   product,
   canEdit,
+  selected,
+  selectionDisabled,
+  onSelect,
   busy,
   onEdit,
   onArchive,
@@ -387,6 +482,9 @@ function ProductRow({
 }: {
   product: AdminProduct
   canEdit: boolean
+  selected: boolean
+  selectionDisabled: boolean
+  onSelect: () => void
   busy: boolean
   onEdit: () => void
   onArchive: () => void
@@ -462,6 +560,7 @@ function ProductRow({
     <article className="rounded-2xl border border-[#1c1c1a]/10 bg-white p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-3">
+          {canEdit && <input type="checkbox" checked={selected} disabled={selectionDisabled} onChange={onSelect} aria-label={`Select ${product.name}`} className="mt-5 size-4 shrink-0 accent-[#1c1c1a]" />}
           {previewImage ? <img src={previewImage} alt="" className="size-14 shrink-0 rounded-lg object-cover" /> : <div aria-hidden="true" className="grid size-14 shrink-0 place-items-center rounded-lg bg-[#f2f1ed]"><Package size={18} /></div>}
           <div className="min-w-0">
             <h2 className="truncate text-sm font-medium">{product.name}</h2>

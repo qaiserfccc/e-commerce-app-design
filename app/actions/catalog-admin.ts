@@ -1,6 +1,6 @@
 'use server'
 
-import { and, asc, desc, eq, inArray, ne, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, isNull, ne, sql } from 'drizzle-orm'
 import { invalidateCache } from '@/lib/cache'
 import { requireAdminSession } from '@/lib/auth/admin'
 import { buildCategoryPaths, DEFAULT_PRODUCT_PAGE, descendantIds, SECTION_SOURCES, type ProductPageSettings } from '@/lib/catalog-types'
@@ -445,6 +445,39 @@ export async function setProductMerchandising(ids: string[], kind: Merchandising
       entityId: id,
       eventType: 'merchandising_updated',
       payload: { section: kind, selected },
+    })))
+  })
+  bust()
+}
+
+export async function addProductsToCategory(ids: string[], categoryId: string) {
+  await requireAdminSession('admin')
+  if (!Array.isArray(ids) || ids.length === 0 || ids.length > 100) {
+    throw new Error('Select between 1 and 100 products.')
+  }
+  const productIds = [...new Set(ids.map((id) => uuid(id, 'Product')))]
+  const selectedCategoryId = uuid(categoryId, 'Category')
+
+  await db.transaction(async (tx) => {
+    const [category] = await tx.select({ id: storeCategories.id }).from(storeCategories)
+      .where(eq(storeCategories.id, selectedCategoryId)).limit(1)
+    if (!category) throw new Error('The selected category no longer exists.')
+
+    const foundProducts = await tx.select({ id: storeProducts.id }).from(storeProducts)
+      .where(inArray(storeProducts.id, productIds))
+    if (foundProducts.length !== productIds.length) throw new Error('One or more selected products no longer exist.')
+
+    await tx.insert(storeProductCategories)
+      .values(productIds.map((productId) => ({ productId, categoryId: selectedCategoryId })))
+      .onConflictDoNothing()
+    await tx.update(storeProducts)
+      .set({ categoryId: selectedCategoryId, updatedAt: new Date() })
+      .where(and(inArray(storeProducts.id, productIds), isNull(storeProducts.categoryId)))
+    await tx.insert(storeActivityEvents).values(productIds.map((productId) => ({
+      entityType: 'product',
+      entityId: productId,
+      eventType: 'category_added',
+      payload: { categoryId: selectedCategoryId, bulk: true },
     })))
   })
   bust()
