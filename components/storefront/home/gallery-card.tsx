@@ -3,12 +3,14 @@
 import Link from 'next/link'
 import { ArrowUpRight } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { StorefrontFallbackImage } from '@/components/storefront/fallback-image'
 
 export function GalleryCard({
   href,
   title,
   detail,
   image,
+  imageFallback,
   imageAlt,
   imageFit = 'cover',
   video,
@@ -18,6 +20,7 @@ export function GalleryCard({
   title: string
   detail: string
   image?: string | null
+  imageFallback?: string | null
   imageAlt?: string
   imageFit?: 'cover' | 'contain'
   video?: string | null
@@ -83,20 +86,12 @@ export function GalleryCard({
       className="group relative isolate block aspect-[4/5] overflow-hidden rounded-[1.75rem] bg-[#15384d] text-white outline-none focus-visible:ring-4 focus-visible:ring-[#087ba5] focus-visible:ring-offset-4 focus-visible:ring-offset-[#f7fcff]"
       aria-label={`${title}. ${detail}`}
     >
-      {image ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={image}
-          alt={imageAlt ?? ''}
-          loading="lazy"
-          decoding="async"
-          className={`absolute inset-0 size-full transition duration-700 ease-out group-hover:scale-[1.045] group-focus-visible:scale-[1.045] ${imageFit === 'contain' ? 'bg-[#e8f6fb] object-contain p-8' : 'object-cover'} ${playing ? 'opacity-0' : 'opacity-100'}`}
-        />
-      ) : (
-        <span aria-hidden="true" className="absolute inset-0 grid place-items-center bg-[#e8f6fb] p-5 text-[#15384d]">
-          {fallback}
-        </span>
-      )}
+      <StorefrontFallbackImage
+        sources={[image, imageFallback]}
+        alt={imageAlt ?? ''}
+        className={`absolute inset-0 size-full transition duration-700 ease-out group-hover:scale-[1.045] group-focus-visible:scale-[1.045] ${imageFit === 'contain' ? 'bg-[#e8f6fb] object-contain p-8' : 'object-cover'} ${playing ? 'opacity-0' : 'opacity-100'}`}
+        fallback={<span aria-hidden="true" className="absolute inset-0 grid place-items-center bg-[#e8f6fb] p-5 text-[#15384d]">{fallback}</span>}
+      />
       {video && (
         <video
           ref={videoRef}

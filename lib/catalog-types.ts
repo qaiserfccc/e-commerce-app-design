@@ -35,6 +35,7 @@ export type CategoryNode = {
   slug: string
   description: string | null
   imageUrl: string | null
+  fallbackImageUrl: string | null
   sortOrder: number
   isActive: boolean
   showInMenu: boolean

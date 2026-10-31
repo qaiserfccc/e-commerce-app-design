@@ -8,6 +8,7 @@ import { ProductCard } from '@/components/storefront/product-card'
 import { useStorefrontCart } from '@/lib/hooks/use-storefront-cart'
 import { useProduct, type Product, type ProductAsset } from '@/lib/hooks/use-storefront-data'
 import { getProductImageSources, StorefrontProductImage } from '@/components/storefront/product-image'
+import { StorefrontFallbackImage } from '@/components/storefront/fallback-image'
 import { reportError } from '@/lib/ui/notifications'
 
 function formatPrice(value: string, currency: string) {
@@ -220,9 +221,13 @@ export function StorefrontProductDetail({
               <p className="font-mono text-xs font-bold uppercase tracking-[.15em]">Lens shade</p>
               <ul className="mt-2 flex flex-wrap gap-3">
                 <li className="flex items-center gap-2 text-xs">
-                  {product.lensShade.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={product.lensShade.imageUrl} alt="" className="size-9 rounded-full border border-[#cfe2eb] object-cover" />
+                  {product.lensShade.imageUrl || product.lensShade.fallbackImageUrl ? (
+                    <StorefrontFallbackImage
+                      sources={[product.lensShade.imageUrl, product.lensShade.fallbackImageUrl]}
+                      alt=""
+                      className="size-9 rounded-full border border-[#cfe2eb]"
+                      imageClassName="object-cover"
+                    />
                   ) : product.lensShade.hex ? <span className="size-6 rounded-full border border-black/15" style={{ backgroundColor: product.lensShade.hex }} aria-hidden="true" /> : null}
                   {product.lensShade.name}
                 </li>

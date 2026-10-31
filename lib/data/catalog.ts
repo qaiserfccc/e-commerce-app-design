@@ -29,8 +29,84 @@ import {
 
 export const CATALOG_NAMESPACE = 'catalog'
 
+type ProductImageCandidate = {
+  brandId: string | null
+  lensShadeId: string | null
+  lensTypeId: string | null
+  categoryIds: string[]
+  imageUrl: string
+}
+
+let productImageCandidatesInFlight: Promise<ProductImageCandidate[]> | null = null
+
+function getProductImageCandidates() {
+  if (productImageCandidatesInFlight) return productImageCandidatesInFlight
+  const request = cached(CATALOG_NAMESPACE, 'product-image-candidates', 300, async () => {
+    const products = await db
+      .select({
+        id: storeProducts.id,
+        brandId: storeProducts.brandId,
+        lensShadeId: storeProducts.lensShadeId,
+        lensTypeId: storeProducts.lensTypeId,
+        categoryId: storeProducts.categoryId,
+        heroImageUrl: storeProducts.heroImageUrl,
+      })
+      .from(storeProducts)
+      .where(eq(storeProducts.status, 'active'))
+      .orderBy(desc(storeProducts.createdAt), desc(storeProducts.id))
+    if (!products.length) return []
+
+    const productIds = products.map((product) => product.id)
+    const [assignments, assets] = await Promise.all([
+      db.select({ productId: storeProductCategories.productId, categoryId: storeProductCategories.categoryId })
+        .from(storeProductCategories)
+        .where(inArray(storeProductCategories.productId, productIds)),
+      db.select({
+        productId: storeProductAssets.productId,
+        blobUrl: storeProductAssets.blobUrl,
+      })
+        .from(storeProductAssets)
+        .where(and(
+          inArray(storeProductAssets.productId, productIds),
+          eq(storeProductAssets.mediaType, 'image'),
+        ))
+        .orderBy(asc(storeProductAssets.sortOrder), asc(storeProductAssets.createdAt), asc(storeProductAssets.id)),
+    ])
+    const categoryIdsByProduct = new Map<string, Set<string>>()
+    for (const product of products) {
+      if (product.categoryId) categoryIdsByProduct.set(product.id, new Set([product.categoryId]))
+    }
+    for (const assignment of assignments) {
+      const categories = categoryIdsByProduct.get(assignment.productId) ?? new Set<string>()
+      categories.add(assignment.categoryId)
+      categoryIdsByProduct.set(assignment.productId, categories)
+    }
+    const firstAssetByProduct = new Map<string, string>()
+    for (const asset of assets) {
+      if (asset.blobUrl?.trim() && !firstAssetByProduct.has(asset.productId)) {
+        firstAssetByProduct.set(asset.productId, asset.blobUrl)
+      }
+    }
+
+    return products.flatMap((product) => {
+      const imageUrl = product.heroImageUrl?.trim() || firstAssetByProduct.get(product.id)
+      return imageUrl ? [{
+        brandId: product.brandId,
+        lensShadeId: product.lensShadeId,
+        lensTypeId: product.lensTypeId,
+        categoryIds: [...(categoryIdsByProduct.get(product.id) ?? [])],
+        imageUrl,
+      }] : []
+    })
+  })
+  productImageCandidatesInFlight = request.finally(() => {
+    productImageCandidatesInFlight = null
+  })
+  return productImageCandidatesInFlight
+}
+
 async function loadCategories(): Promise<CategoryNode[]> {
-  const [rows, counts] = await Promise.all([
+  const [rows, counts, imageCandidates] = await Promise.all([
     db.select().from(storeCategories).where(eq(storeCategories.isActive, true)).orderBy(asc(storeCategories.sortOrder), asc(storeCategories.name)),
     db
       .select({ categoryId: storeProductCategories.categoryId, count: sql<number>`count(distinct ${storeProducts.id})::int` })
@@ -38,6 +114,7 @@ async function loadCategories(): Promise<CategoryNode[]> {
       .innerJoin(storeProducts, eq(storeProducts.id, storeProductCategories.productId))
       .where(eq(storeProducts.status, 'active'))
       .groupBy(storeProductCategories.categoryId),
+    getProductImageCandidates(),
   ])
   const direct = new Map(counts.map((row) => [row.categoryId, row.count]))
   const nodes = buildCategoryPaths(rows.map((row) => ({
@@ -48,12 +125,13 @@ async function loadCategories(): Promise<CategoryNode[]> {
     const branch = descendantIds(nodes, node.id)
     let productCount = 0
     for (const id of branch) productCount += direct.get(id) ?? 0
-    return { ...node, productCount }
+    const fallbackImageUrl = imageCandidates.find((product) => product.categoryIds.some((id) => branch.has(id)))?.imageUrl ?? null
+    return { ...node, fallbackImageUrl, productCount }
   })
 }
 
 export function getCategories() {
-  return cached(CATALOG_NAMESPACE, 'categories', 600, loadCategories)
+  return cached(CATALOG_NAMESPACE, 'categories:product-image-fallback-v1', 600, loadCategories)
 }
 
 const productColumns = {
@@ -101,7 +179,7 @@ const productColumns = {
 async function enrich<T extends { id: string; categoryId: string | null; lensShadeId: string | null; lensTypeId: string | null }>(products: T[]) {
   const ids = products.map((product) => product.id)
   if (!ids.length) return []
-  const [assets, variants, ratings, categories, assignments, shades, types] = await Promise.all([
+  const [assets, variants, ratings, categories, assignments, shades, types, imageCandidates] = await Promise.all([
     db.select().from(storeProductAssets).where(inArray(storeProductAssets.productId, ids)).orderBy(asc(storeProductAssets.sortOrder), asc(storeProductAssets.createdAt)),
     db.select().from(storeProductVariants).where(and(inArray(storeProductVariants.productId, ids), eq(storeProductVariants.isActive, true))).orderBy(asc(storeProductVariants.price)),
     db
@@ -116,6 +194,7 @@ async function enrich<T extends { id: string; categoryId: string | null; lensSha
       .where(inArray(storeProductCategories.productId, ids)),
     db.select().from(storeLensShades).where(inArray(storeLensShades.id, products.map((product) => product.lensShadeId).filter((id): id is string => Boolean(id)))),
     db.select().from(storeLensTypes).where(inArray(storeLensTypes.id, products.map((product) => product.lensTypeId).filter((id): id is string => Boolean(id)))),
+    getProductImageCandidates(),
   ])
   const group = <R extends { productId: string }>(rows: R[]) => {
     const map = new Map<string, R[]>()
@@ -128,7 +207,10 @@ async function enrich<T extends { id: string; categoryId: string | null; lensSha
   const pathMap = new Map(categories.map((category) => [category.id, category.path]))
   const assigned = new Map<string, Array<{ id: string; name: string }>>()
   for (const row of assignments) assigned.set(row.productId, [...(assigned.get(row.productId) ?? []), { id: row.categoryId, name: row.name }])
-  const shadesById = new Map(shades.map((shade) => [shade.id, shade]))
+  const shadesById = new Map(shades.map((shade) => [shade.id, {
+    ...shade,
+    fallbackImageUrl: imageCandidates.find((candidate) => candidate.lensShadeId === shade.id)?.imageUrl ?? null,
+  }]))
   const typesById = new Map(types.map((type) => [type.id, type]))
   return products.map((product) => ({
     ...product,
@@ -223,14 +305,14 @@ export function getCatalogPage(
 ) {
   return cached(
     CATALOG_NAMESPACE,
-    `products-page:${category ?? ''}:${(query ?? '').toLowerCase()}:${brand ?? ''}:${page}:${pageSize}`,
+    `products-page:image-fallback-v1:${category ?? ''}:${(query ?? '').toLowerCase()}:${brand ?? ''}:${page}:${pageSize}`,
     60,
     () => loadCatalogPage(category, query, brand, page, pageSize),
   )
 }
 
 export function getCatalog(category: string | null = null, query: string | null = null, brand: string | null = null) {
-  return cached(CATALOG_NAMESPACE, `products:${category ?? ''}:${(query ?? '').toLowerCase()}:${brand ?? ''}`, 300, () => loadCatalog(category, query, brand))
+  return cached(CATALOG_NAMESPACE, `products:image-fallback-v1:${category ?? ''}:${(query ?? '').toLowerCase()}:${brand ?? ''}`, 300, () => loadCatalog(category, query, brand))
 }
 
 export type CatalogProduct = Awaited<ReturnType<typeof loadCatalog>>[number]
@@ -265,11 +347,11 @@ async function loadHomeCatalog() {
 }
 
 export function getHomeCatalog() {
-  return cached(CATALOG_NAMESPACE, 'home-products', 300, loadHomeCatalog)
+  return cached(CATALOG_NAMESPACE, 'home-products:image-fallback-v1', 300, loadHomeCatalog)
 }
 
 async function loadStorefrontBrands() {
-  return db
+  const brandsQuery = db
     .select({
       id: storeBrands.id,
       name: storeBrands.name,
@@ -282,14 +364,19 @@ async function loadStorefrontBrands() {
     .where(eq(storeBrands.isActive, true))
     .groupBy(storeBrands.id, storeBrands.name, storeBrands.slug, storeBrands.logoUrl)
     .orderBy(asc(storeBrands.name))
+  const [brands, imageCandidates] = await Promise.all([brandsQuery, getProductImageCandidates()])
+  return brands.map((brand) => ({
+    ...brand,
+    fallbackImageUrl: imageCandidates.find((product) => product.brandId === brand.id)?.imageUrl ?? null,
+  }))
 }
 
 export function getStorefrontBrands() {
-  return cached(CATALOG_NAMESPACE, 'storefront-brands', 300, loadStorefrontBrands)
+  return cached(CATALOG_NAMESPACE, 'storefront-brands:image-fallback-v1', 300, loadStorefrontBrands)
 }
 
 async function loadStorefrontShades() {
-  return db
+  const shadesQuery = db
     .select({
       id: storeLensShades.id,
       name: storeLensShades.name,
@@ -302,14 +389,19 @@ async function loadStorefrontShades() {
     .where(eq(storeLensShades.isActive, true))
     .groupBy(storeLensShades.id, storeLensShades.name, storeLensShades.hex, storeLensShades.imageUrl)
     .orderBy(asc(storeLensShades.name))
+  const [shades, imageCandidates] = await Promise.all([shadesQuery, getProductImageCandidates()])
+  return shades.map((shade) => ({
+    ...shade,
+    fallbackImageUrl: imageCandidates.find((product) => product.lensShadeId === shade.id)?.imageUrl ?? null,
+  }))
 }
 
 export function getStorefrontShades() {
-  return cached(CATALOG_NAMESPACE, 'storefront-shades', 300, loadStorefrontShades)
+  return cached(CATALOG_NAMESPACE, 'storefront-shades:image-fallback-v1', 300, loadStorefrontShades)
 }
 
 async function loadStorefrontLensTypes() {
-  return db
+  const typesQuery = db
     .select({
       id: storeLensTypes.id,
       name: storeLensTypes.name,
@@ -320,10 +412,15 @@ async function loadStorefrontLensTypes() {
     .where(eq(storeLensTypes.isActive, true))
     .groupBy(storeLensTypes.id, storeLensTypes.name)
     .orderBy(asc(storeLensTypes.name))
+  const [types, imageCandidates] = await Promise.all([typesQuery, getProductImageCandidates()])
+  return types.map((type) => ({
+    ...type,
+    fallbackImageUrl: imageCandidates.find((product) => product.lensTypeId === type.id)?.imageUrl ?? null,
+  }))
 }
 
 export function getStorefrontLensTypes() {
-  return cached(CATALOG_NAMESPACE, 'storefront-lens-types', 300, loadStorefrontLensTypes)
+  return cached(CATALOG_NAMESPACE, 'storefront-lens-types:image-fallback-v1', 300, loadStorefrontLensTypes)
 }
 
 async function loadStorefrontReviews() {
@@ -359,7 +456,7 @@ async function loadProduct(slug: string) {
 }
 
 export function getProduct(slug: string) {
-  return cached(CATALOG_NAMESPACE, `product:${slug}`, 300, () => loadProduct(slug))
+  return cached(CATALOG_NAMESPACE, `product:image-fallback-v1:${slug}`, 300, () => loadProduct(slug))
 }
 
 export async function getProductPageSettings(): Promise<ProductPageSettings> {
@@ -453,7 +550,7 @@ async function idsFor(source: (typeof SECTION_SOURCES)[number], product: { id: s
 
 /** Resolves every enabled product-page section (configured in admin) into product lists. */
 export function getProductSections(product: { id: string; categoryId: string | null }) {
-  return cached(CATALOG_NAMESPACE, `sections:${product.id}`, 300, async () => {
+  return cached(CATALOG_NAMESPACE, `sections:image-fallback-v1:${product.id}`, 300, async () => {
     const settings = await getProductPageSettings()
     const sections = []
     const shown = new Set<string>()
