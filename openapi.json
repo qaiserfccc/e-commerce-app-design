@@ -9,7 +9,7 @@
   "tags": [
     { "name": "Catalog", "description": "Published products and browse taxonomies." },
     { "name": "Shopper", "description": "Shopper session, COD checkout, and account order history." },
-    { "name": "Integrations", "description": "Chatbot grounding, media delivery, error reporting, and Meta webhooks." },
+    { "name": "Integrations", "description": "Store chatbot, public knowledge, media delivery, error reporting, and Meta webhooks." },
     { "name": "Admin", "description": "Authenticated administrative reads and supported REST mutations." }
   ],
   "paths": {
@@ -146,7 +146,46 @@
         "tags": ["Integrations"],
         "summary": "Retrieve public chatbot grounding data",
         "parameters": [{ "name": "q", "in": "query", "schema": { "type": "string", "maxLength": 100 }, "description": "Optional product search; up to eight matches." }],
-        "responses": { "200": { "description": "FAQ, public product facts, and assistant safety guidance." }, "400": { "$ref": "#/components/responses/BadRequest" } }
+        "responses": { "200": { "description": "FAQ, public product facts, product lens specifications, and assistant safety guidance.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ChatbotKnowledgeResponse" } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "500": { "$ref": "#/components/responses/ServerError" } }
+      }
+    },
+    "/api/chatbot": {
+      "post": {
+        "tags": ["Integrations"],
+        "summary": "Ask the public store assistant",
+        "description": "Answers only from published catalog listings and public FAQs. Does not access orders or customer accounts, and redirects medical or lens-fitting questions to an eye-care professional. Rate limited to 20 requests per IP per 10 minutes.",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ChatbotQuestion" } } } },
+        "responses": {
+          "200": { "description": "Grounded store answer and optional storefront links.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ChatbotAnswerResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "503": { "description": "Assistant is disabled in store settings." },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/chatbot/settings": {
+      "get": {
+        "tags": ["Integrations"],
+        "summary": "Read public store assistant settings",
+        "responses": {
+          "200": { "description": "Public enabled state and welcome message.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ChatbotSettingsResponse" } } } },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      },
+      "put": {
+        "tags": ["Admin"],
+        "summary": "Update store assistant settings",
+        "description": "Requires an admin or owner session cookie. Native requests may omit Origin; browser-originated requests must be same-origin.",
+        "security": [{ "adminCookie": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ChatbotSettingsInput" } } } },
+        "responses": {
+          "200": { "description": "Settings saved.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ChatbotSettingsResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
       }
     },
     "/api/media/{path}": {
@@ -261,6 +300,12 @@
         }
       },
       "ReviewInput": { "type": "object", "required": ["author", "body", "rating"], "properties": { "author": { "type": "string", "maxLength": 80 }, "body": { "type": "string", "maxLength": 2000 }, "title": { "type": "string", "maxLength": 120 }, "rating": { "type": "integer", "minimum": 1, "maximum": 5 } } },
+      "ChatbotQuestion": { "type": "object", "required": ["message"], "properties": { "message": { "type": "string", "minLength": 1, "maxLength": 200 } }, "additionalProperties": false },
+      "ChatbotSettingsInput": { "type": "object", "required": ["enabled", "welcomeMessage"], "properties": { "enabled": { "type": "boolean" }, "welcomeMessage": { "type": "string", "minLength": 1, "maxLength": 180 } }, "additionalProperties": false },
+      "ChatbotSettingsResponse": { "type": "object", "required": ["data"], "properties": { "data": { "$ref": "#/components/schemas/ChatbotSettings" } } },
+      "ChatbotSettings": { "type": "object", "required": ["enabled", "welcomeMessage"], "properties": { "enabled": { "type": "boolean" }, "welcomeMessage": { "type": "string", "maxLength": 180 } } },
+      "ChatbotAnswerResponse": { "type": "object", "required": ["data"], "properties": { "data": { "type": "object", "required": ["answer", "links"], "properties": { "answer": { "type": "string" }, "links": { "type": "array", "items": { "type": "object", "required": ["label", "href"], "properties": { "label": { "type": "string" }, "href": { "type": "string" } } } } } } } },
+      "ChatbotKnowledgeResponse": { "type": "object", "required": ["data", "updatedAt"], "properties": { "data": { "type": "object", "required": ["faqs", "products", "guidance"], "properties": { "faqs": { "type": "array", "items": { "type": "object", "required": ["question", "answer", "source"], "properties": { "question": { "type": "string" }, "answer": { "type": "string" }, "source": { "type": "string" } } } },       "products": { "type": "array", "items": { "type": "object", "required": ["name", "price", "currency", "availability", "url"], "properties": { "name": { "type": "string" }, "brand": { "type": ["string", "null"] }, "category": { "type": ["string", "null"] }, "price": { "type": "string" }, "currency": { "type": "string" }, "diameterMm": { "type": ["string", "null"] }, "baseCurve": { "type": ["string", "null"] }, "waterContent": { "type": ["string", "null"] }, "wearDuration": { "type": ["string", "null"] }, "packContents": { "type": ["string", "null"] }, "powerType": { "type": ["string", "null"] }, "powerRange": { "type": ["string", "null"] }, "availability": { "type": "string", "enum": ["in_stock", "out_of_stock"] }, "url": { "type": "string" } } } }, "guidance": { "type": "array", "items": { "type": "string" } } } }, "updatedAt": { "type": "string", "format": "date-time" } } },
       "Error": { "type": "object", "required": ["error"], "properties": { "error": { "type": "string" } } }
     },
     "responses": {

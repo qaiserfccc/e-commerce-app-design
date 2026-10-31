@@ -4,6 +4,7 @@ import { StoreFooter } from '@/components/storefront/shell/store-footer'
 import { StoreFooterRoute } from '@/components/storefront/shell/store-footer-route'
 import { StoreHeader } from '@/components/storefront/shell/store-header'
 import { getStorefrontBrands } from '@/lib/data/catalog'
+import { ChatbotWidget } from '@/components/storefront/chatbot-widget'
 
 export default async function StoreLayout({ children }: { children: React.ReactNode }) {
   const [chrome, brands] = await Promise.all([getSiteChrome(), getStorefrontBrands()])
@@ -15,6 +16,7 @@ export default async function StoreLayout({ children }: { children: React.ReactN
       <StoreHeader chrome={chrome} />
       <div id="main">{children}</div>
       <StoreFooterRoute><StoreFooter chrome={chrome} brands={linkedBrands} /></StoreFooterRoute>
+      <ChatbotWidget />
     </div>
   )
 }

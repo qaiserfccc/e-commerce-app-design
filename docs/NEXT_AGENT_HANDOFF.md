@@ -18,6 +18,7 @@ This document is the operational handoff for continuing the ecommerce storefront
 - Data access: `app/actions/storefront.ts`, `app/actions/admin.ts`.
 - Read endpoints: public catalog under `app/api/products/`; authenticated admin data under `app/api/admin/`.
 - Client refresh hooks: `lib/hooks/use-storefront-data.ts`, `lib/hooks/use-admin-data.ts`.
+- **Permanent API parity rule:** every website behavior or data change must be reflected in the corresponding API and mobile integration contract in the same change, so Flutter/FlutterFlow and other clients can access the same behavior. See `AGENTS.md` and `docs/architect/AGENT_INSTRUCTIONS.md`; document any explicit exception.
 - Sync notes: `docs/DATABASE_SYNC.md`.
 - GitHub Actions: no workflow files are currently tracked in `.github/workflows/`.
 - GitHub operation identity: project agents must verify and use `@qaiserfccc` for GitHub mutations; see `AGENTS.md`.
@@ -74,6 +75,10 @@ These are available from the Neon integration and may be useful for tooling or m
 - `POSTGRES_USER`
 - `NEON_AUTH_BASE_URL`
 - `VITE_NEON_AUTH_URL`
+
+### PostgreSQL TLS mode
+
+The deployed Node `pg` connection setup normalizes the legacy `sslmode=prefer`, `sslmode=require`, and `sslmode=verify-ca` aliases to `sslmode=verify-full`. This preserves the current `pg-connection-string` behavior while avoiding its repeated security warning and retaining hostname verification. Keep this normalization in place for every runtime Postgres pool. Do not silence the warning by disabling TLS verification or switching to weaker compatibility semantics. Vercel `DATABASE_URL` values may also be configured with `sslmode=verify-full` directly.
 
 The active Neon project identifier observed during schema work is `polished-dust-86909173`. Use the connected Neon tools/integration rather than hardcoding this identifier in runtime code.
 

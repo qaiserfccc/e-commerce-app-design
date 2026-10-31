@@ -11,6 +11,7 @@ export const ADMIN_SECTION_IDS = [
   'new-arrivals',
   'on-sale',
   'catalog-settings',
+  'chatbot',
   'orders',
   'customers',
   'crm',

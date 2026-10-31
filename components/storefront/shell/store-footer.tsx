@@ -11,7 +11,7 @@ function LinkColumn({ title, links, homepage = false }: { title: string; links: 
     <nav aria-label={title}>
       <h2 className={`text-xs font-bold uppercase tracking-[0.2em] ${homepage ? 'text-[#b83f6b]' : 'text-[#f3b4c9]'}`}>{title}</h2>
         <ul className={`mt-4 space-y-2.5 text-sm ${homepage ? 'isk-home-footer-links text-[#686371]' : 'text-white/75'}`}>
-          {links.map(([label, href]) => <li key={label}><Link href={href} className={`transition-colors hover:underline ${homepage ? 'hover:text-[#201b35]' : 'hover:text-white'}`}>{label}</Link></li>)}
+          {links.map(([label, href]) => <li key={label} className="min-w-0"><Link href={href} className={`block min-w-0 break-words [overflow-wrap:anywhere] transition-colors hover:underline ${homepage ? 'hover:text-[#201b35]' : 'hover:text-white'}`}>{label}</Link></li>)}
       </ul>
     </nav>
   )

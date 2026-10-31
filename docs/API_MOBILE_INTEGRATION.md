@@ -23,6 +23,9 @@ The API is usable from Flutter Android, iOS, Windows, other native clients, and 
 | Shopper | `POST /api/orders` | Public / optional shopper cookie | Place a COD order; server reprices, reserves inventory, and validates delivery |
 | Shopper | `GET /api/storefront/orders` | Shopper cookie | Up to 50 summaries for the signed-in shopper |
 | Integration | `GET /api/chatbot/knowledge?q=...` | Public | FAQ and up to eight matching published products for grounding |
+| Integration | `POST /api/chatbot` | Public, rate-limited | Ask the store assistant using public FAQ/catalog facts only |
+| Integration | `GET /api/chatbot/settings` | Public | Read assistant enabled state and welcome message |
+| Admin | `PUT /api/chatbot/settings` | Admin or owner cookie | Enable/disable the assistant and edit its welcome message |
 | Integration | `GET, HEAD /api/media/{path}` | Public | Product and storefront media |
 | Integration | `GET, POST /api/webhooks/meta-leads` | Meta signature/configuration | Meta Lead Ads verification and signed event receiver |
 | Integration | `POST /api/errors` | Public, rate-limited | Bounded client error report |
@@ -111,6 +114,7 @@ The UUIDs in the JSON are illustrative: replace `productId` with an actual UUID 
 - Expect `400` validation errors, `401` unauthenticated/invalid credentials, `403` forbidden/origin rejection, `404` missing resources, `409` checkout conflicts, `413` oversized bodies, `415` unsupported content types, `429` rate limits, and `5xx` service failures. Retry transient failures with bounded backoff; for checkout always reuse its idempotency key.
 - Current public throttling is best-effort per process, not distributed. Configure edge-level rate limits before broad production traffic.
 - The Meta webhook is server-to-server only and verifies `X-Hub-Signature-256`; it is not a mobile client endpoint.
+- The store assistant is deterministic and grounded in public FAQ/catalog data. `POST /api/chatbot` accepts `{ "message": "..." }` (1–200 characters) and is rate limited to 20 requests per IP per 10 minutes. It cannot access orders or accounts and must not be used for lens fitting or eye-health advice. `GET /api/chatbot/knowledge` preserves lens specification fields in product matches. Admin changes use `PUT /api/chatbot/settings` with the admin cookie. Apply database migration `0019_chatbot_settings.sql` before saving settings in an existing database.
 
 ## FastAPI quick-service starter
 

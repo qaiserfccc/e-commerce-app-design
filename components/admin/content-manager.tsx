@@ -221,7 +221,7 @@ export function ContentManager({ canEdit, heroOnly = false }: { canEdit: boolean
           </div>}
           {!heroOnly && <div className="space-y-3">
             <h2 className="text-lg font-medium">Text & settings (JSON)</h2>
-            {SETTING_KEYS.map((key) => <SettingEditor key={`${key}-${JSON.stringify(content.settings[key])}`} name={key} value={content.settings[key]} canEdit={canEdit} onChanged={load} onError={setError} />)}
+            {SETTING_KEYS.filter((key) => key !== 'chatbot').map((key) => <SettingEditor key={`${key}-${JSON.stringify(content.settings[key])}`} name={key} value={content.settings[key]} canEdit={canEdit} onChanged={load} onError={setError} />)}
           </div>}
         </>
       )}

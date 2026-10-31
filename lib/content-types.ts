@@ -1,7 +1,7 @@
 export const BANNER_PLACEMENTS = ['hero', 'promo', 'brand', 'category', 'service', 'new_arrival', 'feature', 'why_choose'] as const
 export type BannerPlacement = (typeof BANNER_PLACEMENTS)[number]
 
-export const SETTING_KEYS = ['announcements', 'contact', 'headings', 'seo_sections', 'footer'] as const
+export const SETTING_KEYS = ['announcements', 'contact', 'headings', 'seo_sections', 'footer', 'chatbot'] as const
 export type SettingKey = (typeof SETTING_KEYS)[number]
 
 export interface BannerContent {

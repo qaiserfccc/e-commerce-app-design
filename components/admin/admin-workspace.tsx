@@ -2,7 +2,7 @@
 
 import { useDeferredValue, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import {
-  Activity, ArrowDown, ArrowUp, BarChart3, ClipboardList, LayoutDashboard, LoaderCircle,
+  Activity, ArrowDown, ArrowUp, BarChart3, Bot, ClipboardList, LayoutDashboard, LoaderCircle,
   AlertTriangle, BadgePercent, Images, LogOut, Package, Plus, RefreshCw, Search, ShoppingBag, ShieldCheck, Sparkles, Star, Tags, Truck, Users, X,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -34,6 +34,7 @@ import {
 import { addProductsToCategory, deleteProduct, getAdminCategories, setProductMerchandising } from '@/app/actions/catalog-admin'
 import { CategoryManager } from '@/components/admin/category-manager'
 import { CatalogSettings } from '@/components/admin/catalog-settings'
+import { ChatbotManager } from '@/components/admin/chatbot-manager'
 import { ProductEditor } from '@/components/admin/product-editor'
 import { ContentManager } from '@/components/admin/content-manager'
 import { BrandManager, ErrorLogManager, LensShadeManager, LensTypeManager } from '@/components/admin/catalog-taxonomy-manager'
@@ -64,6 +65,7 @@ const sections: Array<{ id: Section; label: string; icon: typeof LayoutDashboard
   { id: 'new-arrivals', label: 'New arrivals', icon: Sparkles },
   { id: 'on-sale', label: 'On sale', icon: BadgePercent },
   { id: 'catalog-settings', label: 'Reviews & product page', icon: ClipboardList },
+  { id: 'chatbot', label: 'Chatbot', icon: Bot },
   { id: 'orders', label: 'Orders', icon: ShoppingBag },
   { id: 'customers', label: 'Customers', icon: Users },
   { id: 'crm', label: 'CRM', icon: Users },
@@ -1217,6 +1219,7 @@ export function AdminWorkspace({ section = 'overview' }: { section?: AdminSectio
     'catalog-sync': <CatalogSyncManager canEdit={session.role === 'owner' || session.role === 'admin'} />,
     'error-logs': <ErrorLogManager />,
     'catalog-settings': <CatalogSettings canEdit={session.role === 'owner' || session.role === 'admin'} />,
+    chatbot: <ChatbotManager canEdit={session.role === 'owner' || session.role === 'admin'} />,
     products: <ProductWorkspace canEdit={session.role === 'owner' || session.role === 'admin'} />,
     featured: <MerchandisingManager kind="featured" canEdit={session.role === 'owner' || session.role === 'admin'} />,
     'new-arrivals': <MerchandisingManager kind="new_arrival" canEdit={session.role === 'owner' || session.role === 'admin'} />,

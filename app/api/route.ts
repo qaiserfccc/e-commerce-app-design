@@ -29,7 +29,10 @@ export async function GET() {
           'GET /api/storefront/orders',
         ],
         integrations: [
+          'POST /api/chatbot',
           'GET /api/chatbot/knowledge',
+          'GET /api/chatbot/settings',
+          'PUT /api/chatbot/settings',
           'GET, HEAD /api/media/{path}',
           'GET, POST /api/webhooks/meta-leads',
           'POST /api/errors',

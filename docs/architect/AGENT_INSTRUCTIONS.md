@@ -34,6 +34,8 @@ pnpm build
   - Keep server-side data access inside `app/actions/` and HTTP endpoints under `app/api/`.
   - Maintain DB schema in `db/migrations/` and corresponding Drizzle schema in `lib/db/schema.ts`.
   - Keep client-side revalidation in `lib/hooks/` and use targeted `mutate()` calls after server mutations.
+  - **API/mobile parity is mandatory:** whenever a storefront or admin behavior, data field, validation rule, filter, sorting rule, visibility rule, or workflow changes, update the corresponding public or authenticated API in the same change so mobile clients (including Flutter/FlutterFlow) can observe and perform the same behavior. Keep the API discovery document, OpenAPI contract, and `docs/API_MOBILE_INTEGRATION.md` aligned whenever endpoint behavior or schemas change. Never leave a web-only behavior without explicitly documenting why parity is impossible or intentionally out of scope.
+  - Trace each change through UI, shared data/domain logic, route handlers, response schemas, and API documentation. Add or update parity tests/contract validation when suitable coverage exists.
 
 - **Security & safety**:
   - Never hardcode credentials, tokens or plaintext secrets.
