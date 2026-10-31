@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { invalidateCache } from '@/lib/cache'
 import { requireAdminSession } from '@/lib/auth/admin'
 import { adminApiError } from '@/lib/auth/admin-api'
+import { isSameOriginOrNativeRequest } from '@/lib/http/api-origin'
 import { syncIskCatalog, type CatalogSyncEntity } from '@/lib/server/isk-catalog-sync.mjs'
 
 export const runtime = 'nodejs'
@@ -11,7 +12,7 @@ export const maxDuration = 300
 const entities = new Set<CatalogSyncEntity>(['products', 'brands', 'categories', 'lens-shades', 'lens-types', 'all'])
 
 export async function POST(request: NextRequest) {
-  if (request.headers.get('origin') !== request.nextUrl.origin || request.headers.get('sec-fetch-site') === 'cross-site') {
+  if (!isSameOriginOrNativeRequest(request)) {
     return NextResponse.json({ error: 'Cross-origin sync requests are not allowed.' }, { status: 403 })
   }
 

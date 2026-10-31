@@ -2,21 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { deleteProductAsset, getProductAssetById, moveProductAsset } from '@/app/actions/admin'
 import { requireAdminSession } from '@/lib/auth/admin'
 import { adminApiError } from '@/lib/auth/admin-api'
+import { isSameOriginOrNativeRequest } from '@/lib/http/api-origin'
 import { deleteMedia, mediaPathFromOwnedUrl } from '@/lib/server/media-storage.mjs'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-function sameOrigin(request: NextRequest) {
-  return request.headers.get('origin') === request.nextUrl.origin &&
-    request.headers.get('sec-fetch-site') !== 'cross-site'
-}
-
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ assetId: string }> },
 ) {
-  if (!sameOrigin(request)) {
+  if (!isSameOriginOrNativeRequest(request)) {
     return NextResponse.json({ error: 'Cross-origin delete requests are not allowed.' }, { status: 403 })
   }
 
@@ -39,7 +35,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ assetId: string }> },
 ) {
-  if (!sameOrigin(request)) {
+  if (!isSameOriginOrNativeRequest(request)) {
     return NextResponse.json({ error: 'Cross-origin media requests are not allowed.' }, { status: 403 })
   }
   try {

@@ -15,3 +15,6 @@ node_modules
 .DS_Store
 .neon
 .vercel
+services/fastapi/.venv/
+__pycache__/
+.pytest_cache/

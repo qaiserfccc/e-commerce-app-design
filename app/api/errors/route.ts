@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logApplicationError } from '@/lib/errors/log-error'
 import { consumePublicRateLimit } from '@/lib/auth/public-rate-limit'
+import { isSameOriginOrNativeRequest } from '@/lib/http/api-origin'
 
 const maxRequestBytes = 16 * 1024
 
 export async function POST(request: NextRequest) {
-  const origin = request.headers.get('origin')
-  if (origin !== request.nextUrl.origin) {
+  if (!isSameOriginOrNativeRequest(request)) {
     return NextResponse.json({ error: 'Invalid request origin.' }, { status: 403 })
   }
   const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'

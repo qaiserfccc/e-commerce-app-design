@@ -6,6 +6,7 @@ import {
   setOrderReceipt,
 } from '@/lib/auth/store-customer'
 import { consumePublicRateLimit } from '@/lib/auth/public-rate-limit'
+import { isSameOriginOrNativeRequest } from '@/lib/http/api-origin'
 import { JsonBodyError, readJsonBody } from '@/lib/http/json-body'
 
 export const dynamic = 'force-dynamic'
@@ -30,8 +31,7 @@ function errorResponse(error: unknown) {
 }
 
 export async function POST(request: NextRequest) {
-  const origin = request.headers.get('origin')
-  if (!origin || origin !== new URL(request.url).origin) {
+  if (!isSameOriginOrNativeRequest(request)) {
     return response({ error: 'This order request was not accepted.' }, 403)
   }
   if (!consumePublicRateLimit('checkout', clientAddress(request), 6, 15 * 60 * 1000)) {

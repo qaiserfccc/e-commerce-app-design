@@ -144,12 +144,12 @@ async function enrich<T extends { id: string; categoryId: string | null; lensSha
   }))
 }
 
-async function loadCatalog(categorySlug: string | null, query: string | null, brandSlug: string | null) {
+async function buildCatalogConditions(categorySlug: string | null, query: string | null, brandSlug: string | null) {
   const conditions = [eq(storeProducts.status, 'active')]
   if (categorySlug) {
     const all = await getCategories()
     const target = all.find((category) => category.slug === categorySlug)
-    if (!target) return []
+    if (!target) return null
     const matchingCategoryIds = [...descendantIds(all, target.id)]
     conditions.push(inArray(storeProducts.id, db.select({ productId: storeProductCategories.productId }).from(storeProductCategories).where(inArray(storeProductCategories.categoryId, matchingCategoryIds))))
   }
@@ -165,7 +165,11 @@ async function loadCatalog(categorySlug: string | null, query: string | null, br
     )!)
   }
   if (brandSlug) conditions.push(eq(storeBrands.slug, brandSlug), eq(storeBrands.isActive, true))
-  const rows = await db
+  return conditions
+}
+
+function catalogQuery(conditions: NonNullable<Awaited<ReturnType<typeof buildCatalogConditions>>>) {
+  return db
     .select(productColumns)
     .from(storeProducts)
     .leftJoin(storeCategories, eq(storeCategories.id, storeProducts.categoryId))
@@ -173,8 +177,56 @@ async function loadCatalog(categorySlug: string | null, query: string | null, br
     .leftJoin(storeLensShades, eq(storeLensShades.id, storeProducts.lensShadeId))
     .leftJoin(storeLensTypes, eq(storeLensTypes.id, storeProducts.lensTypeId))
     .where(and(...conditions))
-    .orderBy(desc(storeProducts.createdAt))
+}
+
+async function loadCatalog(categorySlug: string | null, query: string | null, brandSlug: string | null) {
+  const conditions = await buildCatalogConditions(categorySlug, query, brandSlug)
+  if (!conditions) return []
+  const rows = await catalogQuery(conditions).orderBy(desc(storeProducts.createdAt))
   return enrich(rows)
+}
+
+async function loadCatalogPage(categorySlug: string | null, query: string | null, brandSlug: string | null, page: number, pageSize: number) {
+  const conditions = await buildCatalogConditions(categorySlug, query, brandSlug)
+  if (!conditions) return { data: [], total: 0, page, pageSize, totalPages: 0 }
+
+  const [rows, countRows] = await Promise.all([
+    catalogQuery(conditions)
+      .orderBy(desc(storeProducts.createdAt))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize),
+    db
+      .select({ total: sql<number>`count(distinct ${storeProducts.id})::int` })
+      .from(storeProducts)
+      .leftJoin(storeCategories, eq(storeCategories.id, storeProducts.categoryId))
+      .leftJoin(storeBrands, eq(storeBrands.id, storeProducts.brandId))
+      .leftJoin(storeLensShades, eq(storeLensShades.id, storeProducts.lensShadeId))
+      .leftJoin(storeLensTypes, eq(storeLensTypes.id, storeProducts.lensTypeId))
+      .where(and(...conditions)),
+  ])
+  const total = countRows[0]?.total ?? 0
+  return {
+    data: await enrich(rows),
+    total,
+    page,
+    pageSize,
+    totalPages: Math.ceil(total / pageSize),
+  }
+}
+
+export function getCatalogPage(
+  category: string | null,
+  query: string | null,
+  brand: string | null,
+  page: number,
+  pageSize: number,
+) {
+  return cached(
+    CATALOG_NAMESPACE,
+    `products-page:${category ?? ''}:${(query ?? '').toLowerCase()}:${brand ?? ''}:${page}:${pageSize}`,
+    60,
+    () => loadCatalogPage(category, query, brand, page, pageSize),
+  )
 }
 
 export function getCatalog(category: string | null = null, query: string | null = null, brand: string | null = null) {

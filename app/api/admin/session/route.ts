@@ -7,6 +7,7 @@ import {
   isAdminAuthConfigured,
   verifyAdminCredentials,
 } from '@/lib/auth/admin'
+import { isSameOriginOrNativeRequest } from '@/lib/http/api-origin'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,11 +20,6 @@ function authError(error: unknown) {
   }
   console.error('[admin-session] Request failed')
   return NextResponse.json({ error: 'Unable to complete the sign-in request.' }, { status: 500 })
-}
-
-function sameOrigin(request: NextRequest) {
-  const origin = request.headers.get('origin')
-  return origin === request.nextUrl.origin && request.headers.get('sec-fetch-site') !== 'cross-site'
 }
 
 export async function GET(request: NextRequest) {
@@ -51,7 +47,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!sameOrigin(request)) {
+  if (!isSameOriginOrNativeRequest(request)) {
     return NextResponse.json({ error: 'Cross-origin sign-in requests are not allowed.' }, { status: 403 })
   }
   const contentLength = Number(request.headers.get('content-length') ?? 0)
@@ -96,7 +92,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  if (!sameOrigin(request)) {
+  if (!isSameOriginOrNativeRequest(request)) {
     return NextResponse.json({ error: 'Cross-origin sign-out requests are not allowed.' }, { status: 403 })
   }
 

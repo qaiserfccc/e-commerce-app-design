@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getCatalog } from '@/lib/data/catalog'
+import { getCatalog, getCatalogPage } from '@/lib/data/catalog'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,10 +9,41 @@ export async function GET(request: NextRequest) {
     const category = url.searchParams.get('category')
     const rawBrand = url.searchParams.get('brand')?.trim()
     const rawQuery = url.searchParams.get('q')?.trim()
+    const rawPage = url.searchParams.get('page')
+    const rawLimit = url.searchParams.get('limit')
     if (category && category.length > 100) return NextResponse.json({ error: 'Category filter is too long.' }, { status: 400 })
     if (rawBrand && rawBrand.length > 100) return NextResponse.json({ error: 'Brand filter is too long.' }, { status: 400 })
     if (rawQuery && rawQuery.length > 100) return NextResponse.json({ error: 'Search query is too long.' }, { status: 400 })
+    if ((rawPage !== null && !/^[1-9]\d*$/.test(rawPage)) || (rawLimit !== null && !/^[1-9]\d*$/.test(rawLimit))) {
+      return NextResponse.json({ error: 'Page and limit must be positive integers.' }, { status: 400 })
+    }
+    if (!rawPage && rawLimit) return NextResponse.json({ error: 'Page is required when using limit.' }, { status: 400 })
+    const page = rawPage ? Number(rawPage) : null
+    const limit = rawLimit ? Number(rawLimit) : null
+    if (page !== null && (!Number.isSafeInteger(page) || page > 100_000)) {
+      return NextResponse.json({ error: 'Page is outside the supported range.' }, { status: 400 })
+    }
+    if (limit !== null && (!Number.isSafeInteger(limit) || limit > 100)) {
+      return NextResponse.json({ error: 'Limit must be between 1 and 100.' }, { status: 400 })
+    }
     const query = rawQuery
+
+    if (page !== null) {
+      const result = await getCatalogPage(category || null, query || null, rawBrand || null, page, limit ?? 24)
+      return NextResponse.json(
+        {
+          data: result.data,
+          pagination: {
+            page: result.page,
+            limit: result.pageSize,
+            total: result.total,
+            totalPages: result.totalPages,
+          },
+          timestamp: new Date().toISOString(),
+        },
+        { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' } },
+      )
+    }
 
     const enrichedProducts = await getCatalog(category || null, query || null, rawBrand || null)
 

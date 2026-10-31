@@ -9,6 +9,7 @@ import {
   verifyStoreCustomerCredentials,
 } from '@/lib/auth/store-customer'
 import { consumePublicRateLimit } from '@/lib/auth/public-rate-limit'
+import { isSameOriginOrNativeRequest } from '@/lib/http/api-origin'
 import { JsonBodyError, readJsonBody } from '@/lib/http/json-body'
 
 export const dynamic = 'force-dynamic'
@@ -21,11 +22,6 @@ function clientAddress(request: NextRequest) {
   return request.headers.get('x-real-ip')?.trim() ||
     request.headers.get('x-forwarded-for')?.split(',').at(-1)?.trim() ||
     'unknown'
-}
-
-function isSameOrigin(request: NextRequest) {
-  const origin = request.headers.get('origin')
-  return Boolean(origin && origin === new URL(request.url).origin)
 }
 
 function knownError(error: unknown) {
@@ -45,7 +41,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  if (!isSameOrigin(request)) return response({ error: 'This account request was not accepted.' }, 403)
+  if (!isSameOriginOrNativeRequest(request)) return response({ error: 'This account request was not accepted.' }, 403)
   if (!consumePublicRateLimit('customer-auth', clientAddress(request), 10, 15 * 60 * 1000)) {
     return response({ error: 'Too many account attempts. Wait a few minutes and try again.' }, 429)
   }

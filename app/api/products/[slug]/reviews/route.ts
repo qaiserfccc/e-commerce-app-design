@@ -1,17 +1,31 @@
 import { eq } from 'drizzle-orm'
 import { NextRequest, NextResponse } from 'next/server'
 import { consumePublicRateLimit } from '@/lib/auth/public-rate-limit'
-import { getProductPageSettings } from '@/lib/data/catalog'
+import { getApprovedReviews, getProduct, getProductPageSettings } from '@/lib/data/catalog'
 import { db } from '@/lib/db'
 import { storeProductReviews, storeProducts } from '@/lib/db/schema'
+import { isSameOriginOrNativeRequest } from '@/lib/http/api-origin'
 
 export const dynamic = 'force-dynamic'
 
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+  try {
+    const { slug } = await params
+    const product = await getProduct(slug)
+    if (!product) return NextResponse.json({ error: 'Product not found.' }, { status: 404 })
+    return NextResponse.json(
+      { data: await getApprovedReviews(product.id) },
+      { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' } },
+    )
+  } catch (error) {
+    console.error('[product-reviews-api] Review request failed', error instanceof Error ? error.name : 'UnknownError')
+    return NextResponse.json({ error: 'Unable to load reviews right now.' }, { status: 500 })
+  }
+}
+
 export async function POST(request: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   try {
-    const host = request.headers.get('host')
-    const origin = request.headers.get('origin')
-    if (!origin || !host || new URL(origin).host !== host) return NextResponse.json({ error: 'Cross-origin requests are not allowed.' }, { status: 403 })
+    if (!isSameOriginOrNativeRequest(request)) return NextResponse.json({ error: 'Cross-origin requests are not allowed.' }, { status: 403 })
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
     if (!consumePublicRateLimit('review', ip, 5, 60 * 60 * 1000)) return NextResponse.json({ error: 'Too many reviews. Try again later.' }, { status: 429 })
     const { slug } = await params

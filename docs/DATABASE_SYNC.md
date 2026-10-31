@@ -2,6 +2,8 @@
 
 The storefront and admin use the same Neon Postgres database through Drizzle. Client screens load route-handler data with SWR; writes use server actions that validate inputs, verify admin authorization where required, and create audit events in the same transaction as the database change.
 
+For the public HTTP contract, mobile-client setup, Flutter/Dio cookie handling, and FastAPI starter, see [Mobile and integration API](./API_MOBILE_INTEGRATION.md).
+
 ## Storefront
 
 - `GET /api/products` returns active products, supported public media metadata, and active lens options. It supports `category` and `q` filters and is refreshed by `useProducts`.

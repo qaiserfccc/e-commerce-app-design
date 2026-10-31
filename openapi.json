@@ -1,0 +1,275 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ISK Lenses API",
+    "version": "1.0.0",
+    "description": "Public storefront, shopper, integration, and authenticated administration endpoints. Native app requests may omit Origin; browser-originated mutations must be same-origin. Responses use JSON unless noted otherwise."
+  },
+  "servers": [{ "url": "/", "description": "Current site origin" }],
+  "tags": [
+    { "name": "Catalog", "description": "Published products and browse taxonomies." },
+    { "name": "Shopper", "description": "Shopper session, COD checkout, and account order history." },
+    { "name": "Integrations", "description": "Chatbot grounding, media delivery, error reporting, and Meta webhooks." },
+    { "name": "Admin", "description": "Authenticated administrative reads and supported REST mutations." }
+  ],
+  "paths": {
+    "/api": {
+      "get": {
+        "tags": ["Integrations"],
+        "summary": "Discover API groups",
+        "responses": { "200": { "description": "Endpoint directory." } }
+      }
+    },
+    "/api/openapi.json": {
+      "get": {
+        "tags": ["Integrations"],
+        "summary": "Download this OpenAPI document",
+        "responses": { "200": { "description": "OpenAPI 3.1 specification.", "content": { "application/json": { "schema": { "type": "object" } } } } }
+      }
+    },
+    "/api/products": {
+      "get": {
+        "tags": ["Catalog"],
+        "summary": "List active products",
+        "description": "Without pagination parameters, returns the full legacy catalog list. Send page to use bounded pagination; page size defaults to 24 and limit is capped at 100.",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1 }, "description": "One-based page. Required when limit is supplied." },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 24 } },
+          { "name": "category", "in": "query", "schema": { "type": "string", "maxLength": 100 } },
+          { "name": "brand", "in": "query", "schema": { "type": "string", "maxLength": 100 } },
+          { "name": "q", "in": "query", "schema": { "type": "string", "maxLength": 100 } }
+        ],
+        "responses": {
+          "200": { "description": "Product data; paginated requests also include total and page metadata.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProductsResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/products/{slug}": {
+      "get": {
+        "tags": ["Catalog"],
+        "summary": "Get a published product",
+        "parameters": [{ "$ref": "#/components/parameters/Slug" }],
+        "responses": {
+          "200": { "description": "Product detail.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DataResponse" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/product-categories": {
+      "get": {
+        "tags": ["Catalog"],
+        "summary": "List active product categories",
+        "responses": { "200": { "description": "Category hierarchy and counts.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DataResponse" } } } } }
+      }
+    },
+    "/api/brands": {
+      "get": {
+        "tags": ["Catalog"],
+        "summary": "List active storefront brands",
+        "responses": { "200": { "description": "Brands and published product counts.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DataResponse" } } } } }
+      }
+    },
+    "/api/lens-shades": {
+      "get": {
+        "tags": ["Catalog"],
+        "summary": "List lens shades",
+        "responses": { "200": { "description": "Shades with associated product counts.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DataResponse" } } } } }
+      }
+    },
+    "/api/lens-types": {
+      "get": {
+        "tags": ["Catalog"],
+        "summary": "List lens types",
+        "responses": { "200": { "description": "Lens types with associated product counts.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DataResponse" } } } } }
+      }
+    },
+    "/api/delivery-rules": {
+      "get": {
+        "tags": ["Shopper"],
+        "summary": "Read public delivery pricing rules",
+        "description": "Use the returned subtotal ranges to display a delivery quote at checkout. The order endpoint independently recalculates and validates the quote.",
+        "responses": { "200": { "description": "Delivery subtotal bands and fees.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DataResponse" } } } } }
+      }
+    },
+    "/api/products/{slug}/reviews": {
+      "get": {
+        "tags": ["Catalog"],
+        "summary": "List approved reviews for a published product",
+        "parameters": [{ "$ref": "#/components/parameters/Slug" }],
+        "responses": { "200": { "description": "Approved reviews.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DataResponse" } } } }, "404": { "$ref": "#/components/responses/NotFound" } }
+      },
+      "post": {
+        "tags": ["Catalog"],
+        "summary": "Submit a product review",
+        "description": "Subject to store review settings and rate limiting. Reviews may be held for approval.",
+        "parameters": [{ "$ref": "#/components/parameters/Slug" }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ReviewInput" } } } },
+        "responses": { "201": { "description": "Review accepted." }, "400": { "$ref": "#/components/responses/BadRequest" }, "403": { "$ref": "#/components/responses/Forbidden" }, "429": { "$ref": "#/components/responses/RateLimited" } }
+      }
+    },
+    "/api/storefront/session": {
+      "get": {
+        "tags": ["Shopper"],
+        "summary": "Read the current shopper session",
+        "responses": { "200": { "description": "Current shopper or null; no-store." } }
+      },
+      "post": {
+        "tags": ["Shopper"],
+        "summary": "Register, sign in, or sign out",
+        "description": "On register/login, retain the HttpOnly isk-lenses-customer-session cookie using the client platform's cookie jar. Native requests may omit Origin. A logout clears the current cookie; account-wide session revocation is not provided.",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ShopperSessionInput" } } } },
+        "responses": { "200": { "description": "Signed in or signed out; login sets the session cookie." }, "201": { "description": "Account created and signed in; sets the session cookie." }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "429": { "$ref": "#/components/responses/RateLimited" } }
+      }
+    },
+    "/api/orders": {
+      "post": {
+        "tags": ["Shopper"],
+        "summary": "Place a cash-on-delivery order",
+        "description": "Prices, stock, and delivery fees are revalidated on the server. checkoutKey must be a UUID and should remain unchanged across retries of the same checkout attempt. Native clients may omit Origin. Rate limited.",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/OrderInput" } } } },
+        "responses": { "201": { "description": "Order number and idempotent-reuse indicator." }, "400": { "$ref": "#/components/responses/BadRequest" }, "409": { "description": "Price, stock, or idempotency conflict." }, "413": { "description": "Request too large." }, "429": { "$ref": "#/components/responses/RateLimited" } }
+      }
+    },
+    "/api/storefront/orders": {
+      "get": {
+        "tags": ["Shopper"],
+        "summary": "List the signed-in shopper's orders",
+        "description": "Returns up to 50 order summaries. Customer order details/history beyond these summaries are not implemented.",
+        "security": [{ "shopperCookie": [] }],
+        "responses": { "200": { "description": "Shopper order summaries." }, "401": { "$ref": "#/components/responses/Unauthorized" } }
+      }
+    },
+    "/api/chatbot/knowledge": {
+      "get": {
+        "tags": ["Integrations"],
+        "summary": "Retrieve public chatbot grounding data",
+        "parameters": [{ "name": "q", "in": "query", "schema": { "type": "string", "maxLength": 100 }, "description": "Optional product search; up to eight matches." }],
+        "responses": { "200": { "description": "FAQ, public product facts, and assistant safety guidance." }, "400": { "$ref": "#/components/responses/BadRequest" } }
+      }
+    },
+    "/api/media/{path}": {
+      "get": {
+        "tags": ["Integrations"],
+        "summary": "Retrieve public product or storefront media",
+        "parameters": [{ "name": "path", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Path segments following /api/media/." }],
+        "responses": { "200": { "description": "Media bytes with content type and ETag." }, "304": { "description": "Media unchanged." }, "404": { "$ref": "#/components/responses/NotFound" } }
+      },
+      "head": {
+        "tags": ["Integrations"],
+        "summary": "Read media headers without downloading the body",
+        "parameters": [{ "name": "path", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Media headers." }, "404": { "$ref": "#/components/responses/NotFound" } }
+      }
+    },
+    "/api/errors": {
+      "post": {
+        "tags": ["Integrations"],
+        "summary": "Submit a bounded client error report",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["message"], "properties": { "message": { "type": "string", "maxLength": 8000 }, "source": { "type": "string" }, "errorName": { "type": "string" }, "stack": { "type": "string" } } } } } },
+        "responses": { "204": { "description": "Report recorded." }, "400": { "$ref": "#/components/responses/BadRequest" }, "429": { "$ref": "#/components/responses/RateLimited" } }
+      }
+    },
+    "/api/webhooks/meta-leads": {
+      "get": {
+        "tags": ["Integrations"],
+        "summary": "Verify the Meta Lead Ads webhook",
+        "parameters": [
+          { "name": "hub.mode", "in": "query", "required": true, "schema": { "type": "string" } },
+          { "name": "hub.verify_token", "in": "query", "required": true, "schema": { "type": "string" } },
+          { "name": "hub.challenge", "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Plain-text Meta challenge." }, "403": { "$ref": "#/components/responses/Forbidden" } }
+      },
+      "post": {
+        "tags": ["Integrations"],
+        "summary": "Receive signed Meta Lead Ads events",
+        "description": "Requires a valid X-Hub-Signature-256 HMAC signature and configured Meta credentials.",
+        "parameters": [{ "name": "X-Hub-Signature-256", "in": "header", "required": true, "schema": { "type": "string" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object" } } } },
+        "responses": { "200": { "description": "Received/imported/duplicate event counts." }, "401": { "$ref": "#/components/responses/Unauthorized" }, "503": { "description": "Webhook integration not configured." } }
+      }
+    },
+    "/api/admin/session": {
+      "get": { "tags": ["Admin"], "summary": "Read the current admin session", "responses": { "200": { "description": "Session status and role." }, "503": { "description": "Admin authentication is not configured." } } },
+      "post": {
+        "tags": ["Admin"],
+        "summary": "Sign in as an admin",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["email", "password"], "properties": { "email": { "type": "string", "format": "email" }, "password": { "type": "string", "maxLength": 256 } } } } } },
+        "responses": { "200": { "description": "Authenticated; sets HttpOnly admin session cookie." }, "401": { "$ref": "#/components/responses/Unauthorized" } }
+      },
+      "delete": { "tags": ["Admin"], "summary": "Sign out", "security": [{ "adminCookie": [] }], "responses": { "200": { "description": "Session cookie cleared." } } }
+    },
+    "/api/admin/password-reset": {
+      "get": { "tags": ["Admin"], "summary": "Check whether recovery is configured", "responses": { "200": { "description": "Recovery configuration status." } } },
+      "post": { "tags": ["Admin"], "summary": "Reset password with recovery key", "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["email", "recoveryKey", "newPassword"], "properties": { "email": { "type": "string", "format": "email" }, "recoveryKey": { "type": "string" }, "newPassword": { "type": "string" } } } } } }, "responses": { "200": { "description": "Password reset." }, "401": { "$ref": "#/components/responses/Unauthorized" }, "503": { "description": "Recovery is not enabled." } } }
+    },
+    "/api/admin/metrics": { "get": { "tags": ["Admin"], "summary": "Read dashboard metrics", "security": [{ "adminCookie": [] }], "responses": { "200": { "description": "Order and revenue metrics." }, "401": { "$ref": "#/components/responses/Unauthorized" } } } },
+    "/api/admin/products": { "get": { "tags": ["Admin"], "summary": "List admin products with media and variants", "security": [{ "adminCookie": [] }], "responses": { "200": { "description": "Product management records." }, "401": { "$ref": "#/components/responses/Unauthorized" } } } },
+    "/api/admin/orders": {
+      "get": { "tags": ["Admin"], "summary": "List orders", "security": [{ "adminCookie": [] }], "parameters": [{ "$ref": "#/components/parameters/Offset" }, { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["pending", "paid", "processing", "shipped", "delivered", "cancelled", "refunded"] } }], "responses": { "200": { "description": "Page of up to 50 orders." }, "401": { "$ref": "#/components/responses/Unauthorized" } } }
+    },
+    "/api/admin/customers": {
+      "get": { "tags": ["Admin"], "summary": "Search and list customers", "security": [{ "adminCookie": [] }], "parameters": [{ "$ref": "#/components/parameters/Offset" }, { "$ref": "#/components/parameters/Search" }], "responses": { "200": { "description": "Page of up to 50 customers." }, "401": { "$ref": "#/components/responses/Unauthorized" } } }
+    },
+    "/api/admin/crm": {
+      "get": { "tags": ["Admin"], "summary": "Search and list CRM leads", "security": [{ "adminCookie": [] }], "parameters": [{ "$ref": "#/components/parameters/Offset" }, { "$ref": "#/components/parameters/Search" }, { "name": "status", "in": "query", "schema": { "type": "string", "maxLength": 32 } }], "responses": { "200": { "description": "Page of up to 50 CRM leads." }, "401": { "$ref": "#/components/responses/Unauthorized" } } }
+    },
+    "/api/admin/activity": { "get": { "tags": ["Admin"], "summary": "List recent activity", "security": [{ "adminCookie": [] }], "responses": { "200": { "description": "Recent audit activity." }, "401": { "$ref": "#/components/responses/Unauthorized" } } } },
+    "/api/admin/assets/{assetId}": {
+      "patch": { "tags": ["Admin"], "summary": "Move a product asset in its gallery", "security": [{ "adminCookie": [] }], "parameters": [{ "name": "assetId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["direction"], "properties": { "direction": { "type": "string", "enum": ["up", "down"] } } } } } }, "responses": { "200": { "description": "Updated asset." }, "401": { "$ref": "#/components/responses/Unauthorized" } } },
+      "delete": { "tags": ["Admin"], "summary": "Delete a product asset", "security": [{ "adminCookie": [] }], "parameters": [{ "name": "assetId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "responses": { "200": { "description": "Asset removed." }, "401": { "$ref": "#/components/responses/Unauthorized" }, "404": { "$ref": "#/components/responses/NotFound" } } }
+    },
+    "/api/admin/products/{productId}/assets": {
+      "post": { "tags": ["Admin"], "summary": "Upload product image or video", "description": "Multipart form fields: file (JPEG, PNG, WebP, AVIF, MP4, or WebM, at most 4 MB) and optional altText.", "security": [{ "adminCookie": [] }], "parameters": [{ "name": "productId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }], "requestBody": { "required": true, "content": { "multipart/form-data": { "schema": { "type": "object", "required": ["file"], "properties": { "file": { "type": "string", "format": "binary" }, "altText": { "type": "string", "maxLength": 500 } } } } } }, "responses": { "201": { "description": "Asset created." }, "401": { "$ref": "#/components/responses/Unauthorized" }, "413": { "description": "File too large." } } }
+    },
+    "/api/admin/content/upload": {
+      "post": { "tags": ["Admin"], "summary": "Upload a storefront image", "description": "Multipart form field file; JPEG, PNG, WebP, or AVIF, at most 4 MB.", "security": [{ "adminCookie": [] }], "requestBody": { "required": true, "content": { "multipart/form-data": { "schema": { "type": "object", "required": ["file"], "properties": { "file": { "type": "string", "format": "binary" } } } } } }, "responses": { "201": { "description": "Stored media metadata." }, "401": { "$ref": "#/components/responses/Unauthorized" } } }
+    },
+    "/api/admin/catalog-sync": {
+      "post": { "tags": ["Admin"], "summary": "Sync product catalog data from ISK source", "security": [{ "adminCookie": [] }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["entity"], "properties": { "entity": { "type": "string", "enum": ["products", "brands", "categories", "lens-shades", "lens-types", "all"] } } } } } }, "responses": { "200": { "description": "Sync outcome." }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" } } }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "shopperCookie": { "type": "apiKey", "in": "cookie", "name": "isk-lenses-customer-session" },
+      "adminCookie": { "type": "apiKey", "in": "cookie", "name": "isk-lenses-admin-session" }
+    },
+    "parameters": {
+      "Slug": { "name": "slug", "in": "path", "required": true, "schema": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" } },
+      "Offset": { "name": "offset", "in": "query", "schema": { "type": "integer", "minimum": 0, "default": 0 } },
+      "Search": { "name": "q", "in": "query", "schema": { "type": "string", "maxLength": 100 } }
+    },
+    "schemas": {
+      "DataResponse": { "type": "object", "required": ["data"], "properties": { "data": {} } },
+      "ProductsResponse": { "type": "object", "required": ["data"], "properties": { "data": { "type": "array", "items": { "type": "object" } }, "pagination": { "type": "object", "properties": { "page": { "type": "integer" }, "limit": { "type": "integer" }, "total": { "type": "integer" }, "totalPages": { "type": "integer" } } }, "timestamp": { "type": "string", "format": "date-time" } } },
+      "ShopperSessionInput": { "oneOf": [
+        { "type": "object", "required": ["action", "email", "password"], "properties": { "action": { "const": "register" }, "email": { "type": "string", "format": "email" }, "password": { "type": "string" } } },
+        { "type": "object", "required": ["action", "email", "password"], "properties": { "action": { "const": "login" }, "email": { "type": "string", "format": "email" }, "password": { "type": "string" } } },
+        { "type": "object", "required": ["action"], "properties": { "action": { "const": "logout" } } }
+      ] },
+      "OrderInput": {
+        "type": "object",
+        "required": ["checkoutKey", "shippingAddress", "items", "quotedDeliveryFee"],
+        "properties": {
+          "checkoutKey": { "type": "string", "format": "uuid" },
+          "email": { "type": "string", "format": "email", "description": "Required for guest checkout; omit for a signed-in shopper." },
+          "shippingAddress": { "type": "object", "required": ["firstName", "lastName", "phone", "addressLine1", "city", "province"], "properties": { "firstName": { "type": "string" }, "lastName": { "type": "string" }, "phone": { "type": "string" }, "addressLine1": { "type": "string" }, "addressLine2": { "type": "string" }, "city": { "type": "string" }, "province": { "type": "string" }, "postalCode": { "type": "string" } } },
+          "items": { "type": "array", "minItems": 1, "maxItems": 30, "items": { "type": "object", "required": ["productId", "quantity", "quotedUnitPrice", "quotedCurrency"], "properties": { "productId": { "type": "string", "format": "uuid" }, "variantId": { "type": ["string", "null"], "format": "uuid" }, "quantity": { "type": "integer", "minimum": 1, "maximum": 100 }, "quotedUnitPrice": { "type": "string" }, "quotedCurrency": { "type": "string", "pattern": "^[A-Z]{3}$" } } } },
+          "quotedDeliveryFee": { "type": "string", "description": "Current delivery quote shown to the shopper; the server validates it." }
+        }
+      },
+      "ReviewInput": { "type": "object", "required": ["author", "body", "rating"], "properties": { "author": { "type": "string", "maxLength": 80 }, "body": { "type": "string", "maxLength": 2000 }, "title": { "type": "string", "maxLength": 120 }, "rating": { "type": "integer", "minimum": 1, "maximum": 5 } } },
+      "Error": { "type": "object", "required": ["error"], "properties": { "error": { "type": "string" } } }
+    },
+    "responses": {
+      "BadRequest": { "description": "Invalid request parameters or body.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "Unauthorized": { "description": "Authentication required or credentials rejected.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "Forbidden": { "description": "Request not allowed.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "NotFound": { "description": "Resource not found.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "RateLimited": { "description": "Rate limit exceeded.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "ServerError": { "description": "Unexpected server error.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+    }
+  }
+}

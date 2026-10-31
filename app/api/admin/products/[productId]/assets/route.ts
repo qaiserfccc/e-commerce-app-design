@@ -4,6 +4,7 @@ import { addProductAsset } from '@/app/actions/admin'
 import { getAdminProduct } from '@/app/actions/catalog-admin'
 import { requireAdminSession } from '@/lib/auth/admin'
 import { adminApiError } from '@/lib/auth/admin-api'
+import { isSameOriginOrNativeRequest } from '@/lib/http/api-origin'
 import { deleteMedia, uploadMedia } from '@/lib/server/media-storage.mjs'
 
 export const runtime = 'nodejs'
@@ -42,16 +43,11 @@ async function matchesMediaType(file: File, mediaType: 'image' | 'video') {
   }
 }
 
-function sameOrigin(request: NextRequest) {
-  return request.headers.get('origin') === request.nextUrl.origin &&
-    request.headers.get('sec-fetch-site') !== 'cross-site'
-}
-
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ productId: string }> },
 ) {
-  if (!sameOrigin(request)) {
+  if (!isSameOriginOrNativeRequest(request)) {
     return NextResponse.json({ error: 'Cross-origin upload requests are not allowed.' }, { status: 403 })
   }
 

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/auth/admin'
 import { adminApiError } from '@/lib/auth/admin-api'
+import { isSameOriginOrNativeRequest } from '@/lib/http/api-origin'
 import { uploadMedia } from '@/lib/server/media-storage.mjs'
 
 export const runtime = 'nodejs'
@@ -34,7 +35,7 @@ async function matches(file: File) {
 }
 
 export async function POST(request: NextRequest) {
-  if (request.headers.get('origin') !== request.nextUrl.origin || request.headers.get('sec-fetch-site') === 'cross-site') {
+  if (!isSameOriginOrNativeRequest(request)) {
     return NextResponse.json({ error: 'Cross-origin upload requests are not allowed.' }, { status: 403 })
   }
   try {

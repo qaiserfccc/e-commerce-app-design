@@ -1,21 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isAdminRecoveryConfigured, resetAdminPasswordWithRecoveryKey } from '@/lib/auth/admin-recovery'
+import { isSameOriginOrNativeRequest } from '@/lib/http/api-origin'
 
 export const dynamic = 'force-dynamic'
 
 const noStore = { 'Cache-Control': 'no-store' }
-
-function sameOrigin(request: NextRequest) {
-  const origin = request.headers.get('origin')
-  return origin === request.nextUrl.origin && request.headers.get('sec-fetch-site') !== 'cross-site'
-}
 
 export async function GET() {
   return NextResponse.json({ configured: await isAdminRecoveryConfigured() }, { headers: noStore })
 }
 
 export async function POST(request: NextRequest) {
-  if (!sameOrigin(request)) {
+  if (!isSameOriginOrNativeRequest(request)) {
     return NextResponse.json({ error: 'Cross-origin requests are not allowed.' }, { status: 403 })
   }
   if (Number(request.headers.get('content-length') ?? 0) > 2048) {
