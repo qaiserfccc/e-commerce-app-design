@@ -273,6 +273,22 @@ function decimal(value: unknown, label: string) {
   return raw
 }
 
+function lensMeasurement(value: unknown, label: string) {
+  const result = decimal(value, label)
+  if (!result) throw new Error(`${label} is required.`)
+  const number = Number(result)
+  if (number < 0 || number > 12 || Math.round(number * 10) !== number * 10) {
+    throw new Error(`${label} must be between 0.00 and 12.00 in 0.10 increments.`)
+  }
+  return result
+}
+
+function waterContent(value: unknown) {
+  const result = text(value, 60, 'Water content', true)!
+  if (!/^(?:100|[0-9]{1,2})%$/.test(result)) throw new Error('Water content must be selected from 0% to 100%.')
+  return result
+}
+
 function parseProduct(input: AdminProductInput) {
   const name = text(input.name, 200, 'Name', true)!
   const slug = typeof input.slug === 'string' && input.slug.trim() ? input.slug.trim().toLowerCase() : slugify(name)
@@ -309,9 +325,9 @@ function parseProduct(input: AdminProductInput) {
     compareAtPrice: money(input.compareAtPrice, 'Compare-at price', false),
     currency,
     status,
-    diameterMm: decimal(input.diameterMm, 'Diameter'),
-    baseCurve: decimal(input.baseCurve, 'Base curve'),
-    waterContent: text(input.waterContent, 60, 'Water content'),
+    diameterMm: lensMeasurement(input.diameterMm, 'Diameter'),
+    baseCurve: lensMeasurement(input.baseCurve, 'Base curve'),
+    waterContent: waterContent(input.waterContent),
     material: text(input.material, 120, 'Material'),
     wearDuration: text(input.wearDuration, 120, 'Wear duration'),
     packContents: text(input.packContents, 120, 'Pack contents'),

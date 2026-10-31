@@ -11,6 +11,9 @@ import { notify, reportError } from '@/lib/ui/notifications'
 
 type SpecRow = { label: string; value: string }
 
+const diameterAndCurveOptions = Array.from({ length: 121 }, (_, index) => (index / 10).toFixed(2))
+const waterContentOptions = Array.from({ length: 101 }, (_, index) => `${index}%`)
+
 export function ProductEditor({ product, onSaved, onCancel }: { product?: AdminProduct; onSaved: () => void; onCancel: () => void }) {
   const { data: categoryData } = useSWR('admin-categories', () => getAdminCategories())
   const { data: brandData } = useSWR('admin-brands', () => getAdminBrands())
@@ -137,9 +140,25 @@ export function ProductEditor({ product, onSaved, onCancel }: { product?: AdminP
 
       <fieldset className="mt-6 grid gap-4 sm:grid-cols-3">
         <legend className="mb-3 text-sm font-semibold">Lens details</legend>
-        <Field label="Diameter (mm)"><input name="diameterMm" inputMode="decimal" placeholder="14.2" defaultValue={product?.diameterMm ?? ''} className={inputClass} /></Field>
-        <Field label="Base curve (mm)"><input name="baseCurve" inputMode="decimal" placeholder="8.6" defaultValue={product?.baseCurve ?? ''} className={inputClass} /></Field>
-        <Field label="Water content"><input name="waterContent" placeholder="38%" defaultValue={product?.waterContent ?? ''} className={inputClass} /></Field>
+        <p className="text-xs leading-5 text-[#526b7b] sm:col-span-3">Select each lens measurement before saving. All three selectors start blank.</p>
+        <Field label="Diameter (DIA) · mm" required>
+          <select name="diameterMm" required defaultValue="" className={inputClass}>
+            <option value="" disabled>Select diameter</option>
+            {diameterAndCurveOptions.map((value) => <option key={value} value={value}>{value}</option>)}
+          </select>
+        </Field>
+        <Field label="Base curve (BC) · mm" required>
+          <select name="baseCurve" required defaultValue="" className={inputClass}>
+            <option value="" disabled>Select base curve</option>
+            {diameterAndCurveOptions.map((value) => <option key={value} value={value}>{value}</option>)}
+          </select>
+        </Field>
+        <Field label="Water content · %" required>
+          <select name="waterContent" required defaultValue="" className={inputClass}>
+            <option value="" disabled>Select water content</option>
+            {waterContentOptions.map((value) => <option key={value} value={value}>{value}</option>)}
+          </select>
+        </Field>
         <Field label="Material"><input name="material" defaultValue={product?.material ?? ''} className={inputClass} /></Field>
         <Field label="Lens type">
           <select name="lensTypeId" defaultValue={product?.lensTypeId ?? ''} className={inputClass}>
