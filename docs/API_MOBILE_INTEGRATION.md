@@ -12,6 +12,8 @@ Do not treat adding TanStack Start beside Next.js as a mobile API strategy. TanS
 
 The Realtime endpoint `GET /api/realtime/catalog` returns a short-lived sealed public aggregate query and Realtime URL. The capability is a bearer credential: do not log it or store it persistently. Only configure approved origins in [`../neon.ts`](../neon.ts); do not expose `NEON_REALTIME_SECRET`.
 
+Product-page search metadata, JSON-LD, `robots.txt`, and `sitemap.xml` are web crawler surfaces and do not change the Flutter-facing REST contract. Product SEO title/description and first-party media remain available through the existing product API; no endpoint or response schema changed for the SEO import.
+
 ## Endpoint directory
 
 | Area | Method and path | Access | Purpose |
@@ -107,7 +109,7 @@ The admin API covers the completed commerce workflows. The web-only Project Kanb
 
 The Flutter Android/iOS storefront and commerce-admin client is in `apps/mobile`. See its README for local setup, API-origin configuration, build commands, admin module coverage, and the current release-readiness boundary.
 
-1. Use the deployed site origin as the base URL; all API paths above are relative to that origin. While the custom domains still point to Hostinger, the verified API origin is `https://isk-lenses-storefront.isklenses.workers.dev`. After the Cloudflare DNS cutover is complete, `https://www.isklenses.online` can be used as the production origin.
+1. Use the deployed site origin as the base URL; all API paths above are relative to that origin. `https://isklenses.com` currently serves the verified Vercel storefront and API. `isklenses.online` still resolves to Hostinger and is not a valid production API origin.
 2. Open `/api/openapi.json` in an OpenAPI client generator or use it as the reference when configuring FlutterFlow API Calls. Set `Accept: application/json` and `Content-Type: application/json` on JSON writes.
 3. Use a cookie jar/session-preserving HTTP client for shopper login. Login/register sets the HttpOnly `isk-lenses-customer-session` cookie; send it on later order-history and checkout requests. Retain the cookie securely, honor its expiry, and clear it on logout. The API does **not** issue bearer tokens. On FlutterFlow, if its API-call client does not retain `Set-Cookie`, implement the login/checkout sequence in a custom action with a cookie-aware client rather than copying the password into app state.
 4. Admin cookies use `isk-lenses-admin-session`; keep admin credentials and session access out of logs, URLs, analytics, and client source. Staff/admin/owner permissions are still enforced server-side.
