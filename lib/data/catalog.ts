@@ -35,6 +35,13 @@ import { isToricLensType, TORIC_ORDER_NOTICE, toricWhatsAppUrl } from '@/lib/tor
 
 export const CATALOG_NAMESPACE = 'catalog'
 
+export type ProductSeoMetadata = {
+  canonicalUrl?: string
+  title?: string
+  description?: string
+  fields?: Record<string, unknown>
+}
+
 type ProductImageCandidate = {
   brandId: string | null
   lensShadeId: string | null
@@ -565,6 +572,37 @@ async function loadProduct(slug: string) {
 
 export function getProduct(slug: string) {
   return cached(CATALOG_NAMESPACE, `product:image-fallback-v1:${slug}`, 300, () => loadProduct(slug))
+}
+
+async function loadProductSeoMetadata(slug: string): Promise<ProductSeoMetadata | null> {
+  const [row] = await db
+    .select({
+      seo: sql<ProductSeoMetadata | null>`${storeProducts.sourcePayload}->'isk_seo'`,
+    })
+    .from(storeProducts)
+    .where(and(eq(storeProducts.slug, slug), eq(storeProducts.status, 'active')))
+    .limit(1)
+  return row?.seo ?? null
+}
+
+export function getProductSeoMetadata(slug: string) {
+  return cached(CATALOG_NAMESPACE, `product-seo-metadata:${slug}`, 300, () => loadProductSeoMetadata(slug))
+}
+
+async function loadSitemapProducts() {
+  return db
+    .select({
+      slug: storeProducts.slug,
+      updatedAt: storeProducts.updatedAt,
+      heroImageUrl: storeProducts.heroImageUrl,
+    })
+    .from(storeProducts)
+    .where(eq(storeProducts.status, 'active'))
+    .orderBy(asc(storeProducts.slug))
+}
+
+export function getSitemapProducts() {
+  return cached(CATALOG_NAMESPACE, 'active-product-sitemap:v1', 3600, loadSitemapProducts)
 }
 
 export async function getProductPageSettings(): Promise<ProductPageSettings> {

@@ -12,6 +12,7 @@ export const dynamic = 'force-dynamic'
 const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit', display: 'swap' })
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://isklenses.com'),
   title: { default: 'ISK Lenses — Contact lenses in Pakistan', template: '%s — ISK Lenses' },
   description: 'Shop contact lenses online in Pakistan. Browse brands, colors and collections and order with cash on delivery.',
   icons: {

@@ -11,8 +11,6 @@ dist/
 .DS_Store
 .neon
 .vercel/
-.cloudflare/
-.vinext/
 .pytest_cache/
 
 # v0 sandbox internal files

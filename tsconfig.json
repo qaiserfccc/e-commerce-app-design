@@ -31,11 +31,6 @@
   ],
   "exclude": [
     "node_modules",
-    ".cloudflare/**",
-    ".vinext/**",
-    "dist/**",
-    "cloudflare.config.ts",
-    "cloudflare-worker.ts",
-    "vite.config.ts"
+    "dist/**"
   ]
 }

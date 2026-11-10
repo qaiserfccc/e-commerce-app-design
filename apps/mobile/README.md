@@ -29,7 +29,7 @@ flutter pub get
 flutter run
 ```
 
-Set `ISK_API_ORIGIN` to the origin that serves this project's API. For a local Android emulator, the host machine is usually reachable at `http://10.0.2.2:3000`; for an iOS simulator use `http://localhost:3000`. Do not use plain HTTP for production. The current default is the verified Cloudflare Worker origin, `https://isk-lenses-storefront.isklenses.workers.dev`, because the custom domains still point to Hostinger. Once their DNS cutover is complete, builds can override it with `--dart-define=ISK_API_ORIGIN=https://www.isklenses.online`.
+Set `ISK_API_ORIGIN` to the origin that serves this project's API. For a local Android emulator, the host machine is usually reachable at `http://10.0.2.2:3000`; for an iOS simulator use `http://localhost:3000`. Do not use plain HTTP for production. The default `https://isklenses.com` currently serves the verified Vercel storefront and API. `isklenses.online` still resolves to Hostinger and must not be used as the production API origin.
 
 ## Build
 
