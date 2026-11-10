@@ -8,8 +8,8 @@
 - Authentication: application-owned signed, HttpOnly shopper and admin cookies. Do not silently replace this with Neon Managed Better Auth; it would require an explicit account and session migration.
 - Media: database-backed media objects in Neon, delivered through cacheable same-origin routes.
 - Package manager: `pnpm`.
-- Deployment status: Vercel + Neon is the selected production platform. The accessible Vercel project is `isk-lenses-website-migration`, but its configured Neon branch has no storefront schema; updates to Vercel variables and deployment are currently blocked by the team's fair-use restriction. The verified populated production Neon connection remains in the ignored `.env.production.local`. The CLI account cannot access `www.isklenses.com`, so do not claim that domain is attached to this project. DNS was not changed; `.online` remains on Hostinger.
-- Current client refresh: SWR polling/revalidation remains the fallback. A Neon Realtime sealed-query endpoint and TanStack DB catalog-version collection are implemented for the public catalog. Production Realtime credentials are not verified; keep the existing polling fallback until the correct secret is configured.
+- Deployment status: Vercel + Neon is the production platform. The verified Vercel project is `e-commerce-app-design` in `pro-team-trial-bc9638f2` (project ID `prj_H4gRTj6bFfmWXCoprIyKyfGcU3bz`); it owns `isklenses.com`, and `www.isklenses.com` redirects to the apex. Its Production database URL connects to the populated Neon `neondb` catalog (405 active products; 401 matched active products with SEO payloads and correct canonicals). `ADMIN_SESSION_SECRET` is configured in Vercel Production. The crawler routes are in the reviewed change and require its production deployment before they become live. No DNS records were changed; `isklenses.online` remains on Hostinger and currently returns HTTP 500.
+- Current client refresh: SWR polling/revalidation remains the fallback. A Neon Realtime sealed-query endpoint and TanStack DB catalog-version collection are implemented for the public catalog. Production Realtime credentials are not configured; keep the existing polling fallback.
 - AI assistant: the chatbot can invoke a stateless, server-side Mastra agent through Vercel AI Gateway when `AI_GATEWAY_API_KEY` is configured. Each turn queries the current public FAQ/catalog data from the same Neon database first. Without the key, the existing deterministic assistant remains available. The agent has no tools, database access, persistent memory, or business-write permissions. ISK does not store conversation history; third-party processing and retention policies may apply.
 
 ## Cross-platform target architecture
@@ -24,8 +24,8 @@ The platform request is to extend the existing product rather than replace worki
 
 ## Deployment status
 
-- Next.js is the only deployment framework. Vercel production configuration still needs the populated Neon connection and a successful deployment; the team's fair-use restriction currently rejects environment-variable writes. Do not deploy with the project's existing empty Neon branch.
-- The project CLI cannot inspect `www.isklenses.com`; do not change DNS or claim a custom-domain cutover without access and explicit user approval. The `.online` domain currently resolves to Hostinger.
+- Next.js is the only deployment framework. The verified `e-commerce-app-design` Vercel Production project uses the populated Neon `neondb` connection; do not use the unrelated `isk-lenses-website-migration` Vercel project.
+- `isklenses.com` is attached to the verified Vercel project and `www.isklenses.com` redirects to the apex. No DNS changes were made. `isklenses.online` remains on Hostinger and currently returns HTTP 500.
 - Cloudflare D1 (`isk-lenses-storefront`) and its Hyperdrive config were deleted after confirming that application tables contained no catalog, customer, order, secret, or media data. No Pages project or R2 bucket was present. DNS zones were not changed.
 
 ## Readiness and external prerequisites
