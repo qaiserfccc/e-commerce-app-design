@@ -1,8 +1,9 @@
 'use client'
 
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Product, ProductVariant } from '@/lib/hooks/use-storefront-data'
 import { isValidLensSelection, priceWithPowerSurcharge } from '@/lib/power-lens-options'
+import { trackGrowthEvent } from '@/components/analytics/marketing-analytics'
 
 export type CartLine = {
   product: Product
@@ -42,32 +43,44 @@ const CartContext = createContext<StorefrontCartValue | null>(null)
 
 export function StorefrontCartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<Record<string, CartLine>>({})
+  const itemsRef = useRef(items)
+  const updateItems = useCallback((update: (current: Record<string, CartLine>) => Record<string, CartLine>) => {
+    const current = itemsRef.current
+    const next = update(current)
+    if (next === current) return false
+    itemsRef.current = next
+    setItems(next)
+    return true
+  }, [])
   const keyFor = useCallback((product: Product, variant?: ProductVariant | null, powerSelection?: PowerSelection) =>
     `${product.id}:${variant?.id ?? 'standard'}:${powerSelection?.choice === 'plain' ? 'plain' : powerSelection?.left ?? ''}:${powerSelection?.choice === 'power' ? powerSelection.right : ''}`, [])
 
   const add = useCallback((product: Product, variant: ProductVariant | null = null, powerSelection: PowerSelection = null) => {
     const key = keyFor(product, variant, powerSelection)
     const available = variant?.stockQuantity ?? product.stockQuantity
-    setItems((current) => {
-      const quantity = current[key]?.quantity ?? 0
-      if (quantity >= available) return current
+    const quantity = itemsRef.current[key]?.quantity ?? 0
+    if (quantity >= available) return
+    const added = updateItems((current) => {
+      const currentQuantity = current[key]?.quantity ?? 0
+      if (currentQuantity >= available) return current
       return {
         ...current,
         [key]: {
           product,
           variant,
-          quantity: quantity + 1,
+          quantity: currentQuantity + 1,
           leftPowerRange: powerSelection?.choice === 'power' ? powerSelection.left : null,
           rightPowerRange: powerSelection?.choice === 'power' ? powerSelection.right : null,
           lensChoice: powerSelection?.choice ?? null,
         },
       }
     })
-  }, [keyFor])
+    if (added) trackGrowthEvent('add_to_cart', { productId: product.id })
+  }, [keyFor, updateItems])
 
   const setQuantity = useCallback((key: string, quantity: number) => {
     if (!Number.isSafeInteger(quantity)) return
-    setItems((current) => {
+    updateItems((current) => {
       const line = current[key]
       if (!line) return current
       if (quantity <= 0) {
@@ -79,11 +92,11 @@ export function StorefrontCartProvider({ children }: { children: ReactNode }) {
       if (quantity > available) return current
       return { ...current, [key]: { ...line, quantity } }
     })
-  }, [])
+  }, [updateItems])
 
   const syncProducts = useCallback((products: Product[]) => {
     const active = new Map(products.map((product) => [product.id, product]))
-    setItems((current) => {
+    updateItems((current) => {
       let changed = false
       const next: typeof current = {}
       for (const [key, line] of Object.entries(current)) {
@@ -115,8 +128,8 @@ export function StorefrontCartProvider({ children }: { children: ReactNode }) {
       }
       return changed ? next : current
     })
-  }, [])
-  const clear = useCallback(() => setItems({}), [])
+  }, [updateItems])
+  const clear = useCallback(() => { updateItems(() => ({})) }, [updateItems])
 
   const value = useMemo(() => {
     const lines = Object.entries(items).map(([key, line]) => ({ ...line, key }))

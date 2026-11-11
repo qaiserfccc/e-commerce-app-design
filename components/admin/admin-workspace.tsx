@@ -4,6 +4,7 @@ import { useDeferredValue, useEffect, useMemo, useState, type FormEvent, type Re
 import {
   Activity, ArrowDown, ArrowUp, BarChart3, Bot, ClipboardList, Eye, Gift, LayoutDashboard, LoaderCircle,
   AlertTriangle, BadgePercent, Images, LogOut, Package, Plus, RefreshCw, Search, ShoppingBag, ShieldCheck, Sparkles, Star, Tags, Truck, Users, X,
+  ListChecks, PlugZap, TrendingUp,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -49,6 +50,7 @@ import { ProductVariantManager } from '@/components/admin/product-variant-manage
 import { MerchandisingManager } from '@/components/admin/merchandising-manager'
 import { CrmWorkspace } from '@/components/admin/crm-workspace'
 import { ProductBulkTools } from '@/components/admin/product-bulk-tools'
+import { GrowthWorkspace } from '@/components/admin/growth-workspace'
 import { DataTable, type DataTableBulkAction, type DataTableColumn } from '@/components/admin/data-table'
 import { Pagination } from '@/components/ui/pagination'
 import { getProductImageSources } from '@/components/storefront/product-image'
@@ -75,6 +77,10 @@ const sections: Array<{ id: Section; label: string; icon: typeof LayoutDashboard
   { id: 'customers', label: 'Customers', icon: Users },
   { id: 'crm', label: 'CRM', icon: Users },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+  { id: 'cro-overview', label: 'Growth overview', icon: TrendingUp },
+  { id: 'cro-funnel', label: 'Conversion funnel', icon: BarChart3 },
+  { id: 'cro-actions', label: 'CRO actions', icon: ListChecks },
+  { id: 'marketing-integrations', label: 'Marketing integrations', icon: PlugZap },
   { id: 'content', label: 'Storefront content', icon: Tags },
   { id: 'home-design', label: 'Home and design', icon: Images },
   { id: 'power-options', label: 'Power lens options', icon: Eye },
@@ -1237,6 +1243,10 @@ export function AdminWorkspace({ section = 'overview' }: { section?: AdminSectio
     customers: <CustomersWorkspace />,
     crm: <CrmWorkspace canEdit={session.role === 'owner' || session.role === 'admin'} />,
     analytics: <AnalyticsWorkspace />,
+    'cro-overview': <GrowthWorkspace section={section} canEdit={session.role === 'owner' || session.role === 'admin'} />,
+    'cro-funnel': <GrowthWorkspace section={section} canEdit={session.role === 'owner' || session.role === 'admin'} />,
+    'cro-actions': <GrowthWorkspace section={section} canEdit={session.role === 'owner' || session.role === 'admin'} />,
+    'marketing-integrations': <GrowthWorkspace section={section} canEdit={session.role === 'owner' || session.role === 'admin'} />,
     content: <ContentManager canEdit={session.role === 'owner' || session.role === 'admin'} />,
     'home-design': <HomeDesignManager canEdit={session.role === 'owner' || session.role === 'admin'} />,
     'hero-slider': <HomeDesignManager canEdit={session.role === 'owner' || session.role === 'admin'} />,

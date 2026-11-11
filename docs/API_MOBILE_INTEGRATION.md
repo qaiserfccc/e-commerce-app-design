@@ -14,6 +14,8 @@ The Realtime endpoint `GET /api/realtime/catalog` returns a short-lived sealed p
 
 Product-page search metadata, JSON-LD, `robots.txt`, and `sitemap.xml` are web crawler surfaces. The public product response also includes the admin-managed SEO title, description, and focus keywords; canonical URLs are generated from the product slug. Search uses the same catalog API for web and mobile and matches names, descriptions, SKUs, brands, categories, lens attributes, features, and specifications.
 
+The web-only CRO dashboard records a minimal first-party funnel (`page_view`, `view_item`, `add_to_cart`, `begin_checkout`, `purchase`) only after a visitor grants optional analytics consent. `POST /api/storefront/growth-events` requires a same-origin browser `Origin`, an explicit `consentGranted: true` field, bounded event data, and rate limits. It stores a random session identifier, event name, page path, optional product ID, value/currency, and timestamp; it does not accept customer contact details. Events are cleaned up in batches after 90 days. `GET /api/storefront/tracking-config` exposes configured provider IDs only; it never exposes secrets. These endpoints are for the Next.js storefront, not Flutter. Native applications should use their own platform SDKs and consent flow; never ship Meta, Google, or database secrets in a mobile app. See [`CRO_ANALYTICS_SETUP.md`](CRO_ANALYTICS_SETUP.md) for provider setup and the exact server-only Meta Lead Ads keys.
+
 ## Endpoint directory
 
 | Area | Method and path | Access | Purpose |
@@ -24,6 +26,8 @@ Product-page search metadata, JSON-LD, `robots.txt`, and `sitemap.xml` are web c
 | Catalog | `GET /api/storefront/home/products?tab=catalog\|featured\|new\|reduced&page=` | Public | Paginated homepage product tabs, 15 per page; `hasMore` drives the next call. Carousels: categories coverflow, brands fade-slide (6th section), shades infinite-loop; tabs smooth-slide/coverflow/fade-slide/infinite-loop |
 | Catalog | `GET /api/storefront/home/sections/{section}?page=&q=` | Public | Paginated homepage carousels (`categories`, `brands`, `shades`, `lens-types`); max 15 items per page, `hasMore` drives the next call, search (`q`) is uncapped |
 | Catalog | `GET /api/storefront/home` | Public | Canonical home banners plus shared palette/control styles, ordered and visible homepage sections, hero layout/autoplay, site chrome, catalog directories/products, and approved reviews |
+| Analytics | `GET /api/storefront/tracking-config` | Public | Public provider IDs for consent-gated Meta, Google, and TikTok browser tags; no secrets |
+| Analytics | `POST /api/storefront/growth-events` | Same-origin storefront only, consent required, rate-limited | Record a bounded first-party CRO event; web-only, no customer PII |
 | Catalog | `GET /api/storefront/deals` | Public | Active category-based lens offers; clients may preview the best offer, while checkout recalculates it server-side |
 | Catalog | `GET /api/storefront/gift` | Public | Free-gift rules, product choices, and the PKR 2,500 discounted-subtotal threshold |
 | Catalog | `GET /api/products/{slug}` | Public | One active product with variants and media |
@@ -53,6 +57,11 @@ Product-page search metadata, JSON-LD, `robots.txt`, and `sitemap.xml` are web c
 | Admin | `GET /api/admin/password-reset` | Public | Recovery configuration status |
 | Admin | `POST /api/admin/password-reset` | Recovery key | Reset an admin password when recovery is enabled |
 | Admin | `GET /api/admin/metrics` | Admin cookie | Dashboard metrics |
+| Admin | `GET /api/admin/growth-metrics?days=7\|30\|90` | Admin cookie | Consented first-party funnel events, daily page views, top pages, and order counts |
+| Admin | `GET /api/admin/marketing-integrations` | Admin cookie | Provider IDs and Meta Lead Ads setup status (missing key names only) |
+| Admin | `PUT /api/admin/marketing-integrations` | Admin cookie, admin role | Save public provider IDs; never accepts access tokens |
+| Admin | `GET /api/admin/cro-actions` | Admin cookie | List the persistent CRO action board |
+| Admin | `PUT /api/admin/cro-actions` | Admin cookie, admin role | Save validated hypotheses, page paths, and action statuses |
 | Admin | `GET /api/admin/products` | Admin cookie | Admin product rows, media, and variants |
 | Admin | `POST /api/admin/products` | Admin cookie, admin role | Create a product with validated lens fields, category assignments, power ranges, and grouped SEO title, description, and focus keywords |
 | Admin | `GET, PUT, DELETE /api/admin/products/{productId}` | Admin cookie | Read, replace editable product fields, or delete a product; base curve is fixed to 8.66 mm and water content is limited to 38%, 40%, 45%, 48%, 50%, 55%, 58%, or 60% |
@@ -172,7 +181,7 @@ The UUIDs in the JSON are illustrative: replace `productId` with an actual UUID 
 
 ## API behavior and operational notes
 
-- JSON success responses generally use `{ "data": ... }`; errors use `{ "error": "..." }`. Checkout returns `orderNumber` and `reused`. The paginated product response includes `{ data, pagination: { page, limit, total, totalPages }, timestamp }`.
+- JSON success responses generally use `{ "data": ... }`; errors use `{ "error": "..." }`. Checkout returns `orderNumber`, `reused`, `total`, and `currency`; `reused` is true when the same checkout attempt returns its existing order. The paginated product response includes `{ data, pagination: { page, limit, total, totalPages }, timestamp }`.
 - `GET /api/products` retains the legacy unbounded response when called without `page`; mobile clients should always pass `page` and may pass `limit` (1–100, default 24). Filters are `category`, `brand`, `shadeId`, `lensTypeId`, and `q`; supported sort orders are `newest`, `price_asc`, `price_desc`, `name_asc`, and `featured`.
 - Public catalog and settings responses use `no-store` HTTP headers so clients and CDNs do not bypass server-side invalidation. The server caches shared catalog and content reads. Media responses may be stored but require revalidation on every reuse; clients should send the returned ETag in `If-None-Match` to avoid retransmitting unchanged images. Account, order, and admin responses are `no-store`. Honor HTTP cache headers and do not persist stale inventory or prices.
 - `GET /api/storefront/home` returns `data.chrome.whatsappSupportUrl`, the shared WhatsApp support link for the web and mobile apps. It opens a prefilled message; the shopper must send it in WhatsApp. This support number is currently application-configured and separate from admin-editable general contact details.

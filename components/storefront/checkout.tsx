@@ -15,6 +15,7 @@ import { FreeGiftPicker, type GiftChoice } from '@/components/storefront/free-gi
 import { useFreeGiftOffer, useGiftChoice, useGiftEligibility } from '@/lib/hooks/use-free-gift'
 import { usePromotions } from '@/lib/hooks/use-promotions'
 import { calculateBestPromotion } from '@/lib/promotions'
+import { trackGrowthEvent } from '@/components/analytics/marketing-analytics'
 
 type Customer = { email: string }
 
@@ -250,6 +251,13 @@ export function Checkout({ deliveryRules }: { deliveryRules: DeliveryRule[] }) {
         }
         if (response.status === 409) await refreshProducts()
         throw new Error(body.error || 'The order could not be placed.')
+      }
+      if (!body.reused && typeof body.total === 'string' && typeof body.currency === 'string') {
+        trackGrowthEvent('purchase', {
+          value: Number(body.total),
+          currency: body.currency,
+          pagePath: '/checkout/confirmation',
+        })
       }
       clear()
       setGiftChoice(null)

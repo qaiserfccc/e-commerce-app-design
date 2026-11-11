@@ -13,6 +13,8 @@ export async function GET() {
       },
       sharedStorefrontConfiguration: {
         read: 'GET /api/storefront/home',
+        analytics: 'GET /api/storefront/tracking-config exposes public provider IDs only. Marketing tags load only after a visitor grants optional analytics consent.',
+        growthEvents: 'POST /api/storefront/growth-events accepts same-origin consented web events only; it is not a mobile analytics SDK endpoint.',
         homeNotices: 'GET /api/storefront/home returns chrome.deliveryNotice, chrome.announcements, and chrome.trustNotice for the continuous web/mobile announcement ticker.',
         deals: 'GET /api/storefront/deals',
         updateAppearance: 'PUT /api/admin/content/settings/appearance',
@@ -64,6 +66,8 @@ export async function GET() {
         ],
         integrations: [
           'GET /api/realtime/catalog',
+          'GET /api/storefront/tracking-config',
+          'POST /api/storefront/growth-events',
           'POST /api/chatbot',
           'GET /api/chatbot/knowledge',
           'GET /api/chatbot/settings',
@@ -118,6 +122,9 @@ export async function GET() {
           'GET /api/admin/activity',
           'GET /api/admin/error-logs',
           'GET /api/admin/metrics',
+          'GET /api/admin/growth-metrics',
+          'GET, PUT /api/admin/marketing-integrations',
+          'GET, PUT /api/admin/cro-actions',
           'GET, PUT /api/admin/delivery-settings',
           'GET, POST /api/admin/system-users',
           'PATCH /api/admin/system-users/{userId}',

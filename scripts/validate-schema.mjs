@@ -31,6 +31,7 @@ const REQUIRED_TABLES = [
   'store_product_reviews',
   'store_product_relations',
   'store_activity_events',
+  'store_growth_events',
   'store_admin_users',
   'store_banners',
   'store_reviews',
@@ -116,6 +117,7 @@ const TABLE_SCHEMAS = {
     'updated_at',
   ],
   store_activity_events: ['id', 'entity_type', 'entity_id', 'event_type', 'payload', 'created_at'],
+  store_growth_events: ['event_id', 'session_id', 'event_name', 'page_path', 'product_id', 'value', 'currency', 'created_at'],
   store_banners: ['id', 'placement', 'title', 'body', 'image_url', 'blob_pathname', 'href', 'sort_order', 'is_active', 'created_at', 'updated_at'],
   store_reviews: ['id', 'author', 'body', 'sort_order', 'is_active', 'created_at', 'updated_at'],
   store_settings: ['key', 'value', 'updated_at'],
@@ -145,6 +147,7 @@ async function validateSchema() {
   try {
     console.log('🔍 Validating database schema...\n')
     let hasErrors = false
+    let growthTableExists = false
 
     for (const tableName of REQUIRED_TABLES) {
       const result = await pool.query(
@@ -163,6 +166,7 @@ async function validateSchema() {
         hasErrors = true
         continue
       }
+      if (tableName === 'store_growth_events') growthTableExists = true
 
       // Get columns
       const columnsResult = await pool.query(
@@ -239,6 +243,45 @@ async function validateSchema() {
         console.log(`✅ ${constraint}`)
       } else {
         console.error(`❌ ${constraint} (missing)`)
+        hasErrors = true
+      }
+    }
+
+    if (growthTableExists) {
+      console.log('\n🔍 Validating growth analytics constraints...')
+      const growthConstraintRows = await pool.query(`
+        SELECT conname
+        FROM pg_constraint
+        WHERE conrelid = 'public.store_growth_events'::regclass
+      `)
+      const growthConstraints = new Set(growthConstraintRows.rows.map((row) => row.conname))
+      for (const constraint of [
+        'store_growth_events_event_name_check',
+        'store_growth_events_page_path_check',
+        'store_growth_events_value_check',
+        'store_growth_events_currency_check',
+      ]) {
+        if (growthConstraints.has(constraint)) {
+          console.log(`✅ ${constraint}`)
+        } else {
+          console.error(`❌ ${constraint} (missing)`)
+          hasErrors = true
+        }
+      }
+    }
+
+    const settingsConstraintResult = await pool.query(`
+      SELECT pg_get_constraintdef(oid) AS definition
+      FROM pg_constraint
+      WHERE conrelid = 'public.store_settings'::regclass
+        AND conname = 'store_settings_key_check'
+    `)
+    const settingsConstraint = settingsConstraintResult.rows[0]?.definition ?? ''
+    for (const settingKey of ['marketing_integrations', 'cro_actions']) {
+      if (settingsConstraint.includes(`'${settingKey}'`)) {
+        console.log(`✅ store_settings allows ${settingKey}`)
+      } else {
+        console.error(`❌ store_settings_key_check is missing ${settingKey}`)
         hasErrors = true
       }
     }

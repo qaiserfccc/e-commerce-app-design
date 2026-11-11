@@ -244,6 +244,21 @@ export const storeActivityEvents = pgTable('store_activity_events', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
+export const storeGrowthEvents = pgTable('store_growth_events', {
+  eventId: uuid('event_id').primaryKey(),
+  sessionId: uuid('session_id').notNull(),
+  eventName: text('event_name').notNull(),
+  pagePath: text('page_path').notNull(),
+  productId: uuid('product_id'),
+  value: numeric('value', { precision: 12, scale: 2 }),
+  currency: text('currency'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  createdIdx: index('store_growth_events_created_at_idx').on(table.createdAt),
+  eventCreatedIdx: index('store_growth_events_event_created_idx').on(table.eventName, table.createdAt),
+  sessionCreatedIdx: index('store_growth_events_session_created_idx').on(table.sessionId, table.createdAt),
+}))
+
 export const storeErrorLogs = pgTable('store_error_logs', {
   id: bigint('id', { mode: 'number' }).generatedAlwaysAsIdentity().primaryKey(),
   source: text('source').notNull(),

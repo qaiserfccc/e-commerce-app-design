@@ -284,6 +284,14 @@ Admin and customer credentials live in `store_admin_users` / `store_customers`. 
 - Gift flash bar links to checkout; gift choices are checkout-only and never shown on the cart page. Homepage `showcase` section (config id `showcase`) with big spotlight images; default order puts brands 6th. Keep web and Flutter identical.
 
 - Bulk price/power product actions: `bulkUpdateProductPrices`, `bulkUpdateProductPowerOptions` (catalog-admin.ts), REST `/api/admin/products/bulk-price|bulk-power`. Power defaults extend to -14.00. Mobile admin bulk UI not implemented.
+# CRO and marketing integrations (2026-11-12)
+
+- Admin Growth workspace adds first-party consented funnel metrics, a persistent CRO action board, public provider-ID configuration, and Meta Lead Ads environment readiness.
+- Optional browser tags and first-party events remain disabled until a visitor opts in. Mobile clients do not use these web-only endpoints; see `docs/CRO_ANALYTICS_SETUP.md` and `docs/API_MOBILE_INTEGRATION.md`.
+- Migration `0028_growth_analytics.sql` adds the event table and `store_settings` keys `marketing_integrations` and `cro_actions`. It was applied transactionally to the verified Production `neondb` on 2026-11-11, and `node --env-file-if-exists=.env.production.local scripts/validate-schema.mjs` passed afterward. Verify database identity before any future connection or write.
+- Meta Pixel, GA4, GTM, Google Ads conversion, and TikTok browser IDs are optional. Browser IDs are not credentials. The Meta Lead Ads webhook uses server-only `META_APP_SECRET`, `META_PAGE_ACCESS_TOKEN`, `META_PAGE_ID`, `META_WEBHOOK_VERIFY_TOKEN`, and `META_GRAPH_API_VERSION`; never expose or record their values in docs, logs, or public APIs.
+- This funnel is directional, consent-limited, and not an A/B testing or attribution system. Actual order totals remain authoritative.
+
 # Toric ordering
 
 Toric lens types use a derived storefront category and must be confirmed on WhatsApp with full advance payment; cash-on-delivery checkout rejects them server-side. No prescription combinations, pricing or payment verification are inferred or implemented; consult `docs/API_MOBILE_INTEGRATION.md` before extending this workflow.

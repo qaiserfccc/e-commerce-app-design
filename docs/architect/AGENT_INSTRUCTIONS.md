@@ -13,6 +13,7 @@ gh api user --jq .login
 ```
 
 - **Production database and GitHub identity (strict):** use only the verified Neon Production database `neondb` associated with the `e-commerce-app-design` Vercel Production project as the authoritative business-data source. Verify the database target before every database operation; never assume `.env.local`, a branch, or a prior session points to Production. Do not substitute local, preview, or staging databases for production data. Every GitHub mutation—including commits, pushes/sync, PR updates, merges, and workflow operations—must be attributed to `qaiserfccc`; verify `gh api user --jq .login` immediately before the mutation and stop if it is not exactly `qaiserfccc`.
+- **CRO analytics boundary:** optional browser provider tags and first-party funnel events stay disabled until a visitor grants consent. Keep provider IDs separate from server-only credentials, never expose secrets in public tracking config, and preserve the explicitly web-only analytics boundary for Flutter. Read `docs/CRO_ANALYTICS_SETUP.md` before changing consent, retention, provider loading, or analytics contracts. Migration `0028_growth_analytics.sql` must be applied to the verified Production Neon database before deploying code that reads/writes `store_growth_events`; authoring a migration does not apply it.
 
 - **Packaging & build**: use `pnpm` (scripts validated by `scripts/validate-build.mjs`). Typical checks:
 

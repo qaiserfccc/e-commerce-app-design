@@ -51,6 +51,8 @@ export async function POST(request: NextRequest) {
     return response({
       orderNumber: order.orderNumber,
       reused: order.reused,
+      total: order.total,
+      currency: order.currency,
     }, 201)
   } catch (error) {
     return errorResponse(error)

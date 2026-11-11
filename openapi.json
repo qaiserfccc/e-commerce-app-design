@@ -13,6 +13,14 @@
   ],
   "tags": [
     {
+      "name": "Storefront",
+      "description": "Shared public storefront configuration and shopping behavior."
+    },
+    {
+      "name": "Analytics",
+      "description": "Optional-consent web analytics and CRO event collection."
+    },
+    {
       "name": "Catalog",
       "description": "Published products and browse taxonomies."
     },
@@ -802,7 +810,7 @@
         },
         "responses": {
           "201": {
-            "description": "Order number and idempotent-reuse indicator."
+            "description": "Order number, idempotent-reuse indicator, server-calculated total, and currency."
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
@@ -812,6 +820,105 @@
           },
           "413": {
             "description": "Request too large."
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/api/storefront/tracking-config": {
+      "get": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Read public consent-gated tracking identifiers",
+        "description": "Returns public provider IDs only. No provider access tokens or secrets are exposed.",
+        "responses": {
+          "200": {
+            "description": "Public Meta Pixel, GA4, Google Tag Manager, Google Ads, and TikTok identifiers."
+          }
+        }
+      }
+    },
+    "/api/storefront/growth-events": {
+      "post": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Record an optional-consent storefront event",
+        "description": "Web-only. Requires a same-origin browser Origin, consentGranted=true, a bounded event name/path, and rate-limit availability. Does not accept customer contact details.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "eventId",
+                  "sessionId",
+                  "consentGranted",
+                  "eventName",
+                  "pagePath"
+                ],
+                "properties": {
+                  "eventId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "sessionId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "consentGranted": {
+                    "type": "boolean",
+                    "const": true
+                  },
+                  "eventName": {
+                    "type": "string",
+                    "enum": [
+                      "page_view",
+                      "view_item",
+                      "add_to_cart",
+                      "begin_checkout",
+                      "purchase"
+                    ]
+                  },
+                  "pagePath": {
+                    "type": "string",
+                    "maxLength": 300,
+                    "pattern": "^/(?!/)[^\\s?#]*$"
+                  },
+                  "productId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "uuid"
+                  },
+                  "value": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "currency": {
+                    "type": "string",
+                    "pattern": "^[A-Z]{3}$"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Event accepted."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "description": "Not a same-origin browser request."
           },
           "429": {
             "$ref": "#/components/responses/RateLimited"
@@ -1312,6 +1419,150 @@
         "responses": {
           "200": {
             "description": "Order and revenue metrics."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/admin/growth-metrics": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Read first-party CRO funnel metrics",
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "enum": [
+                7,
+                30,
+                90
+              ],
+              "default": 30
+            }
+          }
+        ],
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Consented event aggregates, daily page views, top pages, and order counts."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/admin/marketing-integrations": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Read provider configuration and server-key status",
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Saved public IDs and Meta Lead Ads missing-key names; never returns secret values."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Save provider identifiers",
+        "description": "Admin role required. Accepts public IDs only and rejects access-token or secret fields.",
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarketingIntegrationConfig"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Provider identifiers saved."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/admin/cro-actions": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List CRO action hypotheses",
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Persistent CRO action list."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Save CRO action hypotheses",
+        "description": "Admin role required. Validates action titles, hypotheses, local paths, statuses, and list size.",
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CroActionListRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Action list saved."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -3582,6 +3833,112 @@
       }
     },
     "schemas": {
+      "MarketingIntegrationConfig": {
+        "type": "object",
+        "required": [
+          "metaPixelId",
+          "ga4MeasurementId",
+          "gtmContainerId",
+          "googleAdsConversionId",
+          "googleAdsConversionLabel",
+          "tiktokPixelId"
+        ],
+        "properties": {
+          "metaPixelId": {
+            "type": "string",
+            "maxLength": 30,
+            "pattern": "^$|^[0-9]{5,30}$"
+          },
+          "ga4MeasurementId": {
+            "type": "string",
+            "maxLength": 24,
+            "pattern": "^$|^G-[A-Z0-9]{4,20}$"
+          },
+          "gtmContainerId": {
+            "type": "string",
+            "maxLength": 24,
+            "pattern": "^$|^GTM-[A-Z0-9]{4,20}$"
+          },
+          "googleAdsConversionId": {
+            "type": "string",
+            "maxLength": 32,
+            "pattern": "^$|^AW-[0-9]{5,30}$"
+          },
+          "googleAdsConversionLabel": {
+            "type": "string",
+            "maxLength": 120,
+            "pattern": "^$|^[A-Za-z0-9_-]{4,120}$"
+          },
+          "tiktokPixelId": {
+            "type": "string",
+            "maxLength": 80,
+            "pattern": "^$|^[A-Z0-9_-]{5,80}$"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Public provider IDs only. The server rejects access tokens, secret fields, and simultaneous GTM and direct Google IDs."
+      },
+      "CroAction": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "hypothesis",
+          "pagePath",
+          "status",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_-]{1,80}$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "hypothesis": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "pagePath": {
+            "type": "string",
+            "maxLength": 300,
+            "pattern": "^/(?!/)[^\\s?#]*$"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "todo",
+              "in_progress",
+              "done"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CroActionListRequest": {
+        "type": "object",
+        "required": [
+          "actions"
+        ],
+        "properties": {
+          "actions": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "$ref": "#/components/schemas/CroAction"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
       "PromotionConfiguration": {
         "type": "object",
         "required": [
