@@ -37,8 +37,8 @@ export interface Product {
   heroImageUrl: string | null
   colors?: { name: string; hex: string }[]
   diameterMm?: string | null
-  baseCurve?: string | null
-  waterContent?: string | null
+  baseCurve: string
+  waterContent: string
   material?: string | null
   wearDuration?: string | null
   packContents?: string | null
@@ -54,6 +54,9 @@ export interface Product {
   isFeatured?: boolean
   isNewArrival?: boolean
   isOnSale?: boolean
+  seoTitle?: string | null
+  seoDescription?: string | null
+  seoFocusKeywords?: string[]
   ratingAvg?: number | null
   ratingCount?: number
   createdAt: string
@@ -69,7 +72,7 @@ export interface ProductVariant {
   name: string
   color: string | null
   powerDiopters: string | null
-  baseCurve: string | null
+  baseCurve: string
   diameterMm: string | null
   packSize: number | null
   price: string

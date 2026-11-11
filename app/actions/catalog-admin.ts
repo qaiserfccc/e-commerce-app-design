@@ -258,6 +258,7 @@ export type AdminProductInput = {
   isFeatured?: unknown
   seoTitle?: unknown
   seoDescription?: unknown
+  seoFocusKeywords?: unknown
 }
 
 function money(value: unknown, label: string, required: boolean) {
@@ -291,9 +292,37 @@ function lensMeasurement(value: unknown, label: string) {
 }
 
 function waterContent(value: unknown) {
-  const result = text(value, 60, 'Water content', true)!
-  if (!/^(?:100|[0-9]{1,2})%$/.test(result)) throw new Error('Water content must be selected from 0% to 100%.')
+  const result = text(value, 60, 'Water content') ?? '55%'
+  if (!['38%', '40%', '45%', '48%', '50%', '55%', '58%', '60%'].includes(result)) {
+    throw new Error('Water content must be one of 38%, 40%, 45%, 48%, 50%, 55%, 58%, or 60%.')
+  }
   return result
+}
+
+function baseCurve(value: unknown) {
+  const result = decimal(value, 'Base curve') ?? '8.66'
+  if (Number(result) !== 8.66) throw new Error('Base curve must be 8.66 mm.')
+  return '8.66'
+}
+
+function focusKeywords(value: unknown) {
+  if (value === undefined || value === null || value === '') return []
+  const values = typeof value === 'string'
+    ? value.split(/[\n,]/)
+    : Array.isArray(value) ? value : null
+  if (!values) throw new Error('Focus keywords must be a list of words or phrases.')
+  if (values.length > 20) throw new Error('Use no more than 20 focus keywords.')
+  const seen = new Set<string>()
+  return values.flatMap((item) => {
+    if (typeof item !== 'string') throw new Error('Each focus keyword must be text.')
+    const keyword = item.trim()
+    if (!keyword) return []
+    if (keyword.length > 100) throw new Error('Focus keywords must be 100 characters or fewer.')
+    const normalized = keyword.toLocaleLowerCase()
+    if (seen.has(normalized)) return []
+    seen.add(normalized)
+    return [keyword]
+  })
 }
 
 async function currentPowerOptionValues() {
@@ -349,7 +378,7 @@ function parseProduct(input: AdminProductInput, validPowerOptionValues: string[]
     currency,
     status,
     diameterMm: lensMeasurement(input.diameterMm, 'Diameter'),
-    baseCurve: lensMeasurement(input.baseCurve, 'Base curve'),
+    baseCurve: baseCurve(input.baseCurve),
     waterContent: waterContent(input.waterContent),
     material: text(input.material, 120, 'Material'),
     wearDuration: text(input.wearDuration, 120, 'Wear duration'),
@@ -365,6 +394,7 @@ function parseProduct(input: AdminProductInput, validPowerOptionValues: string[]
     ...(input.isFeatured === undefined ? {} : { isFeatured: input.isFeatured === true }),
     seoTitle: text(input.seoTitle, 160, 'SEO title'),
     seoDescription: text(input.seoDescription, 320, 'SEO description'),
+    seoFocusKeywords: focusKeywords(input.seoFocusKeywords),
   }
 }
 

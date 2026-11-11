@@ -12,6 +12,8 @@ gh api user --jq .login
 # proceed only when result is exactly: qaiserfccc
 ```
 
+- **Production database and GitHub identity (strict):** use only the verified Neon Production database `neondb` associated with the `e-commerce-app-design` Vercel Production project as the authoritative business-data source. Verify the database target before every database operation; never assume `.env.local`, a branch, or a prior session points to Production. Do not substitute local, preview, or staging databases for production data. Every GitHub mutation—including commits, pushes/sync, PR updates, merges, and workflow operations—must be attributed to `qaiserfccc`; verify `gh api user --jq .login` immediately before the mutation and stop if it is not exactly `qaiserfccc`.
+
 - **Packaging & build**: use `pnpm` (scripts validated by `scripts/validate-build.mjs`). Typical checks:
 
 ```bash
@@ -22,7 +24,7 @@ pnpm build
 
 - **Database workflow**:
   - Add schema DDL as a new numbered file under `db/migrations/` (do not rewrite applied migrations).
-  - Apply DDL to Neon, update `lib/db/schema.ts` to mirror live schema, and run `node --env-file=.env.local scripts/validate-schema.mjs` (requires `DATABASE_URL`).
+  - Apply DDL to the verified Neon Production database when the task explicitly requires a production schema/data change, update `lib/db/schema.ts` to mirror it, and verify the live database identity before running `scripts/validate-schema.mjs`. Never use `.env.local` to choose a production target.
 
 - **Runtime & operations**:
   - Admin sessions require `ADMIN_SESSION_SECRET`. Shopper sessions use `CUSTOMER_SESSION_SECRET` or derive from admin secret.

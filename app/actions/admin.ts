@@ -77,12 +77,16 @@ function validateProductVariantInput(data: ProductVariantInput) {
     return normalized
   }
   const powerDiopters = optionalDecimal(data.powerDiopters, 'Power')
-  const baseCurve = optionalDecimal(data.baseCurve, 'Base curve')
+  const requestedBaseCurve = optionalDecimal(data.baseCurve, 'Base curve')
+  if (requestedBaseCurve !== null && Number(requestedBaseCurve) !== 8.66) {
+    throw new Error('Base curve must be 8.66 mm.')
+  }
+  const baseCurve = '8.66'
   const diameterMm = optionalDecimal(data.diameterMm, 'Diameter')
   if (powerDiopters !== null && (Number(powerDiopters) < -9999.99 || Number(powerDiopters) > 9999.99)) {
     throw new Error('Power is outside the supported range.')
   }
-  for (const [value, field] of [[baseCurve, 'Base curve'], [diameterMm, 'Diameter']] as const) {
+  for (const [value, field] of [[diameterMm, 'Diameter']] as const) {
     if (value !== null && (Number(value) <= 0 || Number(value) > 99.99)) throw new Error(`${field} must be greater than zero and at most 99.99.`)
   }
   let packSize: number | null = null

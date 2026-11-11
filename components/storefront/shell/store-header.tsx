@@ -180,7 +180,7 @@ export function StoreHeader({ chrome }: { chrome: SiteChrome }) {
           </button>
         </div>
       </div>
-      {searchOpen && <div className="border-t border-[#e6dce1] px-4 py-3 lg:hidden">{searchForm}</div>}
+      {searchOpen && <div className={`border-t border-[#e6dce1] px-4 py-3 ${isHome ? '' : 'lg:hidden'}`}>{searchForm}</div>}
 
       {!isHome && <nav aria-label="Main" className="hidden border-t border-[#e6dce1] lg:block">
         <ul className="mx-auto flex max-w-[1440px] items-center gap-1 px-6 text-xs font-semibold uppercase tracking-[0.12em]">

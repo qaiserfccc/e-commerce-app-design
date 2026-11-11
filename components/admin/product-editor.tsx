@@ -14,13 +14,17 @@ import { normalizePowerLensOptions, resolvePowerOptionValues } from '@/lib/power
 
 type SpecRow = { label: string; value: string }
 
-const diameterAndCurveOptions = Array.from({ length: 121 }, (_, index) => (index / 10).toFixed(2))
 const diameterChoices = ['14.00', '14.20', '14.50', '14.80']
-const waterContentOptions = Array.from({ length: 101 }, (_, index) => `${index}%`)
+const waterContentOptions = ['38%', '40%', '45%', '48%', '50%', '55%', '58%', '60%']
+const baseCurve = '8.66'
 const sectionClass = 'grid gap-4 rounded-xl border border-[#cfe2eb] bg-[#f7fcff] p-4 sm:grid-cols-2 sm:p-5'
 
 function optionsWithSavedValue(options: string[], savedValue: string) {
   return savedValue && !options.includes(savedValue) ? [...options, savedValue] : options
+}
+
+function slugify(value: string) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80)
 }
 
 export function ProductEditor({ product, onSaved, onCancel }: { product?: AdminProduct; onSaved: () => void; onCancel: () => void }) {
@@ -37,9 +41,13 @@ export function ProductEditor({ product, onSaved, onCancel }: { product?: AdminP
   const [related, setRelated] = useState<string[]>(product?.relatedProductIds ?? [])
   const [relatedQuery, setRelatedQuery] = useState('')
   const [selectedCategoryIds, setSelectedCategoryIds] = useState(product?.categoryIds ?? (product?.categoryId ? [product.categoryId] : []))
+  const [name, setName] = useState(product?.name ?? '')
+  const [slug, setSlug] = useState(product?.slug ?? '')
   const [diameterMm, setDiameterMm] = useState(product?.diameterMm ?? '')
-  const [baseCurve, setBaseCurve] = useState(product?.baseCurve ?? '')
-  const [waterContent, setWaterContent] = useState(product?.waterContent ?? '')
+  const savedWaterContent = product?.waterContent ?? ''
+  const [waterContent, setWaterContent] = useState(
+    waterContentOptions.includes(savedWaterContent) ? savedWaterContent : '55%',
+  )
   const [powerRange, setPowerRange] = useState(product?.powerRange ?? '')
   const [availablePowerRanges, setAvailablePowerRanges] = useState(product?.availablePowerRanges ?? [])
   const powerOptions = normalizePowerLensOptions(contentData?.settings.power_options)
@@ -86,6 +94,7 @@ export function ProductEditor({ product, onSaved, onCancel }: { product?: AdminP
       isFeatured: form.get('isFeatured') === 'on',
       seoTitle: text('seoTitle'),
       seoDescription: text('seoDescription'),
+      seoFocusKeywords: text('seoFocusKeywords').split(/\r?\n/),
     }
     setSaving(true)
     setError('')
@@ -114,15 +123,17 @@ export function ProductEditor({ product, onSaved, onCancel }: { product?: AdminP
     .filter((item) => item.id !== product?.id && !related.includes(item.id) && item.name.toLowerCase().includes(relatedQuery.toLowerCase()))
     .slice(0, 6)
   const diameterOptions = optionsWithSavedValue(diameterChoices, diameterMm)
-  const baseCurveOptions = optionsWithSavedValue(diameterAndCurveOptions, baseCurve)
-  const waterOptions = optionsWithSavedValue(waterContentOptions, waterContent)
+  const canonicalSlug = (slug.trim() || slugify(name)).toLowerCase()
+  const canonicalUrl = canonicalSlug.length <= 120 && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(canonicalSlug)
+    ? `https://isklenses.com/product/${canonicalSlug}`
+    : ''
 
   return (
     <form onSubmit={submit} onInvalidCapture={showRequiredFieldError} className="rounded-2xl border border-[#cfe2eb] bg-white p-4 sm:p-6">
       <div className="mb-5 flex items-center justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold text-[#15384d]">{product ? `Edit ${product.name}` : 'Add a product'}</h2>
-          <p className="mt-1 text-sm leading-5 text-[#526b7b]">Saved values are prefilled. Missing lens specifications stay blank until verified.</p>
+          <p className="mt-1 text-sm leading-5 text-[#526b7b]">Saved values are prefilled; base curve and water content follow the store's fixed catalog values.</p>
         </div>
         <button type="button" onClick={onCancel} aria-label="Close product editor" className="grid size-10 shrink-0 place-items-center rounded-full text-[#526b7b] hover:bg-[#e8f6fb] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#087ba5]"><X size={17} /></button>
       </div>
@@ -133,8 +144,8 @@ export function ProductEditor({ product, onSaved, onCancel }: { product?: AdminP
       <fieldset className={sectionClass}>
         <legend className="px-1 text-sm font-semibold text-[#15384d]">Product identity</legend>
         <p className="text-xs leading-5 text-[#526b7b] sm:col-span-2">Name, catalog placement, and availability.</p>
-        <Field label="Name" required><input name="name" required maxLength={200} defaultValue={product?.name} className={inputClass} /></Field>
-        <Field label="Slug (blank = from name)"><input name="slug" maxLength={120} pattern="[a-z0-9]+(-[a-z0-9]+)*" defaultValue={product?.slug} className={inputClass} /></Field>
+        <Field label="Name" required><input name="name" required maxLength={200} value={name} onChange={(event) => setName(event.target.value)} className={inputClass} /></Field>
+        <Field label="Slug (blank = from name)"><input name="slug" maxLength={120} pattern="[a-z0-9]+(-[a-z0-9]+)*" value={slug} onChange={(event) => setSlug(event.target.value)} className={inputClass} /></Field>
         <div className="block text-xs font-medium text-[#526b7b]">
           Categories
           <MultiSelectField
@@ -272,16 +283,11 @@ export function ProductEditor({ product, onSaved, onCancel }: { product?: AdminP
               {diameterOptions.map((value) => <option key={value} value={value}>{value}{!diameterChoices.includes(value) ? ' (saved value)' : ''}</option>)}
             </select>
           </Field>
-          <Field label="Base curve (BC) · mm" required>
-            <select name="baseCurve" required value={baseCurve} onChange={(event) => setBaseCurve(event.target.value)} className={inputClass}>
-              <option value="" disabled>Select base curve</option>
-              {baseCurveOptions.map((value) => <option key={value} value={value}>{value}{!diameterAndCurveOptions.includes(value) ? ' (saved value)' : ''}</option>)}
-            </select>
-          </Field>
+          <Field label="Base curve (BC) · mm"><input name="baseCurve" value={baseCurve} readOnly className={inputClass} /></Field>
           <Field label="Water content · %" required>
             <select name="waterContent" required value={waterContent} onChange={(event) => setWaterContent(event.target.value)} className={inputClass}>
               <option value="" disabled>Select water content</option>
-              {waterOptions.map((value) => <option key={value} value={value}>{value}{!waterContentOptions.includes(value) ? ' (saved value)' : ''}</option>)}
+              {waterContentOptions.map((value) => <option key={value} value={value}>{value}</option>)}
             </select>
           </Field>
         </div>
@@ -359,9 +365,11 @@ export function ProductEditor({ product, onSaved, onCancel }: { product?: AdminP
       </fieldset>
 
       <fieldset className={`${sectionClass} mt-4`}>
-        <legend className="px-1 text-sm font-semibold text-[#15384d]">Search listing</legend>
+        <legend className="px-1 text-sm font-semibold text-[#15384d]">Search engine listing</legend>
         <Field label="SEO title"><input name="seoTitle" maxLength={160} defaultValue={product?.seoTitle ?? ''} className={inputClass} /></Field>
-        <Field label="SEO description"><input name="seoDescription" maxLength={320} defaultValue={product?.seoDescription ?? ''} className={inputClass} /></Field>
+        <Field label="SEO description"><textarea name="seoDescription" maxLength={320} rows={3} defaultValue={product?.seoDescription ?? ''} className={inputClass} /></Field>
+        <Field label="Focus keywords (one per line)"><textarea name="seoFocusKeywords" maxLength={2000} rows={3} defaultValue={product?.seoFocusKeywords?.join('\n') ?? ''} className={inputClass} /></Field>
+        <Field label="Canonical URL (generated from slug)"><input value={canonicalUrl} readOnly className={inputClass} /></Field>
       </fieldset>
 
       <div className="sticky bottom-2 z-10 mt-4 flex flex-wrap gap-2 rounded-xl border border-[#cfe2eb] bg-white/95 p-3 shadow-[0_8px_24px_rgba(21,56,77,.12)]">

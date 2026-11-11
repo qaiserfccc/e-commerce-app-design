@@ -74,7 +74,7 @@ for (const item of products) {
      values ($1,$2,$3,$4,$5,$6,$7,$8,$9,'active',0,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
      on conflict (slug) do nothing returning id`,
     [item.name, item.slug, ids[item.category], item.brand, item.sku, item.short, item.desc, item.price, item.compare,
-      JSON.stringify(item.colors.map(([name, hex]) => ({ name, hex }))), item.diameter, item.curve, item.water, item.material, item.wear, item.pack,
+      JSON.stringify(item.colors.map(([name, hex]) => ({ name, hex }))), item.diameter, '8.66', '55%', item.material, item.wear, item.pack,
       item.powerType, item.range, item.uv, JSON.stringify(item.features), JSON.stringify(item.specs.map(([label, value]) => ({ label, value }))), item.usage, item.featured],
   )
   if (!rows[0]) continue
@@ -82,7 +82,7 @@ for (const item of products) {
   await client.query(
     `insert into store_product_variants (product_id, name, color, power_diopters, base_curve, diameter_mm, pack_size, price, currency, stock_quantity, is_active)
      values ($1,$2,$3,$4,$5,$6,$7,$8,'PKR',$9,true)`,
-    [id, item.variant.name, item.variant.color, item.variant.power, item.curve, item.diameter, 2, item.price, item.variant.stock],
+    [id, item.variant.name, item.variant.color, item.variant.power, '8.66', item.diameter, 2, item.price, item.variant.stock],
   )
   await client.query('update store_products set stock_quantity = $2 where id = $1', [id, item.variant.stock])
   if (item.review) {

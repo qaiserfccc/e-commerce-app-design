@@ -42,6 +42,7 @@ class _AdminProductEditorScreenState extends State<AdminProductEditorScreen> {
       'usageInstructions',
       'seoTitle',
       'seoDescription',
+      'seoFocusKeywords',
     ])
       field: TextEditingController(),
   };
@@ -61,8 +62,8 @@ class _AdminProductEditorScreenState extends State<AdminProductEditorScreen> {
   String? _shadeId;
   String? _typeId;
   String? _diameter;
-  String? _baseCurve;
-  String? _waterContent;
+  String _baseCurve = '8.66';
+  String _waterContent = '55%';
   String _status = 'active';
   String _currency = 'PKR';
   bool _uvProtection = false;
@@ -147,7 +148,9 @@ class _AdminProductEditorScreenState extends State<AdminProductEditorScreen> {
     for (final key in _controllers.keys) {
       final value = product[key];
       if (value != null) {
-        _controllers[key]!.text = key == 'features' && value is List
+        _controllers[key]!.text =
+            const {'features', 'seoFocusKeywords'}.contains(key) &&
+                value is List
             ? value.join('\n')
             : value.toString();
       }
@@ -164,8 +167,11 @@ class _AdminProductEditorScreenState extends State<AdminProductEditorScreen> {
     _shadeId = product['lensShadeId']?.toString();
     _typeId = product['lensTypeId']?.toString();
     _diameter = product['diameterMm']?.toString();
-    _baseCurve = product['baseCurve']?.toString();
-    _waterContent = product['waterContent']?.toString();
+    _baseCurve = '8.66';
+    final savedWaterContent = product['waterContent']?.toString();
+    _waterContent = _waterContents.contains(savedWaterContent)
+        ? savedWaterContent!
+        : '55%';
     _status = product['status']?.toString() ?? 'active';
     _currency = product['currency']?.toString() ?? 'PKR';
     _uvProtection = product['uvProtection'] == true;
@@ -188,9 +194,15 @@ class _AdminProductEditorScreenState extends State<AdminProductEditorScreen> {
     });
     final values = <String, dynamic>{
       for (final key in _controllers.keys)
-        if (key != 'features') key: _controllers[key]!.text.trim(),
+        if (!const {'features', 'seoFocusKeywords'}.contains(key))
+          key: _controllers[key]!.text.trim(),
       'features': _controllers['features']!.text
           .split('\n')
+          .map((item) => item.trim())
+          .where((item) => item.isNotEmpty)
+          .toList(growable: false),
+      'seoFocusKeywords': _controllers['seoFocusKeywords']!.text
+          .split(RegExp(r'[\n,]'))
           .map((item) => item.trim())
           .where((item) => item.isNotEmpty)
           .toList(growable: false),
@@ -264,8 +276,17 @@ class _AdminProductEditorScreenState extends State<AdminProductEditorScreen> {
                 children: [
                   if (_error != null) _ErrorNotice(message: _error!),
                   _section('Product identity', [
-                    _field('name', 'Product name', required: true),
-                    _field('slug', 'URL slug'),
+                    _field(
+                      'name',
+                      'Product name',
+                      required: true,
+                      onChanged: (_) => setState(() {}),
+                    ),
+                    _field(
+                      'slug',
+                      'URL slug',
+                      onChanged: (_) => setState(() {}),
+                    ),
                     _field('sku', 'SKU'),
                     _dropdown<String>(
                       label: 'Status',
@@ -422,9 +443,8 @@ class _AdminProductEditorScreenState extends State<AdminProductEditorScreen> {
                           child: _measurementDropdown(
                             label: 'Base curve (mm)',
                             value: _baseCurve,
-                            options: _lensMeasurements,
-                            onChanged: (value) =>
-                                setState(() => _baseCurve = value),
+                            options: _baseCurveOptions,
+                            onChanged: null,
                           ),
                         ),
                       ],
@@ -434,7 +454,7 @@ class _AdminProductEditorScreenState extends State<AdminProductEditorScreen> {
                       value: _waterContent,
                       options: _waterContents,
                       onChanged: (value) =>
-                          setState(() => _waterContent = value),
+                          setState(() => _waterContent = value ?? '55%'),
                     ),
                     _field('material', 'Material'),
                     _field('wearDuration', 'Wear duration'),
@@ -484,9 +504,27 @@ class _AdminProductEditorScreenState extends State<AdminProductEditorScreen> {
                     _field('features', 'Features (one per line)', lines: 4),
                     _field('usageInstructions', 'Usage instructions', lines: 4),
                   ]),
-                  _section('Search display', [
+                  _section('Search engine listing', [
                     _field('seoTitle', 'SEO title'),
                     _field('seoDescription', 'SEO description', lines: 3),
+                    _field(
+                      'seoFocusKeywords',
+                      'Focus keywords (one per line)',
+                      lines: 3,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'Canonical URL (generated from slug)',
+                        ),
+                        child: Text(
+                          _canonicalUrl.isEmpty
+                              ? 'Generated after saving a valid slug'
+                              : _canonicalUrl,
+                        ),
+                      ),
+                    ),
                   ]),
                   if (_editing) _assetSection(),
                   if (_editing) _variantSection(),
@@ -533,6 +571,7 @@ class _AdminProductEditorScreenState extends State<AdminProductEditorScreen> {
     bool required = false,
     int lines = 1,
     TextInputType? keyboardType,
+    ValueChanged<String>? onChanged,
   }) => Padding(
     padding: const EdgeInsets.only(bottom: 10),
     child: TextFormField(
@@ -540,28 +579,44 @@ class _AdminProductEditorScreenState extends State<AdminProductEditorScreen> {
       minLines: lines,
       maxLines: lines,
       keyboardType: keyboardType,
+      onChanged: onChanged,
       validator: required ? _required : null,
       decoration: InputDecoration(labelText: label),
     ),
   );
 
-  static final _lensMeasurements = List<String>.generate(
-    121,
-    (index) => (index / 10).toStringAsFixed(2),
-    growable: false,
-  );
+  static const _baseCurveOptions = ['8.66'];
   static const _diameterChoices = ['14.00', '14.20', '14.50', '14.80'];
-  static final _waterContents = List<String>.generate(
-    101,
-    (index) => '$index%',
-    growable: false,
-  );
+  static const _waterContents = [
+    '38%',
+    '40%',
+    '45%',
+    '48%',
+    '50%',
+    '55%',
+    '58%',
+    '60%',
+  ];
+
+  String get _canonicalUrl {
+    final enteredSlug = _controllers['slug']!.text.trim().toLowerCase();
+    final generatedSlug = _controllers['name']!.text
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+        .replaceAll(RegExp(r'^-+|-+$'), '');
+    final slug = enteredSlug.isNotEmpty
+        ? enteredSlug
+        : generatedSlug.substring(0, generatedSlug.length > 80 ? 80 : generatedSlug.length);
+    if (slug.length > 120 || !RegExp(r'^[a-z0-9]+(?:-[a-z0-9]+)*$').hasMatch(slug)) return '';
+    return 'https://isklenses.com/product/$slug';
+  }
 
   Widget _measurementDropdown({
     required String label,
     required String? value,
     required List<String> options,
-    required ValueChanged<String?> onChanged,
+    required ValueChanged<String?>? onChanged,
   }) {
     final choices =
         value != null && value.isNotEmpty && !options.contains(value)
@@ -931,13 +986,14 @@ class _AdminProductEditorScreenState extends State<AdminProductEditorScreen> {
         'stockQuantity',
       ])
         key: TextEditingController(
-          text:
-              existing?[key]?.toString() ??
-              switch (key) {
-                'currency' => _currency,
-                'stockQuantity' => '0',
-                _ => '',
-              },
+          text: key == 'baseCurve'
+              ? '8.66'
+              : existing?[key]?.toString() ??
+                    switch (key) {
+                      'currency' => _currency,
+                      'stockQuantity' => '0',
+                      _ => '',
+                    },
         ),
     };
     var active = existing?['isActive'] != false;
@@ -966,6 +1022,7 @@ class _AdminProductEditorScreenState extends State<AdminProductEditorScreen> {
                     padding: const EdgeInsets.only(top: 10),
                     child: TextField(
                       controller: field.value,
+                      readOnly: field.key == 'baseCurve',
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                         signed: true,

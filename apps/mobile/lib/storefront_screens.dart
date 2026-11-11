@@ -4174,8 +4174,10 @@ Color? _colorFromHex(String? value) {
   return Color(int.parse(value.substring(1), radix: 16) + 0xff000000);
 }
 
-String _withUnit(String? value, String unit) =>
-    value == null || value.isEmpty ? 'Not listed' : '$value$unit';
+String _withUnit(String? value, String unit) {
+  if (value == null || value.isEmpty) return 'Not listed';
+  return value.trim().endsWith(unit.trim()) ? value : '$value$unit';
+}
 
 String _money(String value, String currency) {
   final amount = double.tryParse(value);

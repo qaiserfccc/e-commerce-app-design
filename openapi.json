@@ -217,7 +217,8 @@
             "schema": {
               "type": "string",
               "maxLength": 100
-            }
+            },
+            "description": "Case-insensitive product search across names, descriptions, SKUs, brands, categories, lens attributes, features, and specifications."
           }
         ],
         "responses": {
@@ -330,7 +331,7 @@
           "Catalog"
         ],
         "summary": "Get a published product",
-        "description": "Toric products expose orderingPolicy with mode whatsapp_advance_payment, notice and whatsappUrl. Non-Toric products have a null orderingPolicy.",
+        "description": "Returns baseCurve fixed at 8.66, waterContent from the supported set, and the SEO fields seoTitle, seoDescription, and seoFocusKeywords. Toric products expose orderingPolicy with mode whatsapp_advance_payment, notice and whatsappUrl. Non-Toric products have a null orderingPolicy.",
         "parameters": [
           {
             "$ref": "#/components/parameters/Slug"
@@ -342,7 +343,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DataResponse"
+                  "$ref": "#/components/schemas/ProductResponse"
                 }
               }
             }
@@ -1331,7 +1332,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Product management records."
+            "description": "Product management records, including baseCurve, waterContent, seoTitle, seoDescription, and seoFocusKeywords."
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -1343,7 +1344,7 @@
           "Admin"
         ],
         "summary": "Create a product",
-        "description": "diameterMm is a single value: 14, 14.2, 14.5, or 14.8 mm, or a legacy value from 0 to 12 in 0.1 increments. Customer-selectable diameter lists are not supported.",
+        "description": "baseCurve is fixed at 8.66 mm. waterContent must be 38%, 40%, 45%, 48%, 50%, 55%, 58%, or 60%. seoTitle and seoDescription are optional strings; seoFocusKeywords accepts up to 20 phrases. Canonical URLs are generated from slug. diameterMm is a single value: 14, 14.2, 14.5, or 14.8 mm, or a legacy value from 0 to 12 in 0.1 increments. Customer-selectable diameter lists are not supported.",
         "security": [
           {
             "adminCookie": []
@@ -1383,7 +1384,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Product record."
+            "description": "Product record, including baseCurve, waterContent, seoTitle, seoDescription, and seoFocusKeywords."
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
@@ -1395,7 +1396,7 @@
           "Admin"
         ],
         "summary": "Replace editable product fields",
-        "description": "diameterMm is a single value: 14, 14.2, 14.5, or 14.8 mm, or a legacy value from 0 to 12 in 0.1 increments. Customer-selectable diameter lists are not supported.",
+        "description": "baseCurve is fixed at 8.66 mm. waterContent must be 38%, 40%, 45%, 48%, 50%, 55%, 58%, or 60%. seoTitle and seoDescription are optional strings; seoFocusKeywords accepts up to 20 phrases. Canonical URLs are generated from slug. diameterMm is a single value: 14, 14.2, 14.5, or 14.8 mm, or a legacy value from 0 to 12 in 0.1 increments. Customer-selectable diameter lists are not supported.",
         "security": [
           {
             "adminCookie": []
@@ -4208,7 +4209,12 @@
             "items": {
               "type": "object",
               "required": [
-                "availablePowerRanges"
+                "availablePowerRanges",
+                "baseCurve",
+                "waterContent",
+                "seoTitle",
+                "seoDescription",
+                "seoFocusKeywords"
               ],
               "properties": {
                 "availablePowerRanges": {
@@ -4217,6 +4223,27 @@
                     "$ref": "#/components/schemas/PowerRangeOption"
                   },
                   "description": "Legacy grouped ranges resolved for this product (kept for backwards compatibility)."
+                },
+                "baseCurve": {
+                  "type": "string",
+                  "const": "8.66"
+                },
+                "waterContent": {
+                  "type": "string",
+                  "enum": ["38%", "40%", "45%", "48%", "50%", "55%", "58%", "60%"]
+                },
+                "seoTitle": {
+                  "type": ["string", "null"]
+                },
+                "seoDescription": {
+                  "type": ["string", "null"]
+                },
+                "seoFocusKeywords": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Up to 20 product focus keywords maintained by the catalog admin."
                 },
                 "availablePowerOptions": {
                   "type": "array",
@@ -4249,6 +4276,28 @@
           "timestamp": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "ProductResponse": {
+        "type": "object",
+        "required": ["data"],
+        "properties": {
+          "data": {
+            "type": "object",
+            "required": ["baseCurve", "waterContent", "seoTitle", "seoDescription", "seoFocusKeywords"],
+            "properties": {
+              "baseCurve": {"type": "string", "const": "8.66"},
+              "waterContent": {"type": "string", "enum": ["38%", "40%", "45%", "48%", "50%", "55%", "58%", "60%"]},
+              "seoTitle": {"type": ["string", "null"]},
+              "seoDescription": {"type": ["string", "null"]},
+              "seoFocusKeywords": {
+                "type": "array",
+                "items": {"type": "string"},
+                "maxItems": 20
+              }
+            },
+            "additionalProperties": true
           }
         }
       },

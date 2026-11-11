@@ -1,12 +1,18 @@
 # Next Agent Handoff
 
-_Last updated: 2026-11-10_
+_Last updated: 2026-11-11_
+
+## Mandatory agent operating rules
+
+- **Authoritative data:** every agent uses the verified Neon Production database `neondb` connected to the `e-commerce-app-design` Vercel Production project as the single source of truth for catalog and business data. Verify the database identity before any database operation; do not rely on `.env.local`, a branch name, or prior-session context, and do not substitute local, preview, or staging data for production.
+- **GitHub identity:** all GitHub mutations—including commit attribution, push/sync, pull request operations, merges, and workflow operations—must be performed as `qaiserfccc`. Verify `gh api user --jq .login` immediately before each GitHub CLI mutation and stop if the result differs.
 
 This document is the operational handoff for continuing the ecommerce storefront + admin CRM project. It intentionally records environment-variable **names and sources**, never secret values.
 
 ## Project status
 
 - **Current production target: Vercel + Neon.** The correct project is `e-commerce-app-design` in `pro-team-trial-bc9638f2` (ID `prj_H4gRTj6bFfmWXCoprIyKyfGcU3bz`), and the ignored local `.vercel/project.json` now points to it. Its Production `DATABASE_URL` connects to the populated Neon `neondb`: 405 active products, 401 source-matched SEO payloads, and 401 correct canonical URLs. `ADMIN_SESSION_SECRET` and `ADMIN_RECOVERY_KEY` are configured in Vercel Production. Do not use the unrelated `isk-lenses-website-migration` project. The Meta, Neon Realtime, and AI Gateway secrets are unset; those optional integrations remain disabled.
+- **Product specifications and SEO keywords (2026-11-11):** Migration `0027_product_specs_and_seo_keywords.sql` was applied transactionally to the verified Production `neondb`. All 405 products now use base curve `8.66` and water content `55%`; imported focus keywords were backfilled where available. Non-null/default/check constraints enforce the fixed base curve and allowed water-content values, and product variants are constrained to base curve `8.66`. Production schema validation passed; the database currently has zero product variants.
 - **Domain and deployment status:** `isklenses.com` is attached to the correct Vercel project and serves the production storefront; `www.isklenses.com` redirects to the apex. `/robots.txt` and `/sitemap.xml` still require deployment of the reviewed change. No DNS records were changed. `isklenses.online` remains on Hostinger and currently returns HTTP 500.
 - **Cloudflare retirement:** the empty D1 database and its single obsolete Hyperdrive config were deleted. No Pages project or R2 bucket was present, and no Worker deployment was found. The Cloudflare DNS zones were not modified; the current token lacks zone-write permission.
 - Framework: Next.js 16 App Router, React 19, Tailwind CSS 4.

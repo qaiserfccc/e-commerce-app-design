@@ -12,7 +12,7 @@ Do not treat adding TanStack Start beside Next.js as a mobile API strategy. TanS
 
 The Realtime endpoint `GET /api/realtime/catalog` returns a short-lived sealed public aggregate query and Realtime URL. The capability is a bearer credential: do not log it or store it persistently. Only configure approved origins in [`../neon.ts`](../neon.ts); do not expose `NEON_REALTIME_SECRET`.
 
-Product-page search metadata, JSON-LD, `robots.txt`, and `sitemap.xml` are web crawler surfaces and do not change the Flutter-facing REST contract. Product SEO title/description and first-party media remain available through the existing product API; no endpoint or response schema changed for the SEO import.
+Product-page search metadata, JSON-LD, `robots.txt`, and `sitemap.xml` are web crawler surfaces. The public product response also includes the admin-managed SEO title, description, and focus keywords; canonical URLs are generated from the product slug. Search uses the same catalog API for web and mobile and matches names, descriptions, SKUs, brands, categories, lens attributes, features, and specifications.
 
 ## Endpoint directory
 
@@ -20,7 +20,7 @@ Product-page search metadata, JSON-LD, `robots.txt`, and `sitemap.xml` are web c
 |---|---|---|---|
 | Discovery | `GET /api` | Public | Endpoint groups and OpenAPI link |
 | Discovery | `GET /api/openapi.json` | Public | OpenAPI 3.1 contract for client generation |
-| Catalog | `GET /api/products` | Public | Active product search/filter; pass `page` and optional `limit` for bounded pagination |
+| Catalog | `GET /api/products` | Public | Active product search/filter; `q` searches product names, descriptions, SKUs, brands, categories, lens attributes, features, and specifications; pass `page` and optional `limit` for bounded pagination |
 | Catalog | `GET /api/storefront/home/products?tab=catalog\|featured\|new\|reduced&page=` | Public | Paginated homepage product tabs, 15 per page; `hasMore` drives the next call. Carousels: categories coverflow, brands fade-slide (6th section), shades infinite-loop; tabs smooth-slide/coverflow/fade-slide/infinite-loop |
 | Catalog | `GET /api/storefront/home/sections/{section}?page=&q=` | Public | Paginated homepage carousels (`categories`, `brands`, `shades`, `lens-types`); max 15 items per page, `hasMore` drives the next call, search (`q`) is uncapped |
 | Catalog | `GET /api/storefront/home` | Public | Canonical home banners plus shared palette/control styles, ordered and visible homepage sections, hero layout/autoplay, site chrome, catalog directories/products, and approved reviews |
@@ -54,8 +54,8 @@ Product-page search metadata, JSON-LD, `robots.txt`, and `sitemap.xml` are web c
 | Admin | `POST /api/admin/password-reset` | Recovery key | Reset an admin password when recovery is enabled |
 | Admin | `GET /api/admin/metrics` | Admin cookie | Dashboard metrics |
 | Admin | `GET /api/admin/products` | Admin cookie | Admin product rows, media, and variants |
-| Admin | `POST /api/admin/products` | Admin cookie, admin role | Create a product with validated lens fields, category assignments, and power ranges |
-| Admin | `GET, PUT, DELETE /api/admin/products/{productId}` | Admin cookie | Read, replace editable product fields, or delete a product |
+| Admin | `POST /api/admin/products` | Admin cookie, admin role | Create a product with validated lens fields, category assignments, power ranges, and grouped SEO title, description, and focus keywords |
+| Admin | `GET, PUT, DELETE /api/admin/products/{productId}` | Admin cookie | Read, replace editable product fields, or delete a product; base curve is fixed to 8.66 mm and water content is limited to 38%, 40%, 45%, 48%, 50%, 55%, 58%, or 60% |
 | Admin | `PATCH /api/admin/products/{productId}/stock` | Admin cookie, admin role | Update stock for products without active variants |
 | Admin | `GET, POST /api/admin/products/{productId}/variants` | Admin cookie | List and create product variants |
 | Admin | `PUT, DELETE /api/admin/products/{productId}/variants/{variantId}` | Admin cookie, admin role | Update or archive a product variant |
@@ -98,6 +98,8 @@ Order details are authorized by the shopper session for orders belonging to that
 `GET /api/storefront/session` also returns `savedShippingAddress`, the shipping address from the most recent order explicitly associated with the authenticated account, or `null` for guests and accounts without orders. Use it only to prefill editable, untouched fields; clear account-derived values on sign-out. It is not a separately managed address book and guest orders are never used for account autofill. Checkout accepts optional guest email, last name, address line 2, and province; a supplied email must be valid. A guest without email receives a separate customer record with a null email, not a fabricated address or a shared anonymous identity. Apply migration `0025_optional_customer_email.sql` before deploying this checkout; existing records are not modified.
 
 Product reviews are genuine customer submissions or store-entered feedback, not fabricated content. The review GET response includes `settings.enabled`, `settings.allowSubmission`, and `settings.autoApprove` alongside approved reviews; show the review section and submission form according to those flags. Submissions follow the existing moderation setting.
+
+The product API returns `baseCurve: "8.66"` and one of the supported `waterContent` values for every product. Admin create/update requests enforce those constraints, including variant base curves. The product SEO fields are `seoTitle`, `seoDescription`, and `seoFocusKeywords` (an array of up to 20 phrases); canonical URLs are derived from the product slug and are not separately editable.
 
 The blog resources endpoint lists external publishers, not hosted articles. Web and Flutter link to the Bella Lense archive on its own site; the archive and its articles are maintained independently. No third-party article text or images are copied. The separate `/api/blogs` endpoint provides original code-managed ISK articles; `image` is a same-origin path to an original illustration, and `imageAlt` describes it. These illustrations are not product photos. Adding or editing articles currently requires a code change and deployment. No blog database tables or admin editor exist.
 

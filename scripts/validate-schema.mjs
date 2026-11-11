@@ -48,7 +48,7 @@ const TABLE_SCHEMAS = {
     'id', 'name', 'slug', 'description', 'category_id', 'brand', 'brand_id', 'lens_shade_id', 'lens_type_id', 'source_product_id', 'source_url', 'source_payload', 'source_content_hash', 'source_image_url', 'sku', 'short_description', 'price', 'compare_at_price',
     'currency', 'status', 'stock_quantity', 'hero_image_url', 'colors', 'diameter_mm', 'base_curve', 'water_content',
     'material', 'wear_duration', 'pack_contents', 'power_type', 'power_range', 'available_power_ranges', 'uv_protection', 'fda_approved', 'features', 'specs',
-    'usage_instructions', 'is_featured', 'is_new_arrival', 'is_on_sale', 'seo_title', 'seo_description', 'created_at', 'updated_at',
+    'usage_instructions', 'is_featured', 'is_new_arrival', 'is_on_sale', 'seo_title', 'seo_description', 'seo_focus_keywords', 'created_at', 'updated_at',
   ],
   store_customers: [
     'id',
@@ -192,6 +192,74 @@ async function validateSchema() {
         }
         if (extra.length > 0) console.log(`   Extra: ${extra.join(', ')}`)
       }
+    }
+
+    console.log('\n🔍 Validating product catalog constraints...')
+    const columnResult = await pool.query(`
+      SELECT table_name, column_name, is_nullable
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND (table_name, column_name) IN (
+          ('store_products', 'base_curve'),
+          ('store_products', 'water_content'),
+          ('store_products', 'seo_focus_keywords'),
+          ('store_product_variants', 'base_curve')
+        )
+    `)
+    const columns = new Map(columnResult.rows.map((row) => [`${row.table_name}.${row.column_name}`, row.is_nullable]))
+    for (const column of [
+      'store_products.base_curve',
+      'store_products.water_content',
+      'store_products.seo_focus_keywords',
+      'store_product_variants.base_curve',
+    ]) {
+      if (columns.get(column) === 'NO') {
+        console.log(`✅ ${column} is required`)
+      } else {
+        console.error(`❌ ${column} must be present and NOT NULL`)
+        hasErrors = true
+      }
+    }
+
+    const constraintResult = await pool.query(`
+      SELECT conname
+      FROM pg_constraint
+      WHERE conrelid IN (
+        'public.store_products'::regclass,
+        'public.store_product_variants'::regclass
+      )
+    `)
+    const constraints = new Set(constraintResult.rows.map((row) => row.conname))
+    for (const constraint of [
+      'store_products_base_curve_fixed_check',
+      'store_products_water_content_allowed_check',
+      'store_product_variants_base_curve_fixed_check',
+    ]) {
+      if (constraints.has(constraint)) {
+        console.log(`✅ ${constraint}`)
+      } else {
+        console.error(`❌ ${constraint} (missing)`)
+        hasErrors = true
+      }
+    }
+
+    const valuesResult = await pool.query(`
+      SELECT
+        count(*) FILTER (WHERE base_curve IS DISTINCT FROM 8.66)::int AS invalid_product_base_curves,
+        count(*) FILTER (WHERE water_content IS NULL OR water_content NOT IN ('38%', '40%', '45%', '48%', '50%', '55%', '58%', '60%'))::int AS invalid_water_contents
+      FROM public.store_products
+    `)
+    const variantValuesResult = await pool.query(`
+      SELECT count(*) FILTER (WHERE base_curve IS DISTINCT FROM 8.66)::int AS invalid_variant_base_curves
+      FROM public.store_product_variants
+    `)
+    if (valuesResult.rows[0].invalid_product_base_curves === 0 &&
+        valuesResult.rows[0].invalid_water_contents === 0 &&
+        variantValuesResult.rows[0].invalid_variant_base_curves === 0) {
+      console.log('✅ Existing products and variants use the supported specifications')
+    } else {
+      console.error('❌ Existing products or variants contain unsupported lens specifications')
+      hasErrors = true
     }
 
     // Check triggers

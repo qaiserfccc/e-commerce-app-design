@@ -1123,6 +1123,9 @@ class StoreProduct {
     required this.diameterMm,
     required this.baseCurve,
     required this.waterContent,
+    required this.seoTitle,
+    required this.seoDescription,
+    required this.seoFocusKeywords,
     required this.material,
     required this.wearDuration,
     required this.packContents,
@@ -1159,8 +1162,11 @@ class StoreProduct {
       lensType?['name']?.toString().trim().toLowerCase() == 'toric';
   final String? compareAtPrice;
   final String? diameterMm;
-  final String? baseCurve;
-  final String? waterContent;
+  final String baseCurve;
+  final String waterContent;
+  final String? seoTitle;
+  final String? seoDescription;
+  final List<String> seoFocusKeywords;
   final String? material;
   final String? wearDuration;
   final String? packContents;
@@ -1243,8 +1249,15 @@ class StoreProduct {
           : null,
       compareAtPrice: value['compareAtPrice']?.toString(),
       diameterMm: value['diameterMm']?.toString(),
-      baseCurve: value['baseCurve']?.toString(),
-      waterContent: value['waterContent']?.toString(),
+      baseCurve: value['baseCurve']?.toString() ?? '8.66',
+      waterContent: value['waterContent']?.toString() ?? '55%',
+      seoTitle: value['seoTitle']?.toString(),
+      seoDescription: value['seoDescription']?.toString(),
+      seoFocusKeywords: value['seoFocusKeywords'] is List
+          ? (value['seoFocusKeywords'] as List)
+                .map((keyword) => keyword.toString())
+                .toList(growable: false)
+          : const [],
       material: value['material']?.toString(),
       wearDuration: value['wearDuration']?.toString(),
       packContents: value['packContents']?.toString(),

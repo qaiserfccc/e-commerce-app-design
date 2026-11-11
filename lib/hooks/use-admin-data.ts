@@ -59,6 +59,7 @@ export interface AdminProduct extends Product {
   relatedProductIds: string[]
   seoTitle?: string | null
   seoDescription?: string | null
+  seoFocusKeywords?: string[]
 }
 
 export interface AdminActivity {

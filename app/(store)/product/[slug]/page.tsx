@@ -36,14 +36,19 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
   const seo = await getProductSeoMetadata(slug)
   const fields = seo?.fields ?? {}
   const canonical = `https://isklenses.com/product/${product.slug}`
-  const title = text(seo?.title) ?? text(product.seoTitle) ?? product.name
-  const description = text(seo?.description) ?? text(product.seoDescription) ??
+  const title = text(product.seoTitle) ?? text(seo?.title) ?? product.name
+  const description = text(product.seoDescription) ?? text(seo?.description) ??
     text(product.shortDescription) ?? text(product.description) ??
     `Shop ${product.name} contact lenses from ISK Lenses in Pakistan.`
   const image = text(fields['og:image']) ?? text(product.heroImageUrl)
   const imageWidth = Number(fields['og:image:width'])
   const imageHeight = Number(fields['og:image:height'])
-  const keywords = text(fields.keywords)
+  const importedKeywords = Array.isArray(fields.keywords)
+    ? fields.keywords.filter((keyword): keyword is string => typeof keyword === 'string').map((keyword) => keyword.trim()).filter(Boolean)
+    : text(fields.keywords)?.split(',').map((keyword) => keyword.trim()).filter(Boolean)
+  const keywords = product.seoFocusKeywords?.length
+    ? product.seoFocusKeywords
+    : text(fields.focuskw) ? [text(fields.focuskw)!] : importedKeywords
   const twitterCard = text(fields['twitter:card'])
   const openGraphImage = image
     ? {
@@ -75,15 +80,15 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
       type: text(fields['og:type']) === 'article' ? 'article' : 'website',
       locale: text(fields['og:locale']) ?? 'en_US',
       siteName: text(fields['og:site_name']) ?? 'ISK Lenses',
-      title: text(fields['og:title']) ?? title,
-      description: text(fields['og:description']) ?? description,
+      title: text(product.seoTitle) ?? text(fields['og:title']) ?? title,
+      description: text(product.seoDescription) ?? text(fields['og:description']) ?? description,
       url: canonical,
       ...(openGraphImage ? { images: [openGraphImage] } : {}),
     },
     twitter: {
       card: twitterCard === 'summary' ? 'summary' : 'summary_large_image',
-      title: text(fields['twitter:title']) ?? title,
-      description: text(fields['twitter:description']) ?? description,
+      title: text(product.seoTitle) ?? text(fields['twitter:title']) ?? title,
+      description: text(product.seoDescription) ?? text(fields['twitter:description']) ?? description,
       ...(image ? { images: [absoluteUrl(text(fields['twitter:image']) ?? image)] } : {}),
     },
   }
@@ -125,8 +130,8 @@ export default async function ProductPage({
     '@type': 'Product',
     '@id': `${canonical}#product`,
     name: product.name,
-    ...(text(seo?.description) ?? text(product.seoDescription) ?? text(product.description)
-      ? { description: text(seo?.description) ?? text(product.seoDescription) ?? text(product.description) }
+    ...(text(product.seoDescription) ?? text(seo?.description) ?? text(product.description)
+      ? { description: text(product.seoDescription) ?? text(seo?.description) ?? text(product.description) }
       : {}),
     ...(images.length ? { image: images } : {}),
     ...(product.sku ? { sku: product.sku } : {}),

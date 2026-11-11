@@ -25,8 +25,8 @@ export type ChatbotKnowledge = {
     price: string
     currency: string
     diameterMm: string | null
-    baseCurve: string | null
-    waterContent: string | null
+    baseCurve: string
+    waterContent: string
     wearDuration: string | null
     packContents: string | null
     powerType: string | null
