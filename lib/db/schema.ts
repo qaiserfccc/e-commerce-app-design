@@ -88,7 +88,7 @@ export const storeProducts = pgTable('store_products', {
   heroImageUrl: text('hero_image_url'),
   colors: jsonb('colors').$type<{ name: string; hex: string }[]>().notNull().default([]),
   diameterMm: numeric('diameter_mm', { precision: 4, scale: 2 }),
-  baseCurve: numeric('base_curve', { precision: 4, scale: 2 }).notNull().default('8.66'),
+  baseCurve: numeric('base_curve').notNull().default('8.66'),
   waterContent: text('water_content').notNull().default('55%'),
   material: text('material'),
   wearDuration: text('wear_duration'),
@@ -222,7 +222,7 @@ export const storeProductVariants = pgTable('store_product_variants', {
   name: text('name').notNull(),
   color: text('color'),
   powerDiopters: numeric('power_diopters', { precision: 6, scale: 2 }),
-  baseCurve: numeric('base_curve', { precision: 4, scale: 2 }).notNull().default('8.66'),
+  baseCurve: numeric('base_curve').notNull().default('8.66'),
   diameterMm: numeric('diameter_mm', { precision: 4, scale: 2 }),
   packSize: integer('pack_size'),
   price: numeric('price', { precision: 12, scale: 2 }).notNull(),
@@ -345,4 +345,25 @@ export const storeCrmLeads = pgTable('store_crm_leads', {
   metaLeadUnique: uniqueIndex('store_crm_leads_meta_lead_id_unique').on(table.metaLeadId).where(sql`${table.metaLeadId} IS NOT NULL`),
   statusCreatedIdx: index('store_crm_leads_status_created_at_idx').on(table.status, table.createdAt),
   customerIdx: index('store_crm_leads_matched_customer_id_idx').on(table.matchedCustomerId),
+}))
+
+export const storeSiteBackupJobs = pgTable('store_site_backup_jobs', {
+  id: uuid('id').primaryKey(),
+  userId: uuid('user_id').notNull().references(() => storeAdminUsers.id, { onDelete: 'cascade' }),
+  operation: text('operation').notNull(),
+  manifest: jsonb('manifest').$type<{ name: string; rowCount: number }[]>().notNull().default([]),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+}, (table) => ({
+  userExpiryIdx: index('store_site_backup_jobs_user_expiry_idx').on(table.userId, table.expiresAt),
+}))
+
+export const storeSiteBackupRows = pgTable('store_site_backup_rows', {
+  jobId: uuid('job_id').notNull().references(() => storeSiteBackupJobs.id, { onDelete: 'cascade' }),
+  tableName: text('table_name').notNull(),
+  rowIndex: bigint('row_index', { mode: 'number' }).notNull(),
+  rowData: jsonb('row_data').$type<Record<string, unknown>>().notNull(),
+  mediaContent: bytea('media_content'),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.jobId, table.tableName, table.rowIndex] }),
 }))

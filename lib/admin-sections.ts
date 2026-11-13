@@ -28,6 +28,7 @@ export const ADMIN_SECTION_IDS = [
   'hero-slider',
   'delivery',
   'system-users',
+  'site-backup',
   'project-plan',
 ] as const
 

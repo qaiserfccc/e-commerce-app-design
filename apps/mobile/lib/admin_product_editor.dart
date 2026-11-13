@@ -38,13 +38,14 @@ class _AdminProductEditorScreenState extends State<AdminProductEditorScreen> {
       'packContents',
       'powerType',
       'powerRange',
+      'baseCurve',
       'features',
       'usageInstructions',
       'seoTitle',
       'seoDescription',
       'seoFocusKeywords',
     ])
-      field: TextEditingController(),
+      field: TextEditingController(text: field == 'baseCurve' ? '8.66' : ''),
   };
 
   List<Map<String, dynamic>> _categories = [];
@@ -62,7 +63,6 @@ class _AdminProductEditorScreenState extends State<AdminProductEditorScreen> {
   String? _shadeId;
   String? _typeId;
   String? _diameter;
-  String _baseCurve = '8.66';
   String _waterContent = '55%';
   String _status = 'active';
   String _currency = 'PKR';
@@ -167,7 +167,6 @@ class _AdminProductEditorScreenState extends State<AdminProductEditorScreen> {
     _shadeId = product['lensShadeId']?.toString();
     _typeId = product['lensTypeId']?.toString();
     _diameter = product['diameterMm']?.toString();
-    _baseCurve = '8.66';
     final savedWaterContent = product['waterContent']?.toString();
     _waterContent = _waterContents.contains(savedWaterContent)
         ? savedWaterContent!
@@ -211,7 +210,6 @@ class _AdminProductEditorScreenState extends State<AdminProductEditorScreen> {
       'lensShadeId': _shadeId,
       'lensTypeId': _typeId,
       'diameterMm': _diameter,
-      'baseCurve': _baseCurve,
       'waterContent': _waterContent,
       'availablePowerRanges': _powerOptions
           .map((option) => option['value']?.toString() ?? '')
@@ -440,11 +438,13 @@ class _AdminProductEditorScreenState extends State<AdminProductEditorScreen> {
                         ),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: _measurementDropdown(
-                            label: 'Base curve (mm)',
-                            value: _baseCurve,
-                            options: _baseCurveOptions,
-                            onChanged: null,
+                          child: _field(
+                            'baseCurve',
+                            'Base curve (mm)',
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                              signed: true,
+                            ),
                           ),
                         ),
                       ],
@@ -585,7 +585,6 @@ class _AdminProductEditorScreenState extends State<AdminProductEditorScreen> {
     ),
   );
 
-  static const _baseCurveOptions = ['8.66'];
   static const _diameterChoices = ['14.00', '14.20', '14.50', '14.80'];
   static const _waterContents = [
     '38%',
@@ -607,8 +606,14 @@ class _AdminProductEditorScreenState extends State<AdminProductEditorScreen> {
         .replaceAll(RegExp(r'^-+|-+$'), '');
     final slug = enteredSlug.isNotEmpty
         ? enteredSlug
-        : generatedSlug.substring(0, generatedSlug.length > 80 ? 80 : generatedSlug.length);
-    if (slug.length > 120 || !RegExp(r'^[a-z0-9]+(?:-[a-z0-9]+)*$').hasMatch(slug)) return '';
+        : generatedSlug.substring(
+            0,
+            generatedSlug.length > 80 ? 80 : generatedSlug.length,
+          );
+    if (slug.length > 120 ||
+        !RegExp(r'^[a-z0-9]+(?:-[a-z0-9]+)*$').hasMatch(slug)) {
+      return '';
+    }
     return 'https://isklenses.com/product/$slug';
   }
 
@@ -986,14 +991,14 @@ class _AdminProductEditorScreenState extends State<AdminProductEditorScreen> {
         'stockQuantity',
       ])
         key: TextEditingController(
-          text: key == 'baseCurve'
-              ? '8.66'
-              : existing?[key]?.toString() ??
-                    switch (key) {
-                      'currency' => _currency,
-                      'stockQuantity' => '0',
-                      _ => '',
-                    },
+          text:
+              existing?[key]?.toString() ??
+              switch (key) {
+                'baseCurve' => '8.66',
+                'currency' => _currency,
+                'stockQuantity' => '0',
+                _ => '',
+              },
         ),
     };
     var active = existing?['isActive'] != false;
@@ -1022,7 +1027,6 @@ class _AdminProductEditorScreenState extends State<AdminProductEditorScreen> {
                     padding: const EdgeInsets.only(top: 10),
                     child: TextField(
                       controller: field.value,
-                      readOnly: field.key == 'baseCurve',
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                         signed: true,

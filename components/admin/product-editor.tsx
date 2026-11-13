@@ -16,7 +16,6 @@ type SpecRow = { label: string; value: string }
 
 const diameterChoices = ['14.00', '14.20', '14.50', '14.80']
 const waterContentOptions = ['38%', '40%', '45%', '48%', '50%', '55%', '58%', '60%']
-const baseCurve = '8.66'
 const sectionClass = 'grid gap-4 rounded-xl border border-[#cfe2eb] bg-[#f7fcff] p-4 sm:grid-cols-2 sm:p-5'
 
 function optionsWithSavedValue(options: string[], savedValue: string) {
@@ -44,6 +43,7 @@ export function ProductEditor({ product, onSaved, onCancel }: { product?: AdminP
   const [name, setName] = useState(product?.name ?? '')
   const [slug, setSlug] = useState(product?.slug ?? '')
   const [diameterMm, setDiameterMm] = useState(product?.diameterMm ?? '')
+  const [baseCurve, setBaseCurve] = useState(product?.baseCurve ?? '8.66')
   const savedWaterContent = product?.waterContent ?? ''
   const [waterContent, setWaterContent] = useState(
     waterContentOptions.includes(savedWaterContent) ? savedWaterContent : '55%',
@@ -133,7 +133,7 @@ export function ProductEditor({ product, onSaved, onCancel }: { product?: AdminP
       <div className="mb-5 flex items-center justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold text-[#15384d]">{product ? `Edit ${product.name}` : 'Add a product'}</h2>
-          <p className="mt-1 text-sm leading-5 text-[#526b7b]">Saved values are prefilled; base curve and water content follow the store's fixed catalog values.</p>
+          <p className="mt-1 text-sm leading-5 text-[#526b7b]">Saved values are prefilled; enter the product's numeric base curve and select its water content.</p>
         </div>
         <button type="button" onClick={onCancel} aria-label="Close product editor" className="grid size-10 shrink-0 place-items-center rounded-full text-[#526b7b] hover:bg-[#e8f6fb] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#087ba5]"><X size={17} /></button>
       </div>
@@ -283,7 +283,7 @@ export function ProductEditor({ product, onSaved, onCancel }: { product?: AdminP
               {diameterOptions.map((value) => <option key={value} value={value}>{value}{!diameterChoices.includes(value) ? ' (saved value)' : ''}</option>)}
             </select>
           </Field>
-          <Field label="Base curve (BC) · mm"><input name="baseCurve" value={baseCurve} readOnly className={inputClass} /></Field>
+          <Field label="Base curve (BC) · mm"><input name="baseCurve" type="number" step="any" value={baseCurve} onChange={(event) => setBaseCurve(event.target.value)} className={inputClass} /></Field>
           <Field label="Water content · %" required>
             <select name="waterContent" required value={waterContent} onChange={(event) => setWaterContent(event.target.value)} className={inputClass}>
               <option value="" disabled>Select water content</option>

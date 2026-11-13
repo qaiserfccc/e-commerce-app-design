@@ -1,6 +1,6 @@
 # Next Agent Handoff
 
-_Last updated: 2026-11-11_
+_Last updated: 2026-11-13_
 
 ## Mandatory agent operating rules
 
@@ -11,8 +11,13 @@ This document is the operational handoff for continuing the ecommerce storefront
 
 ## Project status
 
+- **Production database verification and changes (2026-11-13):** Vercel Production `DATABASE_URL`, `NEON_PROJECT_ID=polished-dust-86909173`, and database `neondb` were verified before a transactional direct-PostgreSQL operation. Migrations `0029_site_backup_transfer.sql` and `0030_unrestricted_base_curve.sql` are applied; `scripts/validate-schema.mjs` passed against that verified target. The Neon MCP connection still lists only the separate `Isklenses` project (`solitary-pond-40655904`); do not use that MCP project as a substitute for Production.
+- **Duplicate product images (2026-11-13):** A production inventory found 494 redundant image-asset rows across 269 products by content digest. The cleanup retained one row per product/digest, preferred existing hero-image references, removed all 494 redundant asset references, and verified zero duplicate digest groups remain. No media-object bytes or product hero URLs were deleted.
+- **Product-page log follow-up:** The logged `/product/bella-pine-contact-lenses` request remains a 404 because no product has that slug and catalog search found no matching item; no safe redirect target is known. The logged `Failed to fetch` browser diagnostic did not identify its failed request, while the live storefront and product API returned 200 at verification. Do not invent a redirect or claim that old URL has been repaired.
+- **Duplicate product images:** A read-only digest inventory found 494 redundant image-asset rows across 269 products. The proposed cleanup keeps one asset per product and image digest, preferring the asset referenced as the product hero; no hero references would be removed. No production rows have been deleted. Obtain explicit confirmation and use the matching Neon Production project before cleanup.
+- **Product-page log follow-up:** The logged `/product/bella-pine-contact-lenses` request currently returns 404, and no product has that exact slug. A safe redirect target was not established. The recorded `Failed to fetch` client diagnostic does not identify a failing API resource, so do not guess at a redirect or code fix.
 - **Current production target: Vercel + Neon.** The correct project is `e-commerce-app-design` in `pro-team-trial-bc9638f2` (ID `prj_H4gRTj6bFfmWXCoprIyKyfGcU3bz`), and the ignored local `.vercel/project.json` now points to it. Its Production `DATABASE_URL` connects to the populated Neon `neondb`: 405 active products, 401 source-matched SEO payloads, and 401 correct canonical URLs. `ADMIN_SESSION_SECRET` and `ADMIN_RECOVERY_KEY` are configured in Vercel Production. Do not use the unrelated `isk-lenses-website-migration` project. The Meta, Neon Realtime, and AI Gateway secrets are unset; those optional integrations remain disabled.
-- **Product specifications and SEO keywords (2026-11-11):** Migration `0027_product_specs_and_seo_keywords.sql` was applied transactionally to the verified Production `neondb`. All 405 products now use base curve `8.66` and water content `55%`; imported focus keywords were backfilled where available. Non-null/default/check constraints enforce the fixed base curve and allowed water-content values, and product variants are constrained to base curve `8.66`. Production schema validation passed; the database currently has zero product variants.
+- **Product specifications and SEO keywords (2026-11-11):** Migration `0027_product_specs_and_seo_keywords.sql` was applied transactionally to Production `neondb`. At that time, all 405 products were normalized to base curve `8.66` and water content `55%`, and imported focus keywords were backfilled where available. Migration `0030_unrestricted_base_curve.sql` has since removed fixed-value checks and restored unrestricted numeric base-curve columns; water-content checks remain in place.
 - **Domain and deployment status:** `isklenses.com` is attached to the correct Vercel project and serves the production storefront; `www.isklenses.com` redirects to the apex. `/robots.txt` and `/sitemap.xml` still require deployment of the reviewed change. No DNS records were changed. `isklenses.online` remains on Hostinger and currently returns HTTP 500.
 - **Cloudflare retirement:** the empty D1 database and its single obsolete Hyperdrive config were deleted. No Pages project or R2 bucket was present, and no Worker deployment was found. The Cloudflare DNS zones were not modified; the current token lacks zone-write permission.
 - Framework: Next.js 16 App Router, React 19, Tailwind CSS 4.
@@ -295,3 +300,12 @@ Admin and customer credentials live in `store_admin_users` / `store_customers`. 
 # Toric ordering
 
 Toric lens types use a derived storefront category and must be confirmed on WhatsApp with full advance payment; cash-on-delivery checkout rejects them server-side. No prescription combinations, pricing or payment verification are inferred or implemented; consult `docs/API_MOBILE_INTEGRATION.md` before extending this workflow.
+
+# Site backup and restore
+
+- The owner-only Admin workspace now downloads and restores a portable, passphrase-encrypted `.iskbackup`; it does not call Neon’s snapshot API and requires no Neon API token.
+- Migration `0029_site_backup_transfer.sql` adds export/restore staging and is applied to Production `neondb` (2026-11-13). Successful/cancelled jobs are deleted immediately; abandoned jobs become inaccessible after 12 hours and are purged when the next backup/restore starts.
+- The archive contains 22 allowlisted store tables and Neon-stored media. It excludes admin accounts, `store_secrets`, server/environment credentials, API/provider keys, GitHub source, and Vercel settings. Restore preserves the destination owner/secrets and transactionally replaces only the store-data allowlist after checking manifest counts, contiguous row indexes, and media byte lengths.
+- The browser compresses and AES-256-GCM encrypts the archive using a passphrase-derived key (PBKDF2-HMAC-SHA-256, 310,000 iterations); the passphrase never reaches the server. Customer, order, and CRM data are present, so the file must remain confidential. A forgotten passphrase cannot be recovered.
+- The Admin host link opens Vercel’s GitHub import flow only. The destination owner must authorize/import the repo, create Neon, configure `DATABASE_URL` and a new `ADMIN_SESSION_SECRET`, apply the full migration set through `0030_unrestricted_base_curve.sql`, and provision an owner account before restore. Optional integrations and secrets are set separately; no account or deployment is provisioned automatically.
+- Endpoint contract: `GET /api/admin/site-backup?action=status|export-page|export-media` and `POST` JSON actions `start-export`, `begin-restore`, `upload-rows`, `complete-restore`, and `cancel`, plus ordered binary media chunks. This is intentionally web-only and owner-only; keep it out of native/mobile workflows while documenting it in OpenAPI and the mobile integration guide.

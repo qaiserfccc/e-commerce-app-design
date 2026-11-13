@@ -147,7 +147,7 @@ export function ProductVariantManager({
             <label className="text-xs font-medium">Color<input name="color" maxLength={80} defaultValue={editing?.color ?? ''} className={`${fieldClass} mt-1.5`} /></label>
             <label className="text-xs font-medium">SKU<input name="sku" maxLength={64} defaultValue={editing?.sku ?? ''} className={`${fieldClass} mt-1.5`} /></label>
             <label className="text-xs font-medium">Power (D)<input name="powerDiopters" type="number" min="-9999.99" max="9999.99" step="0.01" defaultValue={editing?.powerDiopters ?? ''} className={`${fieldClass} mt-1.5`} /></label>
-            <label className="text-xs font-medium">Base curve (mm)<input name="baseCurve" value="8.66" readOnly className={`${fieldClass} mt-1.5`} /></label>
+            <label className="text-xs font-medium">Base curve (mm)<input name="baseCurve" type="number" step="any" defaultValue={editing?.baseCurve ?? '8.66'} className={`${fieldClass} mt-1.5`} /></label>
             <label className="text-xs font-medium">Diameter (mm)<input name="diameterMm" type="number" min="0.01" max="99.99" step="0.01" defaultValue={editing?.diameterMm ?? ''} className={`${fieldClass} mt-1.5`} /></label>
             <label className="text-xs font-medium">Pack size<input name="packSize" type="number" min="1" max="1000" step="1" defaultValue={editing?.packSize ?? ''} className={`${fieldClass} mt-1.5`} /></label>
             <label className="text-xs font-medium">Price ({product.currency})<input name="price" required inputMode="decimal" pattern="\d+(\.\d{1,2})?" defaultValue={editing?.price} className={`${fieldClass} mt-1.5`} /></label>

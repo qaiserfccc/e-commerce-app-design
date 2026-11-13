@@ -48,6 +48,7 @@ type ProductVariantInput = {
 }
 
 const variantDecimalPattern = /^-?\d{1,4}(?:\.\d{1,2})?$/
+const baseCurvePattern = /^[+-]?(?:(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)$/
 
 function requireText(value: unknown, field: string, maxLength: number) {
   if (typeof value !== 'string' || !value.trim() || value.trim().length > maxLength) {
@@ -77,11 +78,13 @@ function validateProductVariantInput(data: ProductVariantInput) {
     return normalized
   }
   const powerDiopters = optionalDecimal(data.powerDiopters, 'Power')
-  const requestedBaseCurve = optionalDecimal(data.baseCurve, 'Base curve')
-  if (requestedBaseCurve !== null && Number(requestedBaseCurve) !== 8.66) {
-    throw new Error('Base curve must be 8.66 mm.')
+  const baseCurveInput = data.baseCurve === undefined || data.baseCurve === null || data.baseCurve === ''
+    ? '8.66'
+    : String(data.baseCurve).trim()
+  if (baseCurveInput.length > 80 || !baseCurvePattern.test(baseCurveInput) || !Number.isFinite(Number(baseCurveInput))) {
+    throw new Error('Base curve must be a valid numeric value.')
   }
-  const baseCurve = '8.66'
+  const baseCurve = baseCurveInput
   const diameterMm = optionalDecimal(data.diameterMm, 'Diameter')
   if (powerDiopters !== null && (Number(powerDiopters) < -9999.99 || Number(powerDiopters) > 9999.99)) {
     throw new Error('Power is outside the supported range.')

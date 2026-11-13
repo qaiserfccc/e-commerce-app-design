@@ -17,7 +17,7 @@ export function assertOptionalBooleans(body: Record<string, unknown>, fields: st
   }
 }
 
-export async function readAdminJson(request: Request): Promise<Record<string, unknown>> {
+export async function readAdminJson(request: Request, maxBytes = 1_048_576): Promise<Record<string, unknown>> {
   assertAdminOrigin(request)
   const contentType = request.headers.get('content-type')?.split(';', 1)[0].trim().toLowerCase()
   if (contentType !== 'application/json') {
@@ -27,7 +27,7 @@ export async function readAdminJson(request: Request): Promise<Record<string, un
   if (rawLength && !/^\d+$/.test(rawLength)) {
     throw new AdminRequestError('The request body length is invalid.', 400)
   }
-  if (rawLength && Number(rawLength) > 1_048_576) {
+  if (rawLength && Number(rawLength) > maxBytes) {
     throw new AdminRequestError('The request body is too large.', 413)
   }
 
@@ -40,7 +40,7 @@ export async function readAdminJson(request: Request): Promise<Record<string, un
       const { done, value } = await reader.read()
       if (done) break
       total += value.byteLength
-      if (total > 1_048_576) {
+      if (total > maxBytes) {
         await reader.cancel()
         throw new AdminRequestError('The request body is too large.', 413)
       }

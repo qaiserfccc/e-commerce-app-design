@@ -339,7 +339,7 @@
           "Catalog"
         ],
         "summary": "Get a published product",
-        "description": "Returns baseCurve fixed at 8.66, waterContent from the supported set, and the SEO fields seoTitle, seoDescription, and seoFocusKeywords. Toric products expose orderingPolicy with mode whatsapp_advance_payment, notice and whatsappUrl. Non-Toric products have a null orderingPolicy.",
+        "description": "Returns a numeric-string baseCurve (default 8.66), waterContent from the supported set, and the SEO fields seoTitle, seoDescription, and seoFocusKeywords. Toric products expose orderingPolicy with mode whatsapp_advance_payment, notice and whatsappUrl. Non-Toric products have a null orderingPolicy.",
         "parameters": [
           {
             "$ref": "#/components/parameters/Slug"
@@ -1570,6 +1570,515 @@
         }
       }
     },
+    "/api/admin/site-backup": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Check portable backup status or read an export page/media chunk",
+        "description": "Owner-only, web-only backup transfer. The browser packages pages into a passphrase-encrypted portable archive. action=status needs no jobId; export-page and export-media require the active export job. Native clients must not call this workflow.",
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "action",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "status",
+                "export-page",
+                "export-media"
+              ]
+            }
+          },
+          {
+            "name": "jobId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Required for export-page and export-media."
+          },
+          {
+            "name": "table",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "store_categories",
+                "store_brands",
+                "store_lens_shades",
+                "store_lens_types",
+                "store_products",
+                "store_product_viewers",
+                "store_product_categories",
+                "store_product_reviews",
+                "store_product_relations",
+                "store_customers",
+                "store_orders",
+                "store_order_items",
+                "store_product_assets",
+                "store_product_variants",
+                "store_activity_events",
+                "store_growth_events",
+                "store_error_logs",
+                "store_banners",
+                "store_media_objects",
+                "store_reviews",
+                "store_settings",
+                "store_crm_leads"
+              ]
+            },
+            "description": "Required for export-page."
+          },
+          {
+            "name": "pathname",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 1024
+            },
+            "description": "Required for export-media."
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Backup readiness/status or a page of export rows / media bytes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "required": ["ready", "requiredMigration", "formatVersion", "schemaVersion", "tables", "mediaChunkBytes"],
+                          "properties": {
+                            "ready": { "type": "boolean" },
+                            "requiredMigration": { "type": ["string", "null"] },
+                            "formatVersion": { "type": "integer", "const": 1 },
+                            "schemaVersion": { "type": "integer", "const": 29 },
+                            "tables": { "type": "integer", "const": 22 },
+                            "mediaChunkBytes": { "type": "integer", "const": 524288 }
+                          }
+                        },
+                        {
+                          "type": "object",
+                          "required": ["rows", "nextOffset", "total"],
+                          "properties": {
+                            "rows": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": ["row_index", "row_data"],
+                                "properties": {
+                                  "row_index": { "type": "integer", "minimum": 0 },
+                                  "row_data": { "type": "object" }
+                                }
+                              }
+                            },
+                            "nextOffset": { "type": "integer", "minimum": 0 },
+                            "total": { "type": "integer", "minimum": 0 }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary",
+                  "description": "One media chunk of at most 512 KiB."
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "The export job, page, or media object is unavailable."
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Create or restore a portable encrypted site backup",
+        "description": "Owner-only and same-origin for browser writes. JSON actions start export, initialize restore, upload rows, complete restore, or cancel staging. Upload media as ordered application/octet-stream chunks. Restore replaces only the explicit store-data allowlist in one transaction and preserves destination admins/secrets. The browser passphrase is never sent to the server. Migration 0029_site_backup_transfer.sql must be installed. Successful/cancelled jobs are deleted immediately; abandoned jobs become inaccessible after 12 hours and are purged when the next backup/restore starts.",
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Backup-Job-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Required for binary media upload."
+          },
+          {
+            "name": "X-Backup-Pathname",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 3072
+            },
+            "description": "URL-encoded media pathname; required for binary media upload."
+          },
+          {
+            "name": "X-Backup-Offset",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "description": "Required for binary media upload."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "action"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "action": {
+                        "const": "start-export"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "action",
+                      "formatVersion",
+                      "schemaVersion",
+                      "manifest",
+                      "confirmation"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "action": {
+                        "const": "begin-restore"
+                      },
+                      "formatVersion": {
+                        "const": 1
+                      },
+                      "schemaVersion": {
+                        "const": 29
+                      },
+                      "manifest": {
+                        "type": "array",
+                        "minItems": 22,
+                        "maxItems": 22,
+                        "items": {
+                          "type": "object",
+                          "required": [
+                            "name",
+                            "rowCount"
+                          ],
+                          "additionalProperties": false,
+                          "properties": {
+                            "name": {
+                              "type": "string",
+                              "enum": [
+                                "store_categories",
+                                "store_brands",
+                                "store_lens_shades",
+                                "store_lens_types",
+                                "store_products",
+                                "store_product_viewers",
+                                "store_product_categories",
+                                "store_product_reviews",
+                                "store_product_relations",
+                                "store_customers",
+                                "store_orders",
+                                "store_order_items",
+                                "store_product_assets",
+                                "store_product_variants",
+                                "store_activity_events",
+                                "store_growth_events",
+                                "store_error_logs",
+                                "store_banners",
+                                "store_media_objects",
+                                "store_reviews",
+                                "store_settings",
+                                "store_crm_leads"
+                              ]
+                            },
+                            "rowCount": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1000000
+                            }
+                          }
+                        }
+                      },
+                      "confirmation": {
+                        "const": "RESTORE ALL STORE DATA"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "action",
+                      "jobId",
+                      "table",
+                      "startIndex",
+                      "rows"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "action": {
+                        "const": "upload-rows"
+                      },
+                      "jobId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "table": {
+                        "type": "string",
+                        "enum": [
+                          "store_categories",
+                          "store_brands",
+                          "store_lens_shades",
+                          "store_lens_types",
+                          "store_products",
+                          "store_product_viewers",
+                          "store_product_categories",
+                          "store_product_reviews",
+                          "store_product_relations",
+                          "store_customers",
+                          "store_orders",
+                          "store_order_items",
+                          "store_product_assets",
+                          "store_product_variants",
+                          "store_activity_events",
+                          "store_growth_events",
+                          "store_error_logs",
+                          "store_banners",
+                          "store_media_objects",
+                          "store_reviews",
+                          "store_settings",
+                          "store_crm_leads"
+                        ]
+                      },
+                      "startIndex": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "rows": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 250,
+                        "items": {
+                          "type": "object"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "action",
+                      "jobId",
+                      "confirmation"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "action": {
+                        "const": "complete-restore"
+                      },
+                      "jobId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "confirmation": {
+                        "const": "RESTORE ALL STORE DATA"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "action",
+                      "jobId"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "action": {
+                        "const": "cancel"
+                      },
+                      "jobId": {
+                        "type": "string",
+                        "format": "uuid"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary",
+                "description": "One ordered media chunk of 1–512 KiB."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Restore data upload acknowledged or restore completed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "required": ["uploaded", "nextIndex"],
+                          "properties": {
+                            "uploaded": { "type": "integer", "minimum": 1 },
+                            "nextIndex": { "type": "integer", "minimum": 1 }
+                          }
+                        },
+                        {
+                          "type": "object",
+                          "required": ["restored", "tables"],
+                          "properties": {
+                            "restored": { "const": true },
+                            "tables": {
+                              "type": "object",
+                              "additionalProperties": { "type": "integer", "minimum": 0 }
+                            }
+                          }
+                        },
+                        {
+                          "type": "object",
+                          "required": ["cancelled"],
+                          "properties": { "cancelled": { "const": true } }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Export or restore staging job created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "required": ["jobId", "manifest", "formatVersion", "schemaVersion"],
+                          "properties": {
+                            "jobId": { "type": "string", "format": "uuid" },
+                            "manifest": { "$ref": "#/paths/~1api~1admin~1site-backup/post/requestBody/content/application~1json/schema/oneOf/1/properties/manifest" },
+                            "formatVersion": { "type": "integer", "const": 1 },
+                            "schemaVersion": { "type": "integer", "const": 29 }
+                          }
+                        },
+                        {
+                          "type": "object",
+                          "required": ["jobId"],
+                          "properties": { "jobId": { "type": "string", "format": "uuid" } }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "Media chunk accepted."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "description": "Media chunk is out of order or differs from a previously received chunk."
+          },
+          "413": {
+            "description": "JSON or media chunk exceeds its size limit."
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
     "/api/admin/products": {
       "get": {
         "tags": [
@@ -1595,7 +2104,7 @@
           "Admin"
         ],
         "summary": "Create a product",
-        "description": "baseCurve is fixed at 8.66 mm. waterContent must be 38%, 40%, 45%, 48%, 50%, 55%, 58%, or 60%. seoTitle and seoDescription are optional strings; seoFocusKeywords accepts up to 20 phrases. Canonical URLs are generated from slug. diameterMm is a single value: 14, 14.2, 14.5, or 14.8 mm, or a legacy value from 0 to 12 in 0.1 increments. Customer-selectable diameter lists are not supported.",
+        "description": "baseCurve accepts any finite numeric value and defaults to 8.66 mm. waterContent must be 38%, 40%, 45%, 48%, 50%, 55%, 58%, or 60%. seoTitle and seoDescription are optional strings; seoFocusKeywords accepts up to 20 phrases. Canonical URLs are generated from slug. diameterMm is a single value: 14, 14.2, 14.5, or 14.8 mm, or a legacy value from 0 to 12 in 0.1 increments. Customer-selectable diameter lists are not supported.",
         "security": [
           {
             "adminCookie": []
@@ -1647,7 +2156,7 @@
           "Admin"
         ],
         "summary": "Replace editable product fields",
-        "description": "baseCurve is fixed at 8.66 mm. waterContent must be 38%, 40%, 45%, 48%, 50%, 55%, 58%, or 60%. seoTitle and seoDescription are optional strings; seoFocusKeywords accepts up to 20 phrases. Canonical URLs are generated from slug. diameterMm is a single value: 14, 14.2, 14.5, or 14.8 mm, or a legacy value from 0 to 12 in 0.1 increments. Customer-selectable diameter lists are not supported.",
+        "description": "baseCurve accepts any finite numeric value and defaults to 8.66 mm. waterContent must be 38%, 40%, 45%, 48%, 50%, 55%, 58%, or 60%. seoTitle and seoDescription are optional strings; seoFocusKeywords accepts up to 20 phrases. Canonical URLs are generated from slug. diameterMm is a single value: 14, 14.2, 14.5, or 14.8 mm, or a legacy value from 0 to 12 in 0.1 increments. Customer-selectable diameter lists are not supported.",
         "security": [
           {
             "adminCookie": []
@@ -4583,7 +5092,7 @@
                 },
                 "baseCurve": {
                   "type": "string",
-                  "const": "8.66"
+                  "pattern": "^[+-]?(?:(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?)$"
                 },
                 "waterContent": {
                   "type": "string",
@@ -4644,7 +5153,7 @@
             "type": "object",
             "required": ["baseCurve", "waterContent", "seoTitle", "seoDescription", "seoFocusKeywords"],
             "properties": {
-              "baseCurve": {"type": "string", "const": "8.66"},
+              "baseCurve": {"type": "string", "pattern": "^[+-]?(?:(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?)$"},
               "waterContent": {"type": "string", "enum": ["38%", "40%", "45%", "48%", "50%", "55%", "58%", "60%"]},
               "seoTitle": {"type": ["string", "null"]},
               "seoDescription": {"type": ["string", "null"]},

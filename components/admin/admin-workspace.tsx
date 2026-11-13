@@ -51,6 +51,7 @@ import { MerchandisingManager } from '@/components/admin/merchandising-manager'
 import { CrmWorkspace } from '@/components/admin/crm-workspace'
 import { ProductBulkTools } from '@/components/admin/product-bulk-tools'
 import { GrowthWorkspace } from '@/components/admin/growth-workspace'
+import { SiteBackupWorkspace } from '@/components/admin/site-backup-workspace'
 import { DataTable, type DataTableBulkAction, type DataTableColumn } from '@/components/admin/data-table'
 import { Pagination } from '@/components/ui/pagination'
 import { getProductImageSources } from '@/components/storefront/product-image'
@@ -88,6 +89,7 @@ const sections: Array<{ id: Section; label: string; icon: typeof LayoutDashboard
   { id: 'deals', label: 'Lens deals', icon: BadgePercent },
   { id: 'delivery', label: 'Delivery', icon: Truck },
   { id: 'system-users', label: 'System users', icon: Users },
+  { id: 'site-backup', label: 'Site backup', icon: ShieldCheck },
   { id: 'project-plan', label: 'Project Kanban', icon: ClipboardList },
 ]
 
@@ -1257,6 +1259,9 @@ export function AdminWorkspace({ section = 'overview' }: { section?: AdminSectio
     'system-users': session.role === 'owner' && session.userId
       ? <SystemUsersWorkspace signedInUserId={session.userId} signedInEmail={session.email ?? ''} />
       : <AdminOverview onNavigate={() => router.push('/admin')} />,
+    'site-backup': session.role === 'owner'
+      ? <SiteBackupWorkspace />
+      : <AdminOverview onNavigate={() => router.push('/admin')} />,
     'project-plan': <ProjectKanban />,
   }[section]
 
@@ -1270,7 +1275,7 @@ export function AdminWorkspace({ section = 'overview' }: { section?: AdminSectio
           </button>
         </div>
         <nav aria-label="Admin workspace" className="grid grid-cols-2 gap-1 text-sm sm:grid-cols-3 lg:flex lg:flex-col">
-          {sections.filter(({ id }) => id !== 'system-users' || session.role === 'owner').map(({ id, label, icon: Icon }) => (
+          {sections.filter(({ id }) => !['system-users', 'site-backup'].includes(id) || session.role === 'owner').map(({ id, label, icon: Icon }) => (
             <Link
               key={id}
               href={id === 'overview' ? '/admin' : `/admin/${id}`}

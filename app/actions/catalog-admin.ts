@@ -300,9 +300,12 @@ function waterContent(value: unknown) {
 }
 
 function baseCurve(value: unknown) {
-  const result = decimal(value, 'Base curve') ?? '8.66'
-  if (Number(result) !== 8.66) throw new Error('Base curve must be 8.66 mm.')
-  return '8.66'
+  const result = typeof value === 'number' ? String(value) : typeof value === 'string' ? value.trim() : ''
+  if (!result) return '8.66'
+  if (result.length > 80 || !/^[+-]?(?:(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)$/.test(result) || !Number.isFinite(Number(result))) {
+    throw new Error('Base curve must be a valid numeric value.')
+  }
+  return result
 }
 
 function focusKeywords(value: unknown) {

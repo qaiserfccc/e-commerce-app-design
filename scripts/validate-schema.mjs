@@ -42,6 +42,8 @@ const REQUIRED_TABLES = [
   'store_error_logs',
   'store_media_objects',
   'store_crm_leads',
+  'store_site_backup_jobs',
+  'store_site_backup_rows',
 ]
 
 const TABLE_SCHEMAS = {
@@ -141,6 +143,8 @@ const TABLE_SCHEMAS = {
     'created_at',
     'updated_at',
   ],
+  store_site_backup_jobs: ['id', 'user_id', 'operation', 'manifest', 'created_at', 'expires_at'],
+  store_site_backup_rows: ['job_id', 'table_name', 'row_index', 'row_data', 'media_content'],
 }
 
 async function validateSchema() {
@@ -224,6 +228,27 @@ async function validateSchema() {
         hasErrors = true
       }
     }
+    const baseCurveTypesResult = await pool.query(`
+      SELECT relation.relname AS table_name, attribute.attname AS column_name,
+        format_type(attribute.atttypid, attribute.atttypmod) AS formatted_type
+      FROM pg_attribute AS attribute
+      JOIN pg_class AS relation ON relation.oid = attribute.attrelid
+      JOIN pg_namespace AS namespace ON namespace.oid = relation.relnamespace
+      WHERE namespace.nspname = 'public'
+        AND relation.relname IN ('store_products', 'store_product_variants')
+        AND attribute.attname = 'base_curve'
+        AND attribute.attnum > 0
+        AND NOT attribute.attisdropped
+    `)
+    const baseCurveTypes = new Map(baseCurveTypesResult.rows.map((row) => [`${row.table_name}.${row.column_name}`, row.formatted_type]))
+    for (const column of ['store_products.base_curve', 'store_product_variants.base_curve']) {
+      if (baseCurveTypes.get(column) === 'numeric') {
+        console.log(`✅ ${column} accepts unrestricted numeric values`)
+      } else {
+        console.error(`❌ ${column} must use unrestricted numeric`)
+        hasErrors = true
+      }
+    }
 
     const constraintResult = await pool.query(`
       SELECT conname
@@ -234,16 +259,21 @@ async function validateSchema() {
       )
     `)
     const constraints = new Set(constraintResult.rows.map((row) => row.conname))
+    if (constraints.has('store_products_water_content_allowed_check')) {
+      console.log('✅ store_products_water_content_allowed_check')
+    } else {
+      console.error('❌ store_products_water_content_allowed_check (missing)')
+      hasErrors = true
+    }
     for (const constraint of [
       'store_products_base_curve_fixed_check',
-      'store_products_water_content_allowed_check',
       'store_product_variants_base_curve_fixed_check',
     ]) {
       if (constraints.has(constraint)) {
-        console.log(`✅ ${constraint}`)
-      } else {
-        console.error(`❌ ${constraint} (missing)`)
+        console.error(`❌ ${constraint} must be removed`)
         hasErrors = true
+      } else {
+        console.log(`✅ ${constraint} is absent`)
       }
     }
 
@@ -288,20 +318,13 @@ async function validateSchema() {
 
     const valuesResult = await pool.query(`
       SELECT
-        count(*) FILTER (WHERE base_curve IS DISTINCT FROM 8.66)::int AS invalid_product_base_curves,
         count(*) FILTER (WHERE water_content IS NULL OR water_content NOT IN ('38%', '40%', '45%', '48%', '50%', '55%', '58%', '60%'))::int AS invalid_water_contents
       FROM public.store_products
     `)
-    const variantValuesResult = await pool.query(`
-      SELECT count(*) FILTER (WHERE base_curve IS DISTINCT FROM 8.66)::int AS invalid_variant_base_curves
-      FROM public.store_product_variants
-    `)
-    if (valuesResult.rows[0].invalid_product_base_curves === 0 &&
-        valuesResult.rows[0].invalid_water_contents === 0 &&
-        variantValuesResult.rows[0].invalid_variant_base_curves === 0) {
-      console.log('✅ Existing products and variants use the supported specifications')
+    if (valuesResult.rows[0].invalid_water_contents === 0) {
+      console.log('✅ Existing product water-content values are supported')
     } else {
-      console.error('❌ Existing products or variants contain unsupported lens specifications')
+      console.error('❌ Existing products contain unsupported water-content values')
       hasErrors = true
     }
 

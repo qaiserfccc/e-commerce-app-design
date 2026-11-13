@@ -24,7 +24,7 @@ export async function GET() {
         note: 'The website and mobile storefronts consume the same validated palette, control styles, hero slides, section order/visibility/copy, hero layout/autoplay, store notices, and eligible lens deals.',
       },
       productSpecifications: {
-        note: 'Product baseCurve is fixed at 8.66 mm and waterContent is limited to 38%, 40%, 45%, 48%, 50%, 55%, 58%, or 60%. Product SEO fields are seoTitle, seoDescription, and seoFocusKeywords; canonical URLs are generated from the slug. Admin product create/update accepts scalar diameterMm values 14, 14.2, 14.5 and 14.8 mm as well as legacy values from 0 to 12 in 0.1 increments. Customer-selectable diameter lists are not yet supported. Products with power options allow plain lenses via lensChoice=plain or power lenses with a value for each eye.',
+        note: 'Product baseCurve accepts any numeric value and defaults to 8.66 mm; waterContent is limited to 38%, 40%, 45%, 48%, 50%, 55%, 58%, or 60%. Product SEO fields are seoTitle, seoDescription, and seoFocusKeywords; canonical URLs are generated from the slug. Admin product create/update accepts scalar diameterMm values 14, 14.2, 14.5 and 14.8 mm as well as legacy values from 0 to 12 in 0.1 increments. Customer-selectable diameter lists are not yet supported. Products with power options allow plain lenses via lensChoice=plain or power lenses with a value for each eye.',
       },
       productSearch: {
         note: 'GET /api/products?q=... searches product names, descriptions, SKUs, brands, categories, lens attributes, features, and specifications for web and mobile storefronts.',
@@ -125,6 +125,7 @@ export async function GET() {
           'GET /api/admin/growth-metrics',
           'GET, PUT /api/admin/marketing-integrations',
           'GET, PUT /api/admin/cro-actions',
+          'GET, POST /api/admin/site-backup',
           'GET, PUT /api/admin/delivery-settings',
           'GET, POST /api/admin/system-users',
           'PATCH /api/admin/system-users/{userId}',
@@ -134,6 +135,13 @@ export async function GET() {
           'POST /api/admin/content/upload',
           'POST /api/admin/catalog-sync',
         ],
+      },
+      siteBackup: {
+        access: 'Owner-only, web-only transfer workflow; native clients must not call it.',
+        status: 'GET /api/admin/site-backup?action=status reports whether migration 0029_site_backup_transfer.sql is installed.',
+        export: 'POST {action:"start-export"} creates a temporary consistent export; GET action=export-page and action=export-media return bounded pages/chunks.',
+        restore: 'POST begin-restore, upload-rows, complete-restore, and cancel control staging. Media is uploaded as ordered application/octet-stream chunks. Restore is atomic and requires confirmation.',
+        boundaries: 'The browser encrypts a portable archive using a passphrase that is never sent to the server. Admin accounts, store_secrets, environment values, source code, and hosting settings are excluded.',
       },
       note: 'Mutating requests from native clients may omit Origin. Browser cross-origin writes remain rejected.',
     },
